@@ -50,7 +50,7 @@ local GetColor = colors.GetColor
 local M = {}
 
 --
-local BarTouch = touch.DragParentTouch(2)
+local BarTouch = touch.DragParentTouch{ hscale = 2 }
 
 --
 local function AddOptionGridLine (group, skin, x1, y1, x2, y2)

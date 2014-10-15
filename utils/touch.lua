@@ -35,12 +35,22 @@ local display = display
 -- Exports --
 local M = {}
 
+--
+local function GetParent (object, find)
+	if find then
+		return find(object)
+	else
+		return object.parent
+	end
+end
+
 --- Builds a function (on top of @{TouchHelperFunc}) to be assigned as a **"touch"**
 -- listener, which will drag the target's parent around when moved, subject to clamping at
 -- the screen edges.
 --
 -- The **m\_dragx** and **m\_dragy** fields are intrusively assigned to in the event target.
--- @number[opt=1] hscale Height scale, &ge; 1. The parent may be taller than the touched
+-- @ptable[opt] opts
+-- FIX number[opt=1] hscale Height scale, &ge; 1. The parent may be taller than the touched
 -- object, e.g. in the case of a title bar, which affects vertical clamping. The final
 -- metric is: parent height = _hscale_ * object height.
 -- @treturn function Listener function.
@@ -48,28 +58,44 @@ local M = {}
 -- **CONSIDER**: More automagic than hscale? Varieties of clamping?
 --
 -- @todo May start in "broken" state, i.e. in violation of the clamping
-function M.DragParentTouch (hscale)
+-- DOCMEMORE!
+function M.DragParentTouch (opts)
+	local find, hscale
+
+	if opts then
+		find, hscale = opts.find, opts.hscale
+	end
+
 	hscale = hscale or 1
 
 	return M.TouchHelperFunc(function(event, object)
-		object.m_dragx = object.parent.x - event.x
-		object.m_dragy = object.parent.y - event.y
+		local parent = GetParent(object, find)
+
+		object.m_dragx = parent.x - event.x
+		object.m_dragy = parent.y - event.y
 	end, function(event, object)
-		object.parent.x = ClampIn(object.m_dragx + event.x, 0, display.contentWidth - object.contentWidth)
-		object.parent.y = ClampIn(object.m_dragy + event.y, 0, display.contentHeight - object.contentHeight * hscale)
+		local parent = GetParent(object, find)
+
+		parent.x = ClampIn(object.m_dragx + event.x, 0, display.contentWidth - object.contentWidth)
+		parent.y = ClampIn(object.m_dragy + event.y, 0, display.contentHeight - object.contentHeight * hscale)
 	end)
 end
 
 --- DOCME
-function M.DragParentTouch_Sibling (key)
-	return M.TouchHelperFunc(function(event, object)
-		object.m_dragx = object.parent.x - event.x
-		object.m_dragy = object.parent.y - event.y
-	end, function(event, object)
-		local sibling = object.parent[key]
+function M.DragParentTouch_Child (key, opts)
+	local find = opts and opts.find
 
-		object.parent.x = ClampIn(object.m_dragx + event.x, 0, display.contentWidth - sibling.contentWidth)
-		object.parent.y = ClampIn(object.m_dragy + event.y, 0, display.contentHeight - sibling.contentHeight)
+	return M.TouchHelperFunc(function(event, object)
+		local parent = GetParent(object, find)
+
+		object.m_dragx = parent.x - event.x
+		object.m_dragy = parent.y - event.y
+	end, function(event, object)
+		local parent = GetParent(object, find)
+		local sibling = parent[key]
+
+		parent.x = ClampIn(object.m_dragx + event.x, 0, display.contentWidth - sibling.contentWidth)
+		parent.y = ClampIn(object.m_dragy + event.y, 0, display.contentHeight - sibling.contentHeight)
 	end)
 end
 

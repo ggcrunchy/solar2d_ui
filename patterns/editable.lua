@@ -31,7 +31,7 @@ local tonumber = tonumber
 local upper = string.upper
 
 -- Modules --
-local keyboard = require("ui.Keyboard")
+local keyboard = require("corona_ui.widgets.keyboard")
 local layout = require("corona_ui.utils.layout")
 local scenes = require("corona_utils.scenes")
 
