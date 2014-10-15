@@ -31,7 +31,7 @@ local require_ex = require("tektite.require_ex")
 local jpeg = require("image_ops.jpeg")
 local png = require("image_ops.png")
 local string_utils = require("utils.String")
-local table_view_patterns = require_ex.Lazy("ui.patterns.table_view")
+local table_view_patterns = require_ex.Lazy("corona_ui.patterns.table_view")
 
 -- Corona globals --
 local display = display

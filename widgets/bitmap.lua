@@ -35,7 +35,7 @@ local yield = coroutine.yield
 local indexOf = table.indexOf
 
 -- Modules --
-local color = require("ui.Color")
+local color = require("corona_ui.utils.color")
 local operators = require("bitwise_ops.operators")
 
 -- Corona globals --

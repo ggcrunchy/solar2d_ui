@@ -33,10 +33,10 @@ local tonumber = tonumber
 local upper = string.upper
 
 -- Imports --
-local button = require("ui.Button")
-local colors = require("ui.Color")
-local skins = require("ui.Skin")
-local touch = require("ui.Touch")
+local button = require("corona_ui.widgets.button")
+local colors = require("corona_ui.utils.color")
+local skins = require("corona_ui.utils.skin")
+local touch = require("corona_ui.utils.touch")
 
 -- Corona globals --
 local display = display

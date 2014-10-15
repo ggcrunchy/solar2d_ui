@@ -32,8 +32,8 @@ local upper = string.upper
 
 -- Modules --
 local keyboard = require("ui.Keyboard")
-local layout = require("utils.Layout")
-local scenes = require("utils.Scenes")
+local layout = require("corona_ui.utils.layout")
+local scenes = require("corona_utils.scenes")
 
 -- Corona globals --
 local display = display

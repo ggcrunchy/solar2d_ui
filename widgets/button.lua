@@ -26,11 +26,11 @@
 --
 
 -- Modules --
-local colors = require("ui.Color")
-local frames = require("utils.Frames")
+local colors = require("corona_ui.utils.color")
+local frames = require("corona_utils.frames")
 local geom2d_preds = require("geom2d_ops.predicates")
-local skins = require("ui.Skin")
-local timers = require("game.Timers")
+local skins = require("corona_ui.utils.skin")
+local timers = require("corona_utils.timers")
 
 -- Corona globals --
 local display = display
@@ -208,7 +208,7 @@ end
 -- @callable func Logic for this button, called on drop or timeout.
 -- @string[opt=""] text Button text.
 -- @treturn DisplayGroup Child #1: the button; Child #2: the text.
--- @see ui.Skin.GetSkin
+-- @see corona_ui.utils.skin.GetSkin
 function M.Button (group, skin, x, y, w, h, func, text)
 	skin = skins.GetSkin(skin)
 

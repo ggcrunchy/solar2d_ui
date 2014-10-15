@@ -31,11 +31,11 @@ local remove = table.remove
 
 -- Modules --
 local array_index = require("array_ops.index")
-local colors = require("ui.Color")
+local colors = require("corona_ui.utils.color")
 local grid_iterators = require("iterator_ops.grid")
 local range = require("number_ops.range")
-local skins = require("ui.Skin")
-local touch = require("ui.Touch")
+local skins = require("corona_ui.utils.skin")
+local touch = require("corona_ui.utils.touch")
 
 -- Corona globals --
 local display = display
@@ -121,9 +121,9 @@ end)
 local function AddGridLine (group, skin, x1, y1, x2, y2)
 	local line = display.newLine(group, x1, y1, x2, y2)
 
-	line.strokeWidth = skin.grid2d_linewidth
+	line.strokeWidth = skin.grid_linewidth
 
-	line:setStrokeColor(colors.GetColor(skin.grid2d_linecolor))
+	line:setStrokeColor(colors.GetColor(skin.grid_linecolor))
 end
 
 -- Cache of simulated touch events --
@@ -177,8 +177,8 @@ end
 -- @uint cols Number of visible / touchable columns...
 -- @uint rows ...and rows.
 -- @treturn DisplayObject Grid widget. 
--- @see ui.Skin.GetSkin
-function M.Grid2D (group, skin, x, y, w, h, cols, rows)
+-- @see corona_ui.utils.skin.GetSkin
+function M.Grid (group, skin, x, y, w, h, cols, rows)
 	skin = skins.GetSkin(skin)
 
 	local Grid = display.newGroup()
@@ -204,13 +204,13 @@ function M.Grid2D (group, skin, x, y, w, h, cols, rows)
 
 	-- Add touch support and assign some properties.
 	back:addEventListener("touch", Touch)
-	back:setFillColor(colors.GetColor(skin.grid2d_backcolor))
+	back:setFillColor(colors.GetColor(skin.grid_backcolor))
 
 	back.m_ncols, back.m_cx, back.m_coffset = cols, .5, 0
 	back.m_nrows, back.m_cy, back.m_roffset = rows, .5, 0
 
 	-- Handle input trapping in the absence of a background.
-	if skin.grid2d_trapinput then
+	if skin.grid_trapinput then
 		back.isHitTestable = true
 	end
 
@@ -381,8 +381,8 @@ function M.Grid2D (group, skin, x, y, w, h, cols, rows)
 	return Grid
 end
 
--- Main 2D grid skin --
-skins.AddToDefaultSkin("grid2d", {
+-- Main grid skin --
+skins.AddToDefaultSkin("grid", {
 	backcolor = { .375, .375, .375, .75 },
 	linecolor = "white",
 	linewidth = 2,

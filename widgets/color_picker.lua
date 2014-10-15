@@ -30,9 +30,9 @@ local min = math.min
 local unpack = unpack
 
 -- Modules --
-local hsv = require("ui.HSV")
+local hsv = require("corona_ui.utils.hsv")
 local range = require("number_ops.range")
-local touch = require("ui.Touch")
+local touch = require("corona_ui.utils.touch")
 
 -- Corona globals --
 local display = display

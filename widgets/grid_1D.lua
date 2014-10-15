@@ -31,11 +31,11 @@ local ipairs = ipairs
 
 -- Modules --
 local array_index = require("array_ops.index")
-local button = require("ui.Button")
-local colors = require("ui.Color")
-local sheet = require("ui.Sheet")
-local skins = require("ui.Skin")
-local touch = require("ui.Touch")
+local button = require("corona_ui.widgets.button")
+local colors = require("corona_ui.utils.color")
+local sheet = require("corona_ui.utils.sheet")
+local skins = require("corona_ui.utils.skin")
+local touch = require("corona_ui.utils.touch")
 
 -- Corona globals --
 local display = display

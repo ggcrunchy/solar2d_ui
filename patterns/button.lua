@@ -40,7 +40,7 @@ local ScrollValues = {
 -- of the four cardinal directions.
 -- @number x Button x-coordinate...
 -- @number y ...and y-coordinate.
--- @callable func Button function, cf. @{ui.Button.Button}.
+-- @callable func Button function, cf. @{corona_ui.widgets.button.Button}.
 function M.ScrollButton (group, name, x, y, func)
 	local button = button.Button(group, "rscroll", x, y, 32, 32, func)
 	local values = ScrollValues[name]

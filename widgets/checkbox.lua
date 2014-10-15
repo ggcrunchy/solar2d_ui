@@ -26,8 +26,8 @@
 --
 
 -- Modules --
-local colors = require("ui.Color")
-local skins = require("ui.Skin")
+local colors = require("corona_ui.utils.color")
+local skins = require("corona_ui.utils.skin")
 
 -- Corona globals --
 local display = display
@@ -69,7 +69,7 @@ end
 -- @number h Height.
 -- @callable[opt] func If present, called as `func(is_checked)`, after a check or uncheck.
 -- @treturn DisplayGroup Child #1: the box; Child #2: the check mark.
--- @see ui.Skin.GetSkin
+-- @see corona_ui.utils.skin.GetSkin
 function M.Checkbox (group, skin, x, y, w, h, func)
 	skin = skins.GetSkin(skin)
 

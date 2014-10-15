@@ -29,7 +29,7 @@ local ipairs = ipairs
 local remove = table.remove
 
 -- Modules --
-local file_utils = require("utils.File")
+local file_utils = require("corona_utils.file")
 
 -- Corona globals --
 local display = display
