@@ -24,7 +24,7 @@
 --
 
 -- Modules --
-local range = require("number_ops.range")
+local range = require("tektite_core.number.range")
 
 -- Imports --
 local ClampIn = range.ClampIn

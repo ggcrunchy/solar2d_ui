@@ -28,7 +28,7 @@ local abs = math.abs
 local sqrt = math.sqrt
 
 -- Modules --
-local array_funcs = require("array_ops.funcs")
+local array_funcs = require("tektite_core.array.funcs")
 local curves = require("utils.Curves")
 local color = require("corona_ui.utils.color")
 local line_ex = require("corona_ui.utils.line_ex")

@@ -27,7 +27,7 @@
 local pairs = pairs
 
 -- Modules --
-local require_ex = require("tektite.require_ex")
+local require_ex = require("tektite_core.require_ex")
 local jpeg = require("image_ops.jpeg")
 local png = require("image_ops.png")
 local string_utils = require("utils.String")

@@ -31,7 +31,7 @@ local unpack = unpack
 
 -- Modules --
 local hsv = require("corona_ui.utils.hsv")
-local range = require("number_ops.range")
+local range = require("tektite_core.number.range")
 local touch = require("corona_ui.utils.touch")
 
 -- Corona globals --

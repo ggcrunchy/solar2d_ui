@@ -30,7 +30,7 @@ local abs = math.abs
 local ipairs = ipairs
 
 -- Modules --
-local array_index = require("array_ops.index")
+local array_index = require("tektite_core.array.index")
 local button = require("corona_ui.widgets.button")
 local colors = require("corona_ui.utils.color")
 local sheet = require("corona_ui.utils.sheet")

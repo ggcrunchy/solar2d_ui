@@ -30,10 +30,10 @@ local floor = math.floor
 local remove = table.remove
 
 -- Modules --
-local array_index = require("array_ops.index")
+local array_index = require("tektite_core.array.index")
 local colors = require("corona_ui.utils.color")
 local grid_iterators = require("iterator_ops.grid")
-local range = require("number_ops.range")
+local range = require("tektite_core.number.range")
 local skins = require("corona_ui.utils.skin")
 local touch = require("corona_ui.utils.touch")
 
