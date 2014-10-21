@@ -28,7 +28,7 @@
 -- Modules --
 local colors = require("corona_ui.utils.color")
 local frames = require("corona_utils.frames")
-local geom2d_preds = require("geom2d_ops.predicates")
+local geom2d_preds = require("tektite_core.geom2d.predicates")
 local skins = require("corona_ui.utils.skin")
 local timers = require("corona_utils.timers")
 
