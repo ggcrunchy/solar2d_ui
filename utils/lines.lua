@@ -29,7 +29,7 @@ local sqrt = math.sqrt
 
 -- Modules --
 local array_funcs = require("tektite_core.array.funcs")
-local curves = require("utils.Curves")
+local curves = require("tektite_core.number.curves")
 local color = require("corona_ui.utils.color")
 local line_ex = require("corona_ui.utils.line_ex")
 local timers = require("corona_utils.timers")

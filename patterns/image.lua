@@ -30,7 +30,7 @@ local pairs = pairs
 local require_ex = require("tektite_core.require_ex")
 local jpeg = require("image_ops.jpeg")
 local png = require("image_ops.png")
-local string_utils = require("utils.String")
+local string_utils = require("tektite_core.string")
 local table_view_patterns = require_ex.Lazy("corona_ui.patterns.table_view")
 
 -- Corona globals --
