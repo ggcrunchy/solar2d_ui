@@ -23,35 +23,49 @@
 -- [ MIT license: http://www.opensource.org/licenses/mit-license.php ]
 --
 
---[=[
+-- Standard library imports --
+local ipairs = ipairs
+local pairs = pairs
+
+-- Corona modules --
+local widget = require("widget")
+
+-- Exports --
+local M = {}
+
+-- --
+local function Name (what, bar)
+	return "corona_ui/assets/tab" .. (bar and "Bar_tab" or "") .. what .. ".png"
+end
 
 --- Creates a tab bar.
 -- @pgroup group Group to which tab bar will be inserted.
 -- @array buttons Tab buttons, cf. `widget.newTabBar`.
 -- @ptable options Argument to `widget.newTabBar` (**buttons** is overridden).
--- @bool hide If true, the tab bar starts out hidden.
 -- @treturn DisplayObject Tab bar object.
-function M.TabBar (group, buttons, options, hide)
+function M.TabBar (group, buttons, options)
 	for _, button in ipairs(buttons) do
-		button.overFile, button.defaultFile = "UI_Assets/tabIcon-down.png", "UI_Assets/tabIcon.png"
+		button.overFile, button.defaultFile = Name("Icon-down"), Name("Icon")
 		button.width, button.height, button.size = 32, 32, 14
 	end
 
-	local topts = common.CopyInto({}, options)
+	local topts = {}
+
+	for k, v in pairs(options) do
+		topts[k] = v
+	end
 
 	topts.buttons = buttons
-	topts.backgroundFile = "UI_Assets/tabbar.png"
-	topts.tabSelectedLeftFile = "UI_Assets/tabBar_tabSelectedLeft.png"
-	topts.tabSelectedMiddleFile = "UI_Assets/tabBar_tabSelectedMiddle.png"
-	topts.tabSelectedRightFile = "UI_Assets/tabBar_tabSelectedRight.png"
+	topts.backgroundFile = Name("bar")
+	topts.tabSelectedLeftFile = Name("SelectedLeft", true)
+	topts.tabSelectedMiddleFile = Name("SelectedMiddle", true)
+	topts.tabSelectedRightFile = Name("SelectedRight", true)
 	topts.tabSelectedFrameWidth = 20
 	topts.tabSelectedFrameHeight = 52
 
 	local tbar = widget.newTabBar(topts)
 
 	group:insert(tbar)
-
-	tbar.isVisible = not hide
 
 	return tbar
 end
@@ -91,4 +105,5 @@ function M.TabsHack (group, tabs, n, x, y, w, h)
 	return rect
 end
 
-]=]
+-- Export the module.
+return M

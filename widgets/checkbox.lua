@@ -126,7 +126,7 @@ skins.AddToDefaultSkin("checkbox", {
 	backcolor = "white",
 	bordercolor = { .5, 0, .5 },
 	borderwidth = 4,
-	image = "UI_Assets/Check.png",
+	image = "corona_ui/assets/Check.png",
 	radius = 12
 })
 

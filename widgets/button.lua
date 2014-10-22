@@ -271,7 +271,7 @@ skins.RegisterSkin("rscroll", {
 	normal = { 0, .5, 1 },
 	held = { 1, .25, 0 },
 	touch = { 0, 1, .5 },
-	image = "UI_Assets/Arrow.png",
+	image = "corona_ui/assets/Arrow.png",
 	type = "image",
 	timeout = .15,
 	_prefix_ = "button"
