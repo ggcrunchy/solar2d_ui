@@ -25,19 +25,18 @@
 -- [ MIT license: http://www.opensource.org/licenses/mit-license.php ]
 --
 
+-- Standard library imports --
+local floor = math.floor
+
 -- Modules --
 local colors = require("corona_ui.utils.color")
-local frames = require("corona_utils.frames")
 local geom2d_preds = require("tektite_core.geom2d.predicates")
 local skins = require("corona_ui.utils.skin")
-local timers = require("corona_utils.timers")
 
 -- Corona globals --
 local display = display
-local native = native
-
--- Classes --
-local TimerClass = require("class.Timer")
+local system = system
+local timer = timer
 
 -- Imports --
 local GetColor = colors.GetColor
@@ -45,23 +44,28 @@ local GetColor = colors.GetColor
 -- Exports --
 local M = {}
 
--- Resets timer, if available
-local function ResetTimer (button)
-	if button.m_lapse then
-		button.m_lapse:SetCounter(0)
+-- Cleans up a button's timer, if present
+local function ClearTimer (button)
+	local update = button.m_update
 
-		return true
+	if update then
+		timer.cancel(update)
+
+		button.m_update = nil
 	end
 end
 
 -- Do timeouts when a button is touched
 local function DoTimeouts (button)
-	timers.RepeatEx(function()
+	button.m_since = system.getTimer()
+	button.m_update = timer.performWithDelay(20, function(event)
 		if button.parent and button.m_is_touched then
 			if button.m_inside then
-				-- Do the button logic as many times as the timer elapsed. Take this
-				-- occasion to flag that the button is now doing timeouts.
-				local nlapses = button.m_lapse:Check("continue")
+				local since, timeout = button.m_since, button.m_timeout
+
+				-- Do the button logic as many times as the timer elapsed. Use this opportunity to flag
+				-- that the button is now doing timeouts.
+				local nlapses = floor((event.time - since) / timeout)
 
 				for _ = 1, nlapses do
 					button.m_doing_timeouts = true
@@ -69,19 +73,18 @@ local function DoTimeouts (button)
 					button:m_func()
 				end
 
-				-- Add this frame's time to the timer.
-				button.m_lapse:Update(frames.DiffTime())
+				button.m_since = since + nlapses * timeout
 
 			-- Reset the timer if the touch strays outside the button.
 			else
-				ResetTimer(button)
+				button.m_since = event.time
 			end
 
 		-- Stop timeouts once the button is released.
 		else
-			return "cancel"
+			ClearTimer(button)
 		end
-	end)
+	end, 0)
 end
 
 -- Helper to set stage focus
@@ -104,7 +107,7 @@ local function OnTouch (event)
 		button.m_is_touched = true
 
 		-- If a timer is available, reset it and start watching for timeouts.
-		if ResetTimer(button) then
+		if button.m_timeout then
 			DoTimeouts(button)
 		end
 
@@ -121,6 +124,7 @@ local function OnTouch (event)
 		-- If the button was doing timeouts, do nothing. Otherwise, if it was dropped
 		-- while the touch is inside, do the button logic.
 		if event.phase == "ended" or event.phase == "cancelled" then
+			ClearTimer(button)
 			SetFocus(nil)
 
 			if not button.m_doing_timeouts and event.phase == "ended" and button.m_inside then
@@ -182,20 +186,9 @@ function Factories.sprite (bgroup, skin)
 	return button
 end
 
--- Sets or clears the timeout
-local function SetTimeout (button, timeout)
-	local lapse = button[1].m_lapse
-
-	if timeout then
-		lapse = lapse or TimerClass()
-
-		lapse:Start(timeout)
-
-		button[1].m_lapse = lapse
-
-	elseif lapse then
-		lapse:Stop()
-	end
+-- Cleans up button resources
+local function Cleanup (event)
+	ClearTimer(event.target)
 end
 
 --- Creates a new button.
@@ -214,16 +207,16 @@ function M.Button (group, skin, x, y, w, h, func, text)
 
 	-- Build a new group and add it into the parent at the requested position. The button
 	-- and string will be relative to this group.
-	local bgroup = display.newGroup()
+	local Button = display.newGroup()
 
-	bgroup.anchorChildren = true
-	bgroup.x, bgroup.y = x, y
+	Button.anchorChildren = true
+	Button.x, Button.y = x, y
 
-	group:insert(bgroup)
+	group:insert(Button)
 
 	-- Add the button and (partially centered) text, in that order, to the group.
-	local button = Factories[skin.button_type](bgroup, skin, w, h)
-	local string = display.newText(bgroup, text or "", 0, 0, skin.button_font, skin.button_textsize)
+	local button = Factories[skin.button_type](Button, skin, w, h)
+	local string = display.newText(Button, text or "", 0, 0, skin.button_font, skin.button_textsize)
 
 	string:setFillColor(GetColor(skin.button_textcolor))
 
@@ -234,22 +227,31 @@ function M.Button (group, skin, x, y, w, h, func, text)
 
 	-- Install common button logic.
 	button:addEventListener("touch", OnTouch)
+	button:addEventListener("finalize", Cleanup)
 
 	-- Assign custom button state.
 	button.m_func = func
 	button.m_skin = skin
 
-	-- Assign any timeout.
-	SetTimeout(bgroup, skin.button_timeout)
-
 	--- Setter.
-	-- @function bgroup:SetTimeout
+	-- @function Button:SetTimeout
 	-- @tparam ?|number|nil timeout A value &gt; 0. When the button is held, its function is
 	-- called each time this duration passes. If absent, any such timeout is removed.
-	bgroup.SetTimeout = SetTimeout
+	function Button:SetTimeout (timeout)
+		if timeout then
+			button.m_since, button.m_timeout = system.getTimer(), timeout
+		else
+			ClearTimer(button)
+
+			button.m_timeout = nil
+		end
+	end
+
+	-- Assign any timeout.
+	Button:SetTimeout(skin.button_timeout)
 
 	-- Provide the button.
-	return bgroup
+	return Button
 end
 
 -- Main button skin --
@@ -273,7 +275,7 @@ skins.RegisterSkin("rscroll", {
 	touch = { 0, 1, .5 },
 	image = "corona_ui/assets/Arrow.png",
 	type = "image",
-	timeout = .15,
+	timeout = 150,--.15,
 	_prefix_ = "button"
 })
 
