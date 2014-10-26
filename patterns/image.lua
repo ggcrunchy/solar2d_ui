@@ -30,7 +30,7 @@ local pairs = pairs
 local require_ex = require("tektite_core.require_ex")
 local jpeg = require("image_ops.jpeg")
 local png = require("image_ops.png")
-local string_utils = require("tektite_core.string")
+local strings = require("tektite_core.var.strings")
 local table_view_patterns = require_ex.Lazy("corona_ui.patterns.table_view")
 
 -- Corona globals --
@@ -48,9 +48,9 @@ local function Failure () return false end
 
 --
 local function GetFunc (name, func)
-	if string_utils.EndsWith_AnyCase(name, ".png") then
+	if strings.EndsWith_AnyCase(name, ".png") then
 		return png[func]
-	elseif string_utils.EndsWith_AnyCase(name, ".jpg") or string_utils.EndsWith_AnyCase(name, ".jpeg") then
+	elseif strings.EndsWith_AnyCase(name, ".jpg") or strings.EndsWith_AnyCase(name, ".jpeg") then
 		return jpeg[func]
 	else
 		return Failure
