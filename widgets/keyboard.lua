@@ -40,6 +40,7 @@ local touch = require("corona_ui.utils.touch")
 
 -- Corona globals --
 local display = display
+local Runtime = Runtime
 
 -- Exports --
 local M = {}
