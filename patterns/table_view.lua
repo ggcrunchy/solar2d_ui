@@ -29,7 +29,7 @@ local ipairs = ipairs
 local remove = table.remove
 
 -- Modules --
-local file = require("corona_utils.file")
+local file_utils = require("corona_utils.file")
 
 -- Corona globals --
 local display = display
@@ -54,7 +54,7 @@ function M.FileList (group, x, y, options)
 
 	--
 	local function GetContents (file)
-		return file and file.GetContents(path .. "/" .. file, base)
+		return file and file_utils.GetContents(path .. "/" .. file, base)
 	end
 
 	--
@@ -64,7 +64,7 @@ function M.FileList (group, x, y, options)
 		local selection = FileList:GetSelection()
 
 		-- Populate the list, checking what is still around. Perform filtering, if requested.
-		local names, alt = file.EnumerateFiles(path, opts)
+		local names, alt = file_utils.EnumerateFiles(path, opts)
 
 		if filter then
 			local count = 0
@@ -117,7 +117,7 @@ function M.FileList (group, x, y, options)
 	end
 
 	--
-	local watch = file.WatchForFileModification(path, Reload, opts)
+	local watch = file_utils.WatchForFileModification(path, Reload, opts)
 
 	FileList:addEventListener("finalize", function()
 		timer.cancel(watch)
