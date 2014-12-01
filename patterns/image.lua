@@ -29,6 +29,7 @@ local pairs = pairs
 -- Modules --
 local require_ex = require("tektite_core.require_ex")
 local jpeg = require("image_ops.jpeg")
+local layout_dsl = require("corona_ui.utils.layout_dsl")
 local png = require("image_ops.png")
 local strings = require("tektite_core.var.strings")
 local table_view_patterns = require_ex.Lazy("corona_ui.patterns.table_view")
@@ -171,6 +172,8 @@ function M.Thumbnail (group, w, h, opts)
 	group:insert(Thumbnail)
 
 	--
+	w, h = layout_dsl.EvalDims(w, h)
+
 	local color, image = display.newRect(Thumbnail, 0, 0, w, h)
 	local frame = not (opts and opts.no_frame) and display.newRect(Thumbnail, 0, 0, w, h)
 

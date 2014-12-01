@@ -36,6 +36,7 @@ local indexOf = table.indexOf
 
 -- Modules --
 local color = require("corona_ui.utils.color")
+local layout_dsl = require("corona_ui.utils.layout_dsl")
 local operators = require("bitwise_ops.operators")
 
 -- Corona globals --
@@ -264,6 +265,8 @@ function M.Bitmap (group)
 	-- @uint w New width, &gt; 0...
 	-- @uint h ...and height.
 	function Bitmap:Resize (w, h)
+		w, h = layout_dsl.EvalDims(w, h)
+
 		assert(w > 0, "Invalid width")
 		assert(h > 0, "Invalid height")
 

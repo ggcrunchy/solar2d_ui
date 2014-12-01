@@ -33,6 +33,7 @@ local upper = string.upper
 -- Modules --
 local keyboard = require("corona_ui.widgets.keyboard")
 local layout = require("corona_ui.utils.layout")
+local layout_dsl = require("corona_ui.utils.layout_dsl")
 local scenes = require("corona_utils.scenes")
 
 -- Corona globals --
@@ -398,14 +399,11 @@ local function AuxEditable (group, x, y, opts)
 	local Editable = display.newGroup()
 
 	Editable.anchorChildren = true
-	Editable.x, Editable.y = x, y
-
-	group:insert(Editable)
 
 	--
 	local text, font, size = opts and opts.text or "", opts and opts.font or native.systemFontBold, opts and opts.size or 20
-	local str = display.newText(Editable, text, 0, 0, font, size)
-	local w, h, align = max(str.width, opts and opts.width or 0, 80), max(str.height, opts and opts.height or 0, 25), opts and opts.align
+	local str, ow, oh = display.newText(Editable, text, 0, 0, font, size), layout_dsl.EvalDims(opts and opts.width or 0, opts and opts.height or 0)
+	local w, h, align = max(str.width, ow, 80), max(str.height, oh, 25), opts and opts.align
 
 	SetText(str, str.text, align, w)
 
@@ -466,6 +464,11 @@ local function AuxEditable (group, x, y, opts)
 	body:toBack()
 
 	body.strokeWidth = 2
+
+	--
+	layout_dsl.EvalPos_Object(Editable, x, y)
+
+	group:insert(Editable)
 
 	--- DOCME
 	function Editable:GetCaret ()

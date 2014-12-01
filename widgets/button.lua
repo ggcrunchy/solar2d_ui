@@ -43,6 +43,9 @@ local timer = timer
 -- Imports --
 local GetColor = colors.GetColor
 
+-- Cached module references --
+local _Button_XY_
+
 -- Exports --
 local M = {}
 
@@ -193,8 +196,32 @@ local function Cleanup (event)
 	ClearTimer(event.target)
 end
 
---
-local function AuxButton (group, x, y, w, h, func, opts)
+-- REINTEGRATE:
+-- @param[opt] skin Name of button's skin.
+-- @string[opt=""] text Button text.
+-- @see corona_ui.utils.skin.GetSkin
+
+--- DOCME
+-- @pgroup group Group to which button will be inserted.
+-- @tparam number|dsl_dimension w Width. (Ignored for some types.)
+-- @tparam number|dsl_dimension h Height. (Ignored for some types.)
+-- @callable func Logic for this button, called on drop or timeout.
+-- @tparam string|table|nil[opt=""] opts
+-- @treturn DisplayGroup Child #1: the button; Child #2: the text.
+function M.Button (group, w, h, func, opts)
+	return _Button_XY_(group, 0, 0, w, h, func, opts)
+end
+
+--- Creates a new button.
+-- @pgroup group Group to which button will be inserted.
+-- @tparam number|dsl_coordinate x Position in _group_.
+-- @tparam number|dsl_coordinate y Position in _group_.
+-- @tparam number|dsl_dimension w Width. (Ignored for some types.)
+-- @tparam number|dsl_dimension h Height. (Ignored for some types.)
+-- @callable func Logic for this button, called on drop or timeout.
+-- @tparam string|table|nil[opt=""] opts
+-- @treturn DisplayGroup Child #1: the button; Child #2: the text.
+function M.Button_XY (group, x, y, w, h, func, opts)
 	--
 	local skin, text
 
@@ -205,7 +232,7 @@ local function AuxButton (group, x, y, w, h, func, opts)
 		text = opts.text
 	end
 
-	skin = skins.GetSkin(opts and opts.skin)
+	skin = skins.GetSkin(skin)
 
 	-- Build a new group. The button and string will be relative to this group.
 	local Button = display.newGroup()
@@ -257,35 +284,6 @@ local function AuxButton (group, x, y, w, h, func, opts)
 	return Button
 end
 
--- REINTEGRATE:
--- @param[opt] skin Name of button's skin.
--- @string[opt=""] text Button text.
--- @see corona_ui.utils.skin.GetSkin
-
---- DOCME
--- @pgroup group Group to which button will be inserted.
--- @tparam number|dsl_dimension w Width. (Ignored for some types.)
--- @tparam number|dsl_dimension h Height. (Ignored for some types.)
--- @callable func Logic for this button, called on drop or timeout.
--- @tparam string|table|nil[opt=""] opts
--- @treturn DisplayGroup Child #1: the button; Child #2: the text.
-function M.Button (group, w, h, func, opts)
-	return AuxButton(group, 0, 0, w, h, func, opts)
-end
-
---- Creates a new button.
--- @pgroup group Group to which button will be inserted.
--- @tparam number|dsl_coordinate x Position in _group_.
--- @tparam number|dsl_coordinate y Position in _group_.
--- @tparam number|dsl_dimension w Width. (Ignored for some types.)
--- @tparam number|dsl_dimension h Height. (Ignored for some types.)
--- @callable func Logic for this button, called on drop or timeout.
--- @tparam string|table|nil[opt=""] opts
--- @treturn DisplayGroup Child #1: the button; Child #2: the text.
-function M.Button_XY (group, x, y, w, h, func, opts)
-	return AuxButton(group, x, y, w, h, func, opts)
-end
-
 -- Main button skin --
 skins.AddToDefaultSkin("button", {
 	borderwidth = 2,
@@ -315,6 +313,9 @@ skins.RegisterSkin("lscroll", {
 	xscale = -1,
 	_prefix_ = "PARENT"
 }, "rscroll")
+
+-- Cache module members.
+_Button_XY_ = M.Button_XY
 
 -- Export the module.
 return M

@@ -33,6 +33,7 @@ local remove = table.remove
 local array_index = require("tektite_core.array.index")
 local colors = require("corona_ui.utils.color")
 local grid_iterators = require("iterator_ops.grid")
+local layout_dsl = require("corona_ui.utils.layout_dsl")
 local range = require("tektite_core.number.range")
 local skins = require("corona_ui.utils.skin")
 local touch = require("corona_ui.utils.touch")
@@ -169,28 +170,31 @@ end
 -- **is\_first** key will be **true** on the initial touch, and **false** while dragging. A
 -- **context** key is also present during manually triggered events.
 -- @pgroup group Group to which grid will be inserted.
--- @param skin Name of grid's skin.
 -- @number x Position in _group_.
 -- @number y Position in _group_.
 -- @number w Width.
 -- @number h Height.
 -- @uint cols Number of visible / touchable columns...
 -- @uint rows ...and rows.
+-- @ptable opts[opt] TODO: Skin, etc.
 -- @treturn DisplayObject Grid widget. 
 -- @see corona_ui.utils.skin.GetSkin
-function M.Grid (group, skin, x, y, w, h, cols, rows)
-	skin = skins.GetSkin(skin)
+function M.Grid (group, x, y, w, h, cols, rows, opts)
+	local skin = skins.GetSkin(opts and opts.skin)
 
+	--
 	local Grid = display.newGroup()
 
 	group:insert(Grid)
 
 	-- Begin with a container which will hold the background and canvas.
+	w, h = layout_dsl.EvalDims(w, h)
+
 	local cgroup = display.newContainer(w, h)
 
 	Grid:insert(cgroup, true)
 
-	cgroup.x, cgroup.y = x, y
+	cgroup.x, cgroup.y = x, y -- HOW TO DSL-ify these? (not obvious because of the lines...)
 -- TODO: Does the background get anything out of being contained?
 	-- Put a background and canvas into the container and line everything up.
 	local canvas = display.newGroup()

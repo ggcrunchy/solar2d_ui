@@ -35,12 +35,16 @@ local upper = string.upper
 -- Imports --
 local button = require("corona_ui.widgets.button")
 local colors = require("corona_ui.utils.color")
+local layout_dsl = require("corona_ui.utils.layout_dsl")
 local skins = require("corona_ui.utils.skin")
 local touch = require("corona_ui.utils.touch")
 
 -- Corona globals --
 local display = display
 local Runtime = Runtime
+
+-- Cached module references --
+local _Keyboard_XY_
 
 -- Exports --
 local M = {}
@@ -185,8 +189,21 @@ end
 --
 local BackTouch = touch.DragParentTouch()
 
---
-local function AuxKeyboard (group, x, y, opts)
+---DOCME
+-- @pgroup group
+-- @ptable[opt] opts
+-- @treturn DisplayGroup G
+function M.Keyboard (group, opts)
+	return _Keyboard_XY_(group, 0, 0, opts)
+end
+
+---DOCME
+-- @pgroup group
+-- @tparam number|dsl_coordinate x
+-- @tparam number|dsl_coordinate y
+-- @ptable[opt] opts
+-- @treturn DisplayGroup G
+function M.Keyboard_XY (group, x, y, opts)
 	--
 	local no_drag, skin, type
 
@@ -200,12 +217,6 @@ local function AuxKeyboard (group, x, y, opts)
 
 	--
 	local Keyboard = display.newGroup()
-
-	Keyboard.x, Keyboard.y = x, y
-
-	group:insert(Keyboard)
-
-	--
 	local backdrop = display.newRoundedRect(Keyboard, 0, 0, 1, 1, skin.keyboard_backdropborderradius)
 
 	if not no_drag then
@@ -213,8 +224,8 @@ local function AuxKeyboard (group, x, y, opts)
 	end
 
 	--
-	local xsep, ysep = skin.keyboard_xsep, skin.keyboard_ysep
-	local x0, y0, bh, w, h = xsep, ysep, -1, skin.keyboard_keywidth, skin.keyboard_keyheight
+	local xsep, ysep = layout_dsl.EvalDims(skin.keyboard_xsep, skin.keyboard_ysep)
+	local x0, y0, bh, w, h = xsep, ysep, -1, layout_dsl.EvalDims(skin.keyboard_keywidth, skin.keyboard_keyheight)
 
 	--
 	if type ~= "nums" then
@@ -234,6 +245,11 @@ local function AuxKeyboard (group, x, y, opts)
 	x0, bh = rx, max(bh, rh)
 
 	--
+	layout_dsl.EvalPos_Object(Keyboard, x, y)
+
+	group:insert(Keyboard)
+
+	--
 	backdrop.strokeWidth = skin.keyboard_backdropborderwidth
 	backdrop.width, backdrop.height = x0, bh
 
@@ -242,24 +258,6 @@ local function AuxKeyboard (group, x, y, opts)
 	backdrop:translate(backdrop.width / 2, backdrop.height / 2)
 
 	return Keyboard
-end
-
----DOCME
--- @pgroup group
--- @ptable[opt] opts
--- @treturn DisplayGroup G
-function M.Keyboard (group, opts)
-	return AuxKeyboard(group, 0, 0, opts)
-end
-
----DOCME
--- @pgroup group
--- @tparam number|dsl_coordinate x
--- @tparam number|dsl_coordinate y
--- @ptable[opt] opts
--- @treturn DisplayGroup G
-function M.Keyboard_XY (group, x, y, opts)
-	return AuxKeyboard(group, x, y, opts)
 end
 
 -- Main keyboard skin --
@@ -274,6 +272,9 @@ skins.AddToDefaultSkin("keyboard", {
 	xsep = 5,
 	ysep = 5
 })
+
+-- Cache module members.
+_Keyboard_XY_ = M.Keyboard_XY
 
 -- Export the module.
 return M

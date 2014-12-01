@@ -33,6 +33,7 @@ local ipairs = ipairs
 local array_index = require("tektite_core.array.index")
 local button = require("corona_ui.widgets.button")
 local colors = require("corona_ui.utils.color")
+local layout_dsl = require("corona_ui.utils.layout_dsl")
 local sheet = require("corona_ui.utils.sheet")
 local skins = require("corona_ui.utils.skin")
 local touch = require("corona_ui.utils.touch")
@@ -115,24 +116,22 @@ end
 
 --- d
 -- @pgroup group
--- @param skin
 -- @number x
 -- @number y
 -- @number w
 -- @number h
 -- @string text
+-- @ptable opts[opt]
 -- @treturn DisplayGroup X
-function M.OptionsHGrid (group, skin, x, y, w, h, text)
-	skin = skins.GetSkin(skin)
+function M.OptionsHGrid (group, x, y, w, h, text, opts)
+	local skin = skins.GetSkin(opts and opts.skin)
 
 	--
 	local ggroup = display.newGroup()
 
-	ggroup.x, ggroup.y = x, y
-
-	group:insert(ggroup)
-
 	--
+	w, h = layout_dsl.EvalDims(w, h)
+
 	local dw, dh = w / 3, h / 2
 	local cx, cy = w / 2, 1.5 * dh
 	local bar = display.newRect(ggroup, cx, dh / 2, w, dh)
@@ -201,6 +200,11 @@ function M.OptionsHGrid (group, skin, x, y, w, h, text)
 
 	ggroup:insert(pgroup)
 	pgroup:translate(cx, cy)
+
+	--
+	layout_dsl.EvalPos_Object(ggroup, x, y)
+
+	group:insert(ggroup)
 
 	--- DOCME
 	-- @param images

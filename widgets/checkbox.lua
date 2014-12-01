@@ -27,10 +27,15 @@
 
 -- Modules --
 local colors = require("corona_ui.utils.color")
+local layout_dsl = require("corona_ui.utils.layout_dsl")
 local skins = require("corona_ui.utils.skin")
+local var_preds = require("tektite_core.var.predicates")
 
 -- Corona globals --
 local display = display
+
+-- Cached module references --
+local _Checkbox_XY_
 
 -- Exports --
 local M = {}
@@ -60,7 +65,12 @@ local function CheckTouch (event)
 	return true
 end
 
---- Creates a new checkbox.
+--- DOCME
+function M.Checkbox (group, w, h, opts)
+	return _Checkbox_XY_(group, 0, 0, w, h, opts)
+end
+
+-- Creates a new checkbox.
 -- @pgroup group Group to which the checkbox will be inserted.
 -- @param[opt] skin Name of checkbox's skin.
 -- @number x Position in _group_.
@@ -70,21 +80,30 @@ end
 -- @callable[opt] func If present, called as `func(is_checked)`, after a check or uncheck.
 -- @treturn DisplayGroup Child #1: the box; Child #2: the check mark.
 -- @see corona_ui.utils.skin.GetSkin
-function M.Checkbox (group, skin, x, y, w, h, func)
+function M.Checkbox_XY (group, x, y, w, h, opts)
+	--
+	local skin, func
+
+	if var_preds.IsCallable(opts) then
+		func = opts
+	elseif opts then
+		func = opts.func
+		skin = opts.skin
+	end
+
 	skin = skins.GetSkin(skin)
 
-	-- Build a new group and add it to the parent. Add follow-up logic, if available.
-	local bgroup = display.newGroup()
+	-- Build a new group. Add follow-up logic, if available.
+	local Checkbox = display.newGroup()
 
-	bgroup.anchorChildren = true
-	bgroup.x, bgroup.y = x, y
+	Checkbox.anchorChildren = true
 
-	group:insert(bgroup)
-
-	bgroup.m_func = func
+	Checkbox.m_func = func
 
 	-- Add the box itself.
-	local rect = display.newRoundedRect(bgroup, 0, 0, w, h, skin.checkbox_radius)
+	w, h = layout_dsl.EvalDims(w, h)
+
+	local rect = display.newRoundedRect(Checkbox, 0, 0, w, h, skin.checkbox_radius)
 
 	rect:addEventListener("touch", CheckTouch)
 	rect:setFillColor(colors.GetColor(skin.checkbox_backcolor))
@@ -93,32 +112,36 @@ function M.Checkbox (group, skin, x, y, w, h, func)
 	rect.strokeWidth = skin.checkbox_borderwidth
 
 	-- Add the check image.
-	local image = display.newImage(bgroup, skin.checkbox_image)
+	local image = display.newImage(Checkbox, skin.checkbox_image)
 
-	image.x, image.y = rect.x, rect.y
 	image.isVisible = false
+
+	-- Add the group to the parent at the requested position, with any formatting.
+	layout_dsl.EvalPos_Object(Checkbox, x, y)
+
+	group:insert(Checkbox)
 
 	--- Sets the checkbox state to checked or unchecked.
 	--
 	-- The follow-up logic is performed even if the check state does not change.
 	-- @bool check If true, check; otherwise, uncheck.
-	function bgroup:Check (check)
-		Check(bgroup, bgroup[2], not not check)
+	function Checkbox:Check (check)
+		Check(Checkbox, Checkbox[2], not not check)
 	end
 
 	--- Predicate.
 	-- @treturn boolean The checkbox is checked?
-	function bgroup:IsChecked ()
-		return bgroup[2].isVisible
+	function Checkbox:IsChecked ()
+		return Checkbox[2].isVisible
 	end
 
 	--- Toggles the checkbox state, checked &rarr; unchecked (or vice versa).
-	function bgroup:ToggleCheck ()
-		Toggle(bgroup)
+	function Checkbox:ToggleCheck ()
+		Toggle(Checkbox)
 	end
 
 	-- Provide the checkbox.
-	return bgroup
+	return Checkbox
 end
 
 -- Main checkbox skin --
@@ -129,6 +152,9 @@ skins.AddToDefaultSkin("checkbox", {
 	image = "corona_ui/assets/Check.png",
 	radius = 12
 })
+
+-- Cache module members.
+_Checkbox_XY_ = M.Checkbox_XY
 
 -- Export the module.
 return M

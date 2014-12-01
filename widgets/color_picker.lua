@@ -31,11 +31,15 @@ local unpack = unpack
 
 -- Modules --
 local hsv = require("corona_ui.utils.hsv")
+local layout_dsl = require("corona_ui.utils.layout_dsl")
 local range = require("tektite_core.number.range")
 local touch = require("corona_ui.utils.touch")
 
 -- Corona globals --
 local display = display
+
+-- Cached module references --
+local _ColorPicker_XY_
 
 -- Exports --
 local M = {}
@@ -207,19 +211,25 @@ local function SetColor (picker, r, g, b)
 end
 
 --- DOCME
-function M.ColorPicker (group, skin, x, y, w, h) -- precision?
-	local picker = display.newGroup()
+function M.ColorPicker (group, w, h, opts)
+	return _ColorPicker_XY_(group, 0, 0, w, h, opts)
+end
 
-	group:insert(picker)
+--- DOCME
+function M.ColorPicker_XY (group, x, y, w, h, opts)
+	-- TODO: skin, precision, bar orientation, separate widgets?
 
-	picker.x, picker.y = x, y
+	--
+	local ColorPicker = display.newGroup()
 
 -- TODO: inputs = box width, height, bar width
 -- Then round box height to multiple of 6
 -- Return some of this to allow for making / including in dialogs
 
 	--
-	local back = display.newRoundedRect(picker, 0, 0, w, h, 15)
+	w, h = layout_dsl.EvalDims(w, h)
+
+	local back = display.newRoundedRect(ColorPicker, 0, 0, w, h, 15)
 
 	back:setFillColor(.375)
 	back:setStrokeColor(.5)
@@ -229,7 +239,7 @@ function M.ColorPicker (group, skin, x, y, w, h) -- precision?
 	back.strokeWidth = 2
 
 	-- Add the colors rect. This will be assigned a gradient whenever the color bar changes.
-	local colors = display.newRect(picker, 0, 0, 200, 150)
+	local colors = display.newRect(ColorPicker, 0, 0, 200, 150)
 
 	colors:addEventListener("touch", ColorsTouch)
 
@@ -241,7 +251,7 @@ function M.ColorPicker (group, skin, x, y, w, h) -- precision?
 	-- Add an equal-sized overlay above the colors to apply the fade-to-black gradient.
 	FadeTo[1], FadeTo[2], FadeTo[3] = 0, 0, 0
 
-	local overlay = display.newRect(picker, 0, 0, colors.width, colors.height)
+	local overlay = display.newRect(ColorPicker, 0, 0, colors.width, colors.height)
 
 	overlay:setFillColor{ type = "gradient", color1 = White, color2 = FadeTo, direction = "down" }
 
@@ -258,12 +268,12 @@ function M.ColorPicker (group, skin, x, y, w, h) -- precision?
 
 	FillBar(bar, 35, colors.height) -- height should be divisible by 6
 
-	picker:insert(bar)
+	ColorPicker:insert(bar)
 
-	picker.m_bar = bar
+	ColorPicker.m_bar = bar
 
 	--
-	local bar_node = display.newRect(picker, bar.x + bar.width / 2, 0, bar.width, 5)
+	local bar_node = display.newRect(ColorPicker, bar.x + bar.width / 2, 0, bar.width, 5)
 
 	bar_node:addEventListener("touch", BarNodeTouch)
 	bar_node:setFillColor(.75, .75)
@@ -271,12 +281,12 @@ function M.ColorPicker (group, skin, x, y, w, h) -- precision?
 
 	bar_node.strokeWidth, bar_node.y = 2, -1
 
-	picker.m_bar_node = bar_node
+	ColorPicker.m_bar_node = bar_node
 
 	PutBarNode(bar_node, bar, 0)
 
 	--
-	local color_node = display.newCircle(picker, 0, 0, 8)
+	local color_node = display.newCircle(ColorPicker, 0, 0, 8)
 
 	color_node:addEventListener("touch", ColorNodeTouch)
 	color_node:setFillColor(.75, .5)
@@ -284,19 +294,39 @@ function M.ColorPicker (group, skin, x, y, w, h) -- precision?
 
 	color_node.strokeWidth = 2
 
-	picker.m_color_node = color_node
+	ColorPicker.m_color_node = color_node
 
 	PutColorNode(color_node, 1, 0)
 
-	--- DOCME
-	picker.GetColor = GetColor
+	--
 
 	--- DOCME
-	picker.SetColor = SetColor
+	-- @function ColorPicker:GetColor
+	-- @treturn number r
+	-- @treturn number g
+	-- @treturn number b
+	ColorPicker.GetColor = GetColor
+
+	--- DOCME
+	-- @function ColorPicker:SetColor
+	-- @number r
+	-- @number g
+	-- @number b
+	ColorPicker.SetColor = SetColor
 
 	--
-	return picker
+	layout_dsl.EvalPos_Object(ColorPicker, x, y)
+
+	group:insert(ColorPicker)
+
+	--
+	return ColorPicker
 end
+
+-- TODO: skin
+
+-- Cache module members.
+_ColorPicker_XY_ = M.ColorPicker_XY
 
 -- Export the module.
 return M
