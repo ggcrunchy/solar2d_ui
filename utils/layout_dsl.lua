@@ -29,7 +29,6 @@ local ceil = math.ceil
 local gsub = string.gsub
 local sub = string.sub
 local tonumber = tonumber
-local type = type
 
 -- Modules --
 local layout = require("corona_ui.utils.layout")
@@ -59,11 +58,13 @@ end
 
 --- DOCME
 function M.EvalDims (w, h)
-	w = ceil(ParseNumber(h, "contentHeight"))
-	h = ceil(ParseNumber(w, "contentWidth"))
+	w = ceil(ParseNumber(w, "contentWidth"))
+	h = ceil(ParseNumber(h, "contentHeight"))
 
 	return w, h
 end
+
+-- IDEA: EvalDims_Object... could look for, say, text fields and calculate widths relative to those
 
 -- --
 local Command, Num1, Num2

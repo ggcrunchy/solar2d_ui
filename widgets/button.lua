@@ -27,10 +27,12 @@
 
 -- Standard library imports --
 local floor = math.floor
+local type = type
 
 -- Modules --
 local colors = require("corona_ui.utils.color")
 local geom2d_preds = require("tektite_core.geom2d.predicates")
+local layout_dsl = require("corona_ui.utils.layout_dsl")
 local skins = require("corona_ui.utils.skin")
 
 -- Corona globals --
@@ -191,39 +193,40 @@ local function Cleanup (event)
 	ClearTimer(event.target)
 end
 
---- Creates a new button.
--- @pgroup group Group to which button will be inserted.
--- @param[opt] skin Name of button's skin.
--- @number x Position in _group_.
--- @number y Position in _group_.
--- @number w Width. (Ignored for some types.)
--- @number h Height. (Ignored for some types.)
--- @callable func Logic for this button, called on drop or timeout.
--- @string[opt=""] text Button text.
--- @treturn DisplayGroup Child #1: the button; Child #2: the text.
--- @see corona_ui.utils.skin.GetSkin
-function M.Button (group, skin, x, y, w, h, func, text)
-	skin = skins.GetSkin(skin)
+--
+local function AuxButton (group, x, y, w, h, func, opts)
+	--
+	local skin, text
 
-	-- Build a new group and add it into the parent at the requested position. The button
-	-- and string will be relative to this group.
+	if type(opts) == "string" then
+		text = opts
+	elseif opts then
+		skin = opts.skin
+		text = opts.text
+	end
+
+	skin = skins.GetSkin(opts and opts.skin)
+
+	-- Build a new group. The button and string will be relative to this group.
 	local Button = display.newGroup()
 
 	Button.anchorChildren = true
-	Button.x, Button.y = x, y
-
-	group:insert(Button)
 
 	-- Add the button and (partially centered) text, in that order, to the group.
-	local button = Factories[skin.button_type](Button, skin, w, h)
+	local button = Factories[skin.button_type](Button, skin, layout_dsl.EvalDims(w, h))
 	local string = display.newText(Button, text or "", 0, 0, skin.button_font, skin.button_textsize)
 
 	string:setFillColor(GetColor(skin.button_textcolor))
 
-	-- Apply any properties to the 
+	-- Apply any properties to the button.
 	button.rotation = skin.button_angle or 0
 	button.xScale = skin.button_xscale or 1
 	button.yScale = skin.button_yscale or 1
+
+	-- Add the group to the parent at the requested position, with any formatting.
+	layout_dsl.EvalPos_Object(Button, x, y)
+
+	group:insert(Button)
 
 	-- Install common button logic.
 	button:addEventListener("touch", OnTouch)
@@ -254,6 +257,35 @@ function M.Button (group, skin, x, y, w, h, func, text)
 	return Button
 end
 
+-- REINTEGRATE:
+-- @param[opt] skin Name of button's skin.
+-- @string[opt=""] text Button text.
+-- @see corona_ui.utils.skin.GetSkin
+
+--- DOCME
+-- @pgroup group Group to which button will be inserted.
+-- @tparam number|dsl_dimension w Width. (Ignored for some types.)
+-- @tparam number|dsl_dimension h Height. (Ignored for some types.)
+-- @callable func Logic for this button, called on drop or timeout.
+-- @tparam string|table|nil[opt=""] opts
+-- @treturn DisplayGroup Child #1: the button; Child #2: the text.
+function M.Button (group, w, h, func, opts)
+	return AuxButton(group, 0, 0, w, h, func, opts)
+end
+
+--- Creates a new button.
+-- @pgroup group Group to which button will be inserted.
+-- @tparam number|dsl_coordinate x Position in _group_.
+-- @tparam number|dsl_coordinate y Position in _group_.
+-- @tparam number|dsl_dimension w Width. (Ignored for some types.)
+-- @tparam number|dsl_dimension h Height. (Ignored for some types.)
+-- @callable func Logic for this button, called on drop or timeout.
+-- @tparam string|table|nil[opt=""] opts
+-- @treturn DisplayGroup Child #1: the button; Child #2: the text.
+function M.Button_XY (group, x, y, w, h, func, opts)
+	return AuxButton(group, x, y, w, h, func, opts)
+end
+
 -- Main button skin --
 skins.AddToDefaultSkin("button", {
 	borderwidth = 2,
@@ -275,7 +307,7 @@ skins.RegisterSkin("rscroll", {
 	touch = { 0, 1, .5 },
 	image = "corona_ui/assets/Arrow.png",
 	type = "image",
-	timeout = 150,--.15,
+	timeout = 150,
 	_prefix_ = "button"
 })
 

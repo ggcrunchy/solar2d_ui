@@ -142,7 +142,7 @@ local Subs = { B = "<-", S = "A>a", X = "OK" }
 
 --
 local function ProcessRow (group, skin, row, x, y, w, h, xsep)
-	local prev
+	local opts, prev = { skin = skin }
 
 	for char in row:gmatch(".") do
 		local skip, text = char == "@"
@@ -155,12 +155,12 @@ local function ProcessRow (group, skin, row, x, y, w, h, xsep)
 			text = Subs[char]
 		end
 
-		prev = char
+		prev, opts.text = char, text
 
 		--
 		if not skip then
 			local dim = (Scales[text] or 1) * w
-			local button = button.Button(group, skin, x, y, dim, h, AddText, text)
+			local button = button.Button_XY(group, x, y, dim, h, AddText, opts)
 
 			button:translate(button.width / 2, button.height / 2)
 
@@ -254,8 +254,8 @@ end
 
 ---DOCME
 -- @pgroup group
--- @number x
--- @number y
+-- @tparam number|dsl_coordinate x
+-- @tparam number|dsl_coordinate y
 -- @ptable[opt] opts
 -- @treturn DisplayGroup G
 function M.Keyboard_XY (group, x, y, opts)
