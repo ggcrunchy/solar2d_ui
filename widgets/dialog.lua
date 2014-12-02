@@ -75,7 +75,7 @@ function M.Dialog (group, options)
 		Dialog.m_namespace = options.namespace
 
 		if options.is_modal then
-			--	common.AddNet(group, Dialog)
+			net.AddNet(group, Dialog)
 		end
 	end
 
