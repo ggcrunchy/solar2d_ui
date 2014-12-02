@@ -23,11 +23,19 @@
 -- [ MIT license: http://www.opensource.org/licenses/mit-license.php ]
 --
 
+-- Standard library imports --
+local pairs = pairs
+
+-- Corona globals --
+local display = display
+local Runtime = Runtime
+
 -- Exports --
 local M = {}
 
 -- common.AddNet() stuff
---[[
+-- skins
+
 -- Full-screen dummy widgets used to implement modal behavior --
 -- CONSIDER: Can the use cases be subsumed into an overlay?
 local Nets
@@ -46,8 +54,10 @@ local function WatchNets ()
 			object.isVisible = false
 		end
 
-		if not object.isVisible then
-			net:removeSelf()
+		if not (net.parent and object.isVisible) then
+			if net.parent then
+				net:removeSelf()
+			end
 
 			Nets[net] = nil
 		end
@@ -65,7 +75,7 @@ function M.AddNet (group, object, hide)
 		Runtime:addEventListener("enterFrame", WatchNets)
 	end
 
-	local net = M.NewRect(group, 0, 0, display.contentWidth, display.contentHeight)
+	local net = display.newRect(group, 0, 0, display.contentWidth, display.contentHeight)
 
 	net.m_hide_object = not not hide
 
@@ -77,6 +87,15 @@ function M.AddNet (group, object, hide)
 
 	Nets[net] = object
 end
+
+--[[
+	if Nets then
+		for net in pairs(Nets) do
+			net:removeSelf()
+		end
+
+		Runtime:removeEventListener("enterFrame", WatchNets)
+	end
 ]]
 
 -- stub hoisting stuff from editable

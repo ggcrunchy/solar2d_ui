@@ -122,7 +122,7 @@ function M:AddSeparator ()
 
 	sep:setFillColor(.0625)
 
-	utils.SetProperty_Table(sep, SepProps)
+	utils.SetProperty_Table(sep, SepProps, utils.GetNamespace(self))
 
 	self:Update(sep)
 
@@ -403,7 +403,7 @@ function M:Spacer ()
 
 	spacer.m_collapsed = false
 
-	utils.SetProperty_Table(spacer, SpacerProps)
+	utils.SetProperty_Table(spacer, SpacerProps, utils.GetNamespace(self))
 
 	self:Update(spacer)
 
@@ -476,12 +476,12 @@ end
 
 -- Fixes up separators to fit the dialog dimensions
 local function ResizeSeparators (dialog)
-	local igroup, w = dialog:ItemGroup(), SepWidth(dialog)
+	local igroup, namespace, w = dialog:ItemGroup(), utils.GetNamespace(dialog), SepWidth(dialog)
 
 	for i = 1, igroup.numChildren do
 		local item = igroup[i]
 
-		if utils.GetProperty(item, "type") == "separator" then
+		if utils.GetProperty(item, "type", namespace) == "separator" then
 			Resize(item, w)
 		end
 	end
@@ -500,7 +500,7 @@ function M:Update (object, addx)
 	object.anchorY, object.y = 0, self.m_peny
 
 	-- If the item should be treated like a separator, adjust its width.
-	if utils.GetProperty(object, "type") == "separator" then
+	if utils.GetProperty(object, "type", utils.GetNamespace(self)) == "separator" then
 		Resize(object, SepWidth(self))
 	end
 

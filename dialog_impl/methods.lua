@@ -71,7 +71,7 @@ function M:CommonAdd (object, options, static_text)
 		-- If no object was supplied, the text will be the object instead. Associate a
 		-- friendly name and value name to the object and note any further options.
 		local name = options.name or options.value_name
-		local oprops = utils.GetProperty_Table(object or text)
+		local oprops = utils.GetProperty_Table(object or text, utils.GetNamespace(self))
 
 		oprops.name = name
 		oprops.value_name = options.value_name
@@ -90,12 +90,12 @@ end
 -- the name was **true**, the final name will be the value of **value\_name**.
 -- @treturn DisplayObject Object, or **nil** if not found.
 function M:Find (name)
-	local igroup, item = self:ItemGroup()
+	local igroup, namespace, item = self:ItemGroup(), utils.GetNamespace(self)
 
 	for i = 1, igroup.numChildren do
 		item = igroup[i]
 
-		if utils.GetProperty(item, "name") == name then -- TODO: pass namespace as argument?
+		if utils.GetProperty(item, "name", namespace) == name then
 			break
 		end
 	end
@@ -118,10 +118,10 @@ function M:RemoveSelf ()
 		self:m_before_remove() -- can be subsumed into finalize?
 	end
 
-	local igroup = self:ItemGroup()
+	local igroup, namespace = self:ItemGroup(), utils.GetNamespace(self)
 
 	for i = igroup.numChildren, 1, -1 do
-		if utils.GetProperty(igroup[i], "type") == "widget" then -- TODO: Namespace as argument?
+		if utils.GetProperty(igroup[i], "type", namespace) == "widget" then
 			igroup[i]:removeSelf()
 		end
 	end

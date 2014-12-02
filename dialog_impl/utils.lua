@@ -30,13 +30,14 @@ local setmetatable = setmetatable
 local type = type
 
 -- Modules --
-local common = require("s3_editor.Common")
+local table_funcs = require("tektite_core.table.funcs")
 
 -- Corona globals --
 local display = display
 
 -- Cached module references --
 local _GetDialog_
+local _GetNamespace_
 local _GetProperty_
 
 -- Exports --
@@ -72,6 +73,11 @@ function M.GetDialog (object)
 end
 
 --- DOCME
+function M.GetNamespace (dialog)
+	return dialog and dialog.m_namespace
+end
+
+--- DOCME
 function M.GetValue (object, alt)
 	local dialog, value = _GetDialog_(alt or object)
 
@@ -82,13 +88,16 @@ function M.GetValue (object, alt)
 			value = values[value_name]
 
 			if type(value) == "table" then
-				value = common.CopyInto({}, value)
+				value = table_funcs.Copy(value)
 			end
 		end
 	end
 
 	return value
 end
+
+-- --
+local Event = { name = "update_object" }
 
 --- DOCMEMORE
 -- Updates the value bound to an object (dirties the editor state)
@@ -111,14 +120,18 @@ function M.UpdateObject (object, value, alt)
 
 			-- Otherwise, assign a shallow table copy to avoid capturing the input reference.
 			else
-				value = common.CopyInto({}, value)
+				value = table_funcs.Copy(value)
 			end
 		end
 
 		values[value_name] = value
 
-	--	common.Dirty()
-		-- ^^^ TODO: Some sort of on_update() or an event listener
+		--
+		Event.target, Event.object = dialog, object
+
+		dialog:dispatchEvent(Event)
+
+		Event.target, Event.object = nil
 	end
 end
 
@@ -154,9 +167,7 @@ Props.default = {}
 --
 local function GetProps (item, namespace)
 	if namespace == nil then
-		local dialog = _GetDialog_(item)
-
-		namespace = dialog and dialog.m_namespace
+		namespace = _GetNamespace_(_GetDialog_(item))
 	end
 
 	return namespace == nil and Props.default or Props[namespace]
@@ -185,6 +196,7 @@ end
 
 -- Cache module members.
 _GetDialog_ = M.GetDialog
+_GetNamespace_ = M.GetNamespace
 _GetProperty_ = M.GetProperty
 
 -- Export the module.

@@ -2,8 +2,7 @@
 
 -- TODO: While useful, these constitute a hard-coded set of choices...
 -- ^^^ So... skins?
--- common.CopyInto
--- common_ui
+-- common_ui.Link
 
 --
 -- Permission is hereby granted, free of charge, to any person obtaining
@@ -38,9 +37,9 @@ local min = math.min
 local button = require("corona_ui.widgets.button")
 local checkbox = require("corona_ui.widgets.checkbox")
 local color_picker = require("corona_ui.widgets.color_picker")
-local common = require("s3_editor.Common")
 local common_ui = require("s3_editor.CommonUI")
 local layout = require("corona_ui.utils.layout")
+local table_funcs = require("tektite_core.table.funcs")
 local table_view_patterns = require("corona_ui.patterns.table_view")
 local tabs_patterns = require("corona_ui.patterns.tabs")
 local touch = require("corona_ui.utils.touch")
@@ -158,7 +157,7 @@ local DirTabs
 --- DOCME
 -- @ptable options
 function M:AddDirectionTabs (options)
-	options = common.CopyInto({}, options)
+	options = table_funcs.Copy(options)
 
 	DirTabs = DirTabs or { "up", "down", "left", "right" }
 
@@ -197,7 +196,7 @@ end
 function M:AddListbox (options)
 	local listbox = table_view_patterns.Listbox(self:ItemGroup(), 0, 0)
 
-	utils.SetProperty(listbox, "type", "widget")
+	utils.SetProperty(listbox, "type", "widget", utils.GetNamespace(self))
 
 	-- TODO! there are probably some ways to make this nicer?
 	self:CommonAdd(listbox, options)
@@ -215,7 +214,7 @@ end
 --- DOCME
 -- @ptable options
 function M:AddSpinner (options)
-	local sopts = common.CopyInto({}, options)
+	local sopts = table_funcs.Copy(options)
 
 	local inc = sopts.inc or 1
 	local nmax = sopts.max
@@ -319,7 +318,7 @@ function M:StockElements (dir, type)
 
 	bar.strokeWidth = 2
 
-	utils.SetProperty(bar, "type", "separator")
+	utils.SetProperty(bar, "type", "separator", utils.GetNamespace(self))
 
 	self:CommonAdd(bar)
 
@@ -365,7 +364,7 @@ end
 -- @ptable options
 function M:AddTabs (options)
 	if options then
-		options = common.CopyInto({}, options)
+		options = table_funcs.Copy(options)
 
 		options.width = options.width or #(options.buttons or "") * 90
 		options.buttons = TabButtonsFromLabels(options.buttons)
@@ -381,7 +380,7 @@ function M:AddTabs (options)
 			end
 		end
 
-		utils.SetProperty(tabs, "type", "widget")
+		utils.SetProperty(tabs, "type", "widget", utils.GetNamespace(self))
 
 		self:CommonAdd(tabs, options)
 
