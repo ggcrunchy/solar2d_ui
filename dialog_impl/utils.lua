@@ -152,6 +152,8 @@ local SubPropsMT = {
 
 -- --
 local Props = setmetatable({}, {
+	default = {},
+
 	__index = function(t, k)
 		local new = setmetatable({}, SubPropsMT)
 
@@ -161,8 +163,6 @@ local Props = setmetatable({}, {
 	end,
 	__mode = "k"
 })
-
-Props.default = {}
 
 --
 local function GetProps (item, namespace)

@@ -33,6 +33,7 @@ local upper = string.upper
 -- Modules --
 local keyboard = require("corona_ui.widgets.keyboard")
 local layout = require("corona_ui.utils.layout")
+local net = require("corona_ui.patterns.net")
 local layout_dsl = require("corona_ui.utils.layout_dsl")
 local scenes = require("corona_utils.scenes")
 
@@ -195,15 +196,6 @@ local KeyFadeOutParams = {
 }
 
 --
-local function FindInGroup (group, item)
-	for i = 1, group.numChildren do
-		if group[i] == item then
-			return i
-		end
-	end
-end
-
---
 local function CloseKeysAndText ()
 	local caret, keys = Editable:GetCaret(), Editable:GetKeyboard()
 
@@ -222,17 +214,7 @@ local function CloseKeysAndText ()
 	caret.isVisible = false
 
 	--
-	local stub = Editable.m_stub
-	local pos = FindInGroup(stub.parent, stub)
-
-	if pos then
-		stub.parent:insert(pos, Editable)
-
-		Editable.x, Editable.y = stub.x, stub.y
-	end
-
-	--
-	stub:removeSelf()
+	net.RestoreAfterHoist(Editable, Editable.m_stub)
 
 	Editable, OldListenFunc, Editable.m_net, Editable.m_stub = nil
 
@@ -295,29 +277,6 @@ end
 -- --
 local Filter = { chars = Char, nums = Num }
 
---
-local function TouchNet (event)
-	local net = event.target
-
-	if not net.m_blocking then
-		local stage, phase = display.getCurrentStage(), event.phase
-
-		if phase == "began" then
-			stage:setFocus(net, event.id)
-
-			net.m_wants_to_close = true
-		elseif phase == "cancelled" or phase == "ended" then
-			stage:setFocus(net, nil)
-
-			if net.m_wants_to_close then
-				CloseKeysAndText()
-			end
-		end
-	end
-
-	return true
-end
-
 -- --
 local CaretParams = { time = 650, iterations = -1, alpha = .125, transition = easing.continuousLoop }
 
@@ -336,30 +295,9 @@ local function AuxEnterInputMode (editable)
 		Editable, OldListenFunc = editable, scenes.SetListenFunc(Listen)
 
 		--
-		local pos, stub = FindInGroup(editable.parent, editable), display.newRect(0, 0, 1, 1)
-
-		stub.x, stub.y = editable.x, editable.y
-
-		editable.m_stub, stub.isVisible = stub, false
-
-		editable.parent:insert(pos, stub)
+		editable.m_stub, editable.m_net = net.HoistOntoStage(editable, CloseKeysAndText, editable.m_blocking)
 
 		--
-		local stage, bounds = display.getCurrentStage(), editable.contentBounds
-		local net = display.newRect(stage, display.contentCenterX, display.contentCenterY, display.contentWidth, display.contentHeight)
-
-		editable.m_net, net.m_blocking = net, editable.m_blocking
-
-		--
-		stage:insert(editable)
-
-		layout.PutAtTopLeft(editable, bounds.xMin, bounds.yMin)
-
-		--
-		net:addEventListener("touch", TouchNet)
-		net:toFront()
-		editable:toFront()
-
 		local caret, keys = editable:GetCaret(), editable:GetKeyboard()
 
 		if keys then
@@ -367,10 +305,10 @@ local function AuxEnterInputMode (editable)
 		end
 
 		--
-		caret.alpha, caret.isVisible, net.alpha = .6, true, .01
+		caret.alpha, caret.isVisible, Editable.m_net.alpha = .6, true, .01
 
 		transition.to(caret, CaretParams)
-		transition.to(net, FadeInParams)
+		transition.to(Editable.m_net, FadeInParams)
 
 		if keys then
 			layout.PutAtFirstHit(keys, editable, PlaceKeys, true)

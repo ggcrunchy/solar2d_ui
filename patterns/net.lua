@@ -26,22 +26,36 @@
 -- Standard library imports --
 local pairs = pairs
 
+-- Modules --
+local layout = require("corona_ui.utils.layout")
+local timers = require("corona_utils.timers")
+
 -- Corona globals --
 local display = display
-local Runtime = Runtime
+
+-- Cached module references --
+local _AddNet_
 
 -- Exports --
 local M = {}
 
--- common.AddNet() stuff
 -- skins
 
+--
+local function Rect (group, touch)
+	local rect = display.newRect(group, 0, 0, display.contentWidth, display.contentHeight)
+
+	rect:addEventListener("touch", touch)
+	rect:translate(display.contentCenterX, display.contentCenterY)
+
+	return rect
+end
+
 -- Full-screen dummy widgets used to implement modal behavior --
--- CONSIDER: Can the use cases be subsumed into an overlay?
 local Nets
 
 -- Nets intercept all input
-local function NetTouch (event)
+local function Catch (event)
 	event.target.m_caught = true
 
 	return true
@@ -49,6 +63,9 @@ end
 
 -- Removes nets whose object is invisible or has been removed
 local function WatchNets ()
+	local empty = true
+
+	--
 	for net, object in pairs(Nets) do
 		if net.m_caught and net.m_hide_object then
 			object.isVisible = false
@@ -60,47 +77,75 @@ local function WatchNets ()
 			end
 
 			Nets[net] = nil
+		else
+			empty = false
 		end
 	end
+
+	--
+	if empty then
+		Nets = nil
+
+		return "cancel"
+	end
+end
+
+--
+local function SetLayers (net, object)
+	net:toFront()
+	object:toFront()
+end
+
+--
+local function SetColor (net, gray, opts)
+	net:setFillColor(opts and opts.gray or gray, opts and opts.alpha or .125)
 end
 
 --- DOCMAYBE
 -- @pgroup group
 -- @pobject object
--- @bool hide
-function M.AddNet (group, object, hide)
+-- @ptable[opt] opts
+-- @treturn DisplayObject net
+function M.AddNet (group, object, opts)
+	--
 	if not Nets then
 		Nets = {}
 
-		Runtime:addEventListener("enterFrame", WatchNets)
+		timers.RepeatEx(WatchNets, 20)
 	end
 
-	local net = display.newRect(group, 0, 0, display.contentWidth, display.contentHeight)
+	--
+	local net = Rect(group, Catch)
 
-	net.m_hide_object = not not hide
-
-	net:addEventListener("touch", NetTouch)
-	net:setFillColor(1, .125)
-	net:toFront()
-	object:toFront()
-	net:translate(display.contentCenterX, display.contentCenterY)
+	SetColor(net, 1, opts)
+	SetLayers(net, object)
 
 	Nets[net] = object
+
+	return net
 end
 
---[[
-	if Nets then
-		for net in pairs(Nets) do
-			net:removeSelf()
-		end
+--- DOCME
+function M.AddNet_Hide (group, object, opts)
+	local net = _AddNet_(group, object, opts)
 
-		Runtime:removeEventListener("enterFrame", WatchNets)
-	end
-]]
+	net.m_hide_object = true
 
--- stub hoisting stuff from editable
+	return net
+end
 
---[[
+--
+local function DefTouch () return true end
+
+--
+function M.Blocker (group, opts)
+	local blocker = Rect(group, DefTouch)
+
+	SetColor(blocker, 0, opts)
+
+	return blocker
+end
+
 --
 local function FindInGroup (group, item)
 	for i = 1, group.numChildren do
@@ -109,51 +154,79 @@ local function FindInGroup (group, item)
 		end
 	end
 end
-]]
 
---[[
-		--
-		local pos, stub = FindInGroup(editable.parent, editable), display.newRect(0, 0, 1, 1)
+--
+local function TouchNet (event)
+	local net = event.target
 
-		stub.x, stub.y = editable.x, editable.y
+	if not net.m_blocking then
+		local stage, phase = display.getCurrentStage(), event.phase
 
-		editable.m_stub, stub.isVisible = stub, false
+		if phase == "began" then
+			stage:setFocus(net, event.id)
 
-		editable.parent:insert(pos, stub)
+			net.m_wants_to_close = true
+		elseif phase == "cancelled" or phase == "ended" then
+			stage:setFocus(net, nil)
 
-		--
-		local stage, bounds = display.getCurrentStage(), editable.contentBounds
-		local net = display.newRect(stage, display.contentCenterX, display.contentCenterY, display.contentWidth, display.contentHeight)
+			if net.m_wants_to_close then
+				net.m_on_close()
+			end
+		end
+	end
 
-		editable.m_net, net.m_blocking = net, editable.m_blocking
+	return true
+end
 
-		--
-		stage:insert(editable)
+-- ^^^ TODO: Can this and AddNet() be unified?
 
-		layout.PutAtTopLeft(editable, bounds.xMin, bounds.yMin)
-
-		--
-		net:addEventListener("touch", TouchNet)
-		net:toFront()
-		editable:toFront()
-]]
-
---[[
+--- DOCME
+function M.HoistOntoStage (object, on_close, blocking)
 	--
-	local stub = Editable.m_stub
+	local pos, stub = FindInGroup(object.parent, object), display.newRect(0, 0, 1, 1)
+
+	stub.x, stub.y, stub.isVisible = object.x, object.y, false
+
+	object.parent:insert(pos, stub)
+
+	--
+	local stage, bounds = display.getCurrentStage(), object.contentBounds
+	local net = Rect(stage, TouchNet)
+
+	net.m_blocking = not not blocking
+	net.m_on_close = on_close
+
+	--
+	stage:insert(object)
+
+	layout.PutAtTopLeft(object, bounds.xMin, bounds.yMin)
+
+	SetLayers(net, object)
+
+	return stub, net
+end
+
+--- DOCME
+-- @pobject stub
+-- @pobject[opt] net
+function M.RestoreAfterHoist (object, stub, net)
+	--
 	local pos = FindInGroup(stub.parent, stub)
 
 	if pos then
-		stub.parent:insert(pos, Editable)
+		stub.parent:insert(pos, object)
 
-		Editable.x, Editable.y = stub.x, stub.y
+		object.x, object.y = stub.x, stub.y
 	end
 
-	--
 	stub:removeSelf()
 
-	Editable, OldListenFunc, Editable.m_net, Editable.m_stub = nil
-]]
+	--
+	display.remove(net)
+end
+
+-- Cache module members.
+_AddNet_ = M.AddNet
 
 -- Export the module.
 return M
