@@ -37,6 +37,74 @@ local native = native
 -- Exports --
 local M = {}
 
+--- DOCME
+-- @ptable opts X
+-- @treturn ?|AlertHandle|nil X
+function M.DoActionThenProceed (opts)
+	local action, alert = assert(opts and opts.action, "Missing action function")
+	local follow_up = assert(opts and opts.follow_up, "Missing follow-up function")
+	local needs_doing = assert(opts and opts.needs_doing, "Missing needs-doing predicate")
+
+	-- Nothing to do: proceed.
+	if not needs_doing() then
+		follow_up()
+
+	-- Otherwise: ask for confirmation to proceed.
+	else
+		local choices, title, message = opts.choices, opts.title, opts.message
+
+		if choices == "save_and_quit" then
+			title = title or "You have unsaved changes!"
+			message = message or "Do you really want to quit?"
+			choices = { "Save and quit", "Discard", "Cancel" }
+		end
+
+		assert(choices, "No choices provided")
+
+		alert = native.showAlert(title or "Important action left undone", message or "Proceed anyway?", choices, function(event)
+			if event.action == "clicked" and event.index ~= 3 then
+				local do_action = event.index == 1
+
+				timers.Defer(function()
+					if do_action then
+						action(follow_up)
+					else
+						follow_up()
+					end
+				end)
+			end
+		end)
+	end
+
+	return alert
+end
+
+--- DOCME
+-- @ptable opts
+-- @param arg
+-- @treturn AlertHandle
+function M.ProceedAnyway (opts, arg)
+	local proceed = assert(opts and opts.proceed, "Missing proceed function")
+	local choices, title, message = opts.choices, opts.title, opts.message
+
+	if choices == "ok_cancel" then
+		choices = { "OK", "Cancel" }
+	end
+
+	assert(choices, "No choices provided")
+
+	local alert = native.showAlert(title or "Caution!", message or "Proceed anyway?", choices, function(event)
+		alert = nil
+
+		if event.action == "clicked" and event.index == 1 then
+			proceed(arg)
+		end
+	end)
+
+	return alert
+end
+
+
 --
 local function Message (message, what)
 	return message:format(what)
@@ -46,9 +114,19 @@ end
 -- @tparam ?|string|nil name
 -- @ptable opts
 -- @param arg
+-- @treturn ?|function|nil get_alert
 function M.WriteEntry_MightExist (name, opts, arg)
 	local exists = assert(opts and opts.exists, "Missing existence predicate")
 	local writer = assert(opts and opts.writer, "Missing entry writer function")
+
+	-- If requested, produce a getter to supply the current alert.
+	local alert, get_alert
+
+	if opts.get_alert then
+		function get_alert ()
+			return alert
+		end
+	end
 
 	-- Name available: perform the write.
 	if name then
@@ -59,7 +137,9 @@ function M.WriteEntry_MightExist (name, opts, arg)
 		local group, what = opts.group or display.getCurrentStage(), opts.what or "name"
 		local eopts = { text = opts.def_text or what:upper(), font = opts.font, size = opts.size }
 
-		native.showAlert(Message("Missing %s", what), Message("Please provide a %s", what), { "OK" }, function(event)
+		alert = native.showAlert(Message("Missing %s", what), Message("Please provide a %s", what), { "OK" }, function(event)
+			alert = nil
+
 			if event.action == "clicked" then
 				timers.Defer(function()
 					local editable = editable_patterns.Editable_XY(group, display.contentCenterX, display.contentCenterY, eopts)
@@ -73,7 +153,9 @@ function M.WriteEntry_MightExist (name, opts, arg)
 						else
 							timers.DeferIf(function()
 								-- If the user-provided name already exists, request permission before overwriting.
-								native.showAlert(Message("The %s is already in use!", what), "Overwrite?", { "OK", "Cancel" }, function(event)
+								alert = native.showAlert(Message("The %s is already in use!", what), "Overwrite?", { "OK", "Cancel" }, function(event)
+									alert = nil
+
 									if event.action == "clicked" and event.index == 1 then
 										writer(name, arg)
 									end
@@ -91,6 +173,8 @@ function M.WriteEntry_MightExist (name, opts, arg)
 			end
 		end)
 	end
+
+	return get_alert
 end
 
 -- Special case for files...
