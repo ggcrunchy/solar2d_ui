@@ -117,7 +117,7 @@ function M.Checkbox_XY (group, x, y, w, h, opts)
 	image.isVisible = false
 
 	-- Add the group to the parent at the requested position, with any formatting.
-	layout_dsl.EvalPos_Object(Checkbox, x, y)
+	layout_dsl.PutObjectAt(Checkbox, x, y)
 
 	group:insert(Checkbox)
 

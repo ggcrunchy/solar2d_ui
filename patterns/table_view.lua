@@ -30,6 +30,7 @@ local remove = table.remove
 
 -- Modules --
 local file_utils = require("corona_utils.file")
+local layout_dsl = require("corona_ui.utils.layout_dsl")
 
 -- Corona globals --
 local display = display
@@ -39,18 +40,32 @@ local timer = timer
 -- Corona modules --
 local widget = require("widget")
 
+-- Cached module references --
+local _Listbox_
+
 -- Exports --
 local M = {}
 
 --
-function M.FileList (group, x, y, options)
-	local FileList = M.Listbox(group, x, y, options)
+function M.FileList (group, options)
+	local FileList = _Listbox_(group, options)
 
 	--
-	assert(not options.filter_info or not options.name_only, "Incompatible options: info filter and name only listings")
+	local path, base, exts, filter_info, name_only
 
-	local path, base, name_only = options.path, options.base, not not options.name_only
-	local opts = { base = base, exts = options.exts, get_contents = not name_only }
+	if options then
+		path = options.path
+		base = options.base
+		exts = options.exts
+		filter_info = options.filter_info
+		name_only = not not options.name_only
+	end
+	-- ^^^ As is, without options it's broken (nothing to watch)... can be salvaged?
+
+	--
+	assert(not (filter_info and name_only), "Incompatible options: info filter and name only listings")
+
+	local opts = { base = base, exts = exts, get_contents = not name_only }
 
 	--
 	local function GetContents (file)
@@ -58,7 +73,13 @@ function M.FileList (group, x, y, options)
 	end
 
 	--
-	local filter, on_lost_selection, on_reload = options.filter, options.on_lost_selection, options.on_reload
+	local filter, on_lost_selection, on_reload
+
+	if options then
+		filter = options.filter
+		on_lost_selection = options.on_lost_selection
+		on_reload = options.on_reload
+	end
 
 	local function Reload ()
 		local selection = FileList:GetSelection()
@@ -132,11 +153,8 @@ end
 local RowAdder = {
 	isCategory = false,
 	lineHeight = 16,
-	lineColor = { .45, .45, .45 },
-	rowColor = {
-		default = { 1, 1, 1 },
-		over = { 0, 0, 1, .75 }
-	}
+	lineColor = { .45 },
+	rowColor = { default = { 1 }, over = { 0, 0, 1, .75 } }
 }
 
 --
@@ -170,18 +188,16 @@ end
 
 --- Creates a listbox, built on top of `widget.newTableView`.
 -- @pgroup group Group to which listbox will be inserted.
--- @number x Listbox x-coordinate...
--- @number y ...and y-coordinate.
 -- @ptable options bool hide If true, the listbox starts out hidden.
 -- @treturn DisplayObject Listbox object.
 -- TODO: Update, reincorporate former Adder docs...
-function M.Listbox (group, x, y, options)
-	local lopts = { left = x, top = y, width = options.width or 300, height = options.height or 150 }
+function M.Listbox (group, options)
+	local lopts, x, y = layout_dsl.ProcessWidgetParams(options, { width = 300, height = 150 })
 
 	-- On Render --
 	local get_text, selection, stash = GetText
 
-	if options.get_text then
+	if options and options.get_text then
 		local getter = options.get_text
 
 		function get_text (index, stash)
@@ -208,7 +224,7 @@ function M.Listbox (group, x, y, options)
 	end
 
 	-- On Touch --
-	local press, release, old_row = options.press, options.release
+	local press, release, old_row = options and options.press, options and options.release
 
 	function lopts.onRowTouch (event)
 		local row = event.target
@@ -244,6 +260,8 @@ function M.Listbox (group, x, y, options)
 
 	--
 	local Listbox = widget.newTableView(lopts)
+
+	layout_dsl.PutObjectAt(Listbox, x, y)
 
 	group:insert(Listbox)
 
@@ -315,10 +333,13 @@ function M.Listbox (group, x, y, options)
 	end
 
 	--
-	Listbox.isVisible = not options.hide
+	Listbox.isVisible = not (options and options.hide)
 
 	return Listbox
 end
+
+-- Cache module references.
+_Listbox_ = M.Listbox
 
 -- Export the module.
 return M

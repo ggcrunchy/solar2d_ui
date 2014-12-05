@@ -315,7 +315,7 @@ function M.ColorPicker_XY (group, x, y, w, h, opts)
 	ColorPicker.SetColor = SetColor
 
 	--
-	layout_dsl.EvalPos_Object(ColorPicker, x, y)
+	layout_dsl.PutObjectAt(ColorPicker, x, y)
 
 	group:insert(ColorPicker)
 

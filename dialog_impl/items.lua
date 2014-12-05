@@ -194,7 +194,7 @@ end
 --- DOCME
 -- @ptable options
 function M:AddListbox (options)
-	local listbox = table_view_patterns.Listbox(self:ItemGroup(), 0, 0)
+	local listbox = table_view_patterns.Listbox(self:ItemGroup())
 
 	utils.SetProperty(listbox, "type", "widget", utils.GetNamespace(self))
 

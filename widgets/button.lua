@@ -251,7 +251,7 @@ function M.Button_XY (group, x, y, w, h, func, opts)
 	button.yScale = skin.button_yscale or 1
 
 	-- Add the group to the parent at the requested position, with any formatting.
-	layout_dsl.EvalPos_Object(Button, x, y)
+	layout_dsl.PutObjectAt(Button, x, y)
 
 	group:insert(Button)
 

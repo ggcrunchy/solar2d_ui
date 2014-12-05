@@ -202,7 +202,7 @@ function M.OptionsHGrid (group, x, y, w, h, text, opts)
 	pgroup:translate(cx, cy)
 
 	--
-	layout_dsl.EvalPos_Object(ggroup, x, y)
+	layout_dsl.PutObjectAt(ggroup, x, y)
 
 	group:insert(ggroup)
 

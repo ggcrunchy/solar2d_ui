@@ -62,7 +62,7 @@ end
 local Exts = { ".jpg", ".jpeg", ".png" }
 
 --- DOCME
-function M.ImageList (group, x, y, options)
+function M.ImageList (group, options)
 	--
 	local new_opts = {}
 
@@ -115,7 +115,7 @@ function M.ImageList (group, x, y, options)
 	end
 
 	--
-	local ImageList = table_view_patterns.FileList(group, x, y, options)
+	local ImageList = table_view_patterns.FileList(group, options)
 
 	--- DOCME
 	function ImageList:GetDims ()

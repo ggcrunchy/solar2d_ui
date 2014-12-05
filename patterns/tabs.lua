@@ -27,6 +27,10 @@
 local ipairs = ipairs
 local pairs = pairs
 
+-- Modules --
+local layout_dsl = require("corona_ui.utils.layout_dsl")
+local table_funcs = require("tektite_core.table.funcs")
+
 -- Corona modules --
 local widget = require("widget")
 
@@ -44,17 +48,21 @@ end
 -- @ptable options Argument to `widget.newTabBar` (**buttons** is overridden).
 -- @treturn DisplayObject Tab bar object.
 function M.TabBar (group, buttons, options)
+	--
 	for _, button in ipairs(buttons) do
 		button.overFile, button.defaultFile = Name("Icon-down"), Name("Icon")
 		button.width, button.height, button.size = 32, 32, 14
 	end
 
-	local topts = {}
+	local topts, x, y
 
-	for k, v in pairs(options) do
-		topts[k] = v
+	if options then
+		topts, x, y = layout_dsl.ProcessWidgetParams_InPlace(table_funcs.Copy(options))
+	else
+		topts = {}
 	end
 
+	--
 	topts.buttons = buttons
 	topts.backgroundFile = Name("bar")
 	topts.tabSelectedLeftFile = Name("SelectedLeft", true)
@@ -63,7 +71,10 @@ function M.TabBar (group, buttons, options)
 	topts.tabSelectedFrameWidth = 20
 	topts.tabSelectedFrameHeight = 52
 
+	--
 	local tbar = widget.newTabBar(topts)
+
+	layout_dsl.PutObjectAt(tbar, x, y)
 
 	group:insert(tbar)
 

@@ -404,7 +404,7 @@ local function AuxEditable (group, x, y, opts)
 	body.strokeWidth = 2
 
 	--
-	layout_dsl.EvalPos_Object(Editable, x, y)
+	layout_dsl.PutObjectAt(Editable, x, y)
 
 	group:insert(Editable)
 

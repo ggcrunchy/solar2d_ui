@@ -41,7 +41,7 @@ local Exts = { ".mp3", ".m4a", ".ogg" }
 -- Volume controls, etc.
 
 --- DOCME
-function M.AudioList (group, x, y, options)
+function M.AudioList (group, options)
 	--
 	local new_opts = {}
 
@@ -54,7 +54,7 @@ function M.AudioList (group, x, y, options)
 	options = new_opts
 
 	--
-	local AudioList = table_view_patterns.FileList(group, x, y, options)
+	local AudioList = table_view_patterns.FileList(group, options)
 
 	-- TODO: Methods
 

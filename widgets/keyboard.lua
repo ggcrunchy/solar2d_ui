@@ -245,7 +245,7 @@ function M.Keyboard_XY (group, x, y, opts)
 	x0, bh = rx, max(bh, rh)
 
 	--
-	layout_dsl.EvalPos_Object(Keyboard, x, y)
+	layout_dsl.PutObjectAt(Keyboard, x, y)
 
 	group:insert(Keyboard)
 

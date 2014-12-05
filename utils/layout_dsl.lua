@@ -36,6 +36,10 @@ local layout = require("corona_ui.utils.layout")
 -- Corona globals --
 local display = display
 
+-- Cached module references --
+local _EvalDims_
+local _EvalPos_
+
 -- Exports --
 local M = {}
 
@@ -58,8 +62,8 @@ end
 
 --- DOCME
 function M.EvalDims (w, h)
-	w = ceil(ParseNumber(w, "contentWidth"))
-	h = ceil(ParseNumber(h, "contentHeight"))
+	w = w and ceil(ParseNumber(w, "contentWidth")) or nil
+	h = h and ceil(ParseNumber(h, "contentHeight")) or nil
 
 	return w, h
 end
@@ -111,9 +115,19 @@ local function EvalBasic (arg, choices, dim)
 	return ParseNumber(arg, dim, true) or AuxEvalCoord(arg, choices, dim)(Num1, Num2)
 end
 
+--
+local function ReverseBasic (func)
+	return {
+		function(delta)
+			return func("100%", delta)
+		end, 1
+	}
+end
+
 -- --
 local ChoicesX = {
 	center = false, -- NYI
+	from_right = ReverseBasic(layout.LeftOf),
 	left_of = { layout.LeftOf, 2 },
 	right_of = { layout.RightOf, 2 }
 }
@@ -121,41 +135,79 @@ local ChoicesX = {
 -- --
 local ChoicesY = {
 	center = false, -- NYI
+	from_bottom = ReverseBasic(layout.Above),
 	above = { layout.Above, 2 },
 	below = { layout.Below, 2 }
 }
 
 --- DOCME
 function M.EvalPos (x, y)
-	x = EvalBasic(x, ChoicesX, "contentWidth")
-	y = EvalBasic(y, ChoicesY, "contentHeight")
+	x = x and EvalBasic(x, ChoicesX, "contentWidth")
+	y = y and EvalBasic(y, ChoicesY, "contentHeight")
 
-	return x, y
+	return x or nil, y or nil
 end
 
 --
-local function EvalObject (object, arg, choices, coord)
-	local dim = coord == "x" and "contentWidth" or "contentHeight"
-	local num = ParseNumber(arg, dim, true)
+local function AuxProcessWidgetParams (params, t)
+	local x, y, w, h = params.x, params.y, _EvalDims_(params.width, params.height)
 
-	if num then
-		object[coord] = num
-	else
-		AuxEvalCoord(arg, choices, dim)(object, Num1, Num2)
+	t.left, t.top, t.x, t.y = _EvalPos_(not x and params.left, not y and params.top)
+	t.width, t.height = w or t.width, h or t.height
+
+	return t, x, y
+end
+
+--- DOCME
+function M.ProcessWidgetParams (params, t)
+	local x, y
+
+	if params then
+		t, x, y = AuxProcessWidgetParams(params, t or {})
+	end
+
+	return t, x, y
+end
+
+--- DOCME
+function M.ProcessWidgetParams_InPlace (params)
+	local t, x, y
+
+	if params then
+		t, x, y = AuxProcessWidgetParams(params, params)
+	end
+
+	return t, x, y
+end
+
+--
+local function EvalPut (object, arg, choices, coord)
+	if arg then
+		local dim = coord == "x" and "contentWidth" or "contentHeight"
+		local num = ParseNumber(arg, dim, true)
+
+		if num then
+			object[coord] = num
+		else
+			AuxEvalCoord(arg, choices, dim)(object, Num1, Num2)
+		end
 	end
 end
 
 --
-local function Reverse (func)
-	return function(object, delta)
-		func(object, "100%", delta)
-	end
+local function ReversePut (func)
+	return {
+		function(object, delta)
+			func(object, "100%", delta)
+		end, 1
+	}
 end
 
 -- --
-local ObjectChoicesX = {
+local PutChoicesX = {
 	center = false, -- NYI
-	from_right = { Reverse(layout.PutLeftOf), 1 },
+	from_right = ReversePut(layout.PutLeftOf),
+	from_right_align = ReversePut(layout.RightAlignWith),
 	left_align = { layout.LeftAlignWith, 2 },
 	left_of = { layout.PutLeftOf, 2 },
 	right_align = { layout.RightAlignWith, 2 },
@@ -163,20 +215,25 @@ local ObjectChoicesX = {
 }
 
 -- --
-local ObjectChoicesY = {
+local PutChoicesY = {
 	center = false, -- NYI
 	above = { layout.PutAbove, 2 },
 	bottom_align = { layout.BottomAlignWith, 2 },
 	below = { layout.PutBelow, 2 },
-	from_bottom = { Reverse(layout.PutAbove), 1 },
+	from_bottom = ReversePut(layout.PutAbove),
+	from_bottom_align = ReversePut(layout.BottomAlignWith),
 	top_align = { layout.TopAlignWith, 2 }
 }
 
 --- DOCME
-function M.EvalPos_Object (object, x, y)
-	EvalObject(object, x, ObjectChoicesX, "x")
-	EvalObject(object, y, ObjectChoicesY, "y")
+function M.PutObjectAt (object, x, y)
+	EvalPut(object, x, PutChoicesX, "x")
+	EvalPut(object, y, PutChoicesY, "y")
 end
+
+-- Cache module members.
+_EvalDims_ = M.EvalDims
+_EvalPos_ = M.EvalPos
 
 -- Export the module.
 return M
