@@ -89,7 +89,8 @@ function M.TabsHack (group, tabs, n, x, y, w, h)
 	local rect = display.newRect(group, 0, 0, w or tabs.width, h or tabs.height)
 
 	if not ex then
-		rect.x, rect.y = tabs.x, tabs.y
+		rect.anchorX, rect.x = tabs.anchorX, tabs.x
+		rect.anchorY, rect.y = tabs.anchorY, tabs.y
 	else
 		rect.x, rect.y = ex, y or 0
 
