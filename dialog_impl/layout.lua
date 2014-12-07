@@ -27,6 +27,7 @@
 
 -- Standard library imports --
 local assert = assert
+local max = math.max
 local min = math.min
 local remove = table.remove
 local type = type
@@ -447,14 +448,16 @@ local function ResizeBack (dialog)
 	utils.AddBack(dialog, w, h)
 
 	-- If the dialog overflowed one of its bounds, mask out the items that won't be shown.
-	if (fullw and not dialog.m_full_w) or (fullh and not dialog.m_full_h) then
-		dialog.m_full_w = dialog.m_full_w or fullw
-		dialog.m_full_h = dialog.m_full_h or fullh
+	local wmax, hmax = dialog.m_wmax or 0, dialog.m_hmax or 0
+
+	if (fullw and wmax <= WMax) or (fullh and hmax <= HMax) then
+		dialog.m_wmax = max(w, wmax)
+		dialog.m_hmax = max(h, hmax)
 
 		local scroll_view = widget.newScrollView{
 			width = w, height = h, hideBackground = true,
-			horizontalScrollDisabled = not dialog.m_full_w,
-			verticalScrollDisabled = not dialog.m_full_h
+			horizontalScrollDisabled = not fullw,
+			verticalScrollDisabled = not fullh
 		}
 		local igroup = dialog:ItemGroup()
 		local parent = igroup.parent
