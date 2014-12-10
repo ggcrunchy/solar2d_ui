@@ -308,21 +308,28 @@ function M:EndSection ()
 	end
 end
 
---
+-- Helper to apply an operation (recursively) to a dialog section
 local function Apply (handle, op, igroup)
 	if handle.m_is_open then
 		local index, to, si = handle.m_from, handle.m_to, 1
 
 		while index <= to do
+			-- Perform the operation on each entry, stopping if a new subsection begins.
 			local sub = handle[si]
 			local up_to = sub and sub.m_from - 1 or to
 
 			while index <= up_to do
-				index = index + 1, op(igroup[index]) -- Not right, before or after?
+				op(igroup[index])
+
+				index = index + 1
 			end
 
+			-- If a subsection was encountered, apply the operation on it recursively.
+			-- Update the subsection index and move the entry index past it.
 			if sub then
-				si, index = Apply(sub, op, igroup), si + 1, sub.m_to + 1 -- Ditto..
+				Apply(sub, op, igroup)
+
+				si, index = si + 1, sub.m_to + 1
 			end
 		end
 	end
