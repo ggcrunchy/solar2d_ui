@@ -26,6 +26,7 @@
 --
 
 -- Standard library imports --
+local abs = math.abs
 local assert = assert
 local max = math.max
 local min = math.min
@@ -37,6 +38,7 @@ local utils = require("corona_ui.dialog_impl.utils")
 
 -- Corona globals --
 local display = display
+local transition = transition
 
 -- Corona modules --
 local widget = require("widget")
@@ -131,27 +133,59 @@ function M:AddSeparator ()
 end
 
 --- DOCME
+-- @treturn SectionHandle H
 function M:BeginSection ()
 	assert(not self.m_sealed, "Cannot begin section in sealed dialog")
 
 	InitProperties(self)
 
+	-- Create a new section, and a new list if necessary. Until the dialog is sealed, the list
+	-- doubles as a stack which is used to build the section hierarchy; the section is pushed
+	-- onto the stack, and if another is below it, that becomes its parent. As for the list
+	-- proper, the section is "pushed" onto it, but at a negative index.
 	local section, list = {
 		m_is_open = true, m_from = ItemCount(self) + 1,
 		m_x1 = self.m_penx, m_y1 = self.m_peny
-	}, self.m_list or { n = 0 }
-	local top, n = #list, list.n - 1
+	}, self.m_list or { stack = 0 }
+	local si, n = list.stack, #list
 
-	if top > 0 then
+	if si < 0 then
 		section.m_parent = n
 	end
 
-	self.m_list, list[top + 1], list[n - 1], list.n = list, section, section, n - 1
+	self.m_list, list[si - 1], list[n + 1], list.stack = list, section, section, si - 1
 
 	return section
 end
 
---
+-- Helper to apply an operation (recursively) to a dialog section
+local function Apply (handle, op, igroup)
+	if handle.m_is_open then
+		local index, to, si = handle.m_from, handle.m_to, 1
+
+		while index <= to do
+			-- Perform the operation on each entry, stopping if a new subsection begins.
+			local sub = handle[si]
+			local up_to = sub and sub.m_from - 1 or to
+
+			while index <= up_to do
+				op(igroup[index])
+
+				index = index + 1
+			end
+
+			-- If a subsection was encountered, apply the operation on it recursively.
+			-- Update the subsection index and move the entry index past it.
+			if sub then
+				Apply(sub, op, igroup)
+
+				si, index = si + 1, sub.m_to + 1
+			end
+		end
+	end
+end
+
+-- Are all of this subsection's parents open?
 local function AreParentsOpen (handle, list)
 	repeat
 		handle = list[handle.m_parent]
@@ -160,9 +194,43 @@ local function AreParentsOpen (handle, list)
 	return not handle
 end
 
---
+-- --
+local FadeOutParams = {
+	alpha = .3, time = 150,
+
+	onComplete = function(object)
+		object.isVisible = false
+	end
+}
+
+-- Hides an element, which may be a spacer
+local function Hide (item)
+	if item.m_collapsed ~= nil then
+		item.m_collapsed = true
+	else
+		item.alpha = 1
+
+		transition.to(item, FadeOutParams)
+	end
+end
+
+-- Visiblity predicate that accounts for spacers
 local function IsVisible (item)
 	return item.isVisible or item.m_collapsed == false
+end
+
+-- --
+local MoveParams = { delta = true }
+
+--
+local function Move (item, field, delta)
+	local time = abs(delta) -- adjust time...
+
+	MoveParams.time, MoveParams[field] = 120, delta
+
+	transition.to(item, MoveParams)
+
+	MoveParams[field] = nil
 end
 
 --
@@ -172,19 +240,21 @@ local function Reflow (line, igroup)
 	for i = line.first_item, line.last_item do
 		local item = igroup[i]
 
-		if IsVisible(item) then
-			item.x, x, is_open = x, x + item.m_addx, true
+		if IsVisible(item) then -- can this even be a spacer?
+			Move(item, "x", x - item.x)
+
+			x, is_open = x + item.m_addx, true
 		end
 	end
 
 	return is_open
 end
 
---
+-- Helper to prevent further sections from being added to the dialog
 local function Seal (dialog)
 	local list = assert(dialog.m_list, "No sections to operate on")
 	
-	assert(#list == 0, "Sections still pending")
+	assert(list.stack == 0, "Sections still pending")
 
 	if not dialog.m_sealed then
 		if dialog.m_num_on_line > 0 then
@@ -195,16 +265,21 @@ local function Seal (dialog)
 	end
 end
 
---
+-- Helper to move a range of items
 local function MoveItems (igroup, from, to, dy)
 	for i = from, dy ~= 0 and to or 0 do
 		local item = igroup[i]
 
-		item.y = item.y + dy
+		if item.isVisible then
+			Move(item, "y", dy)
+		else
+			item.y = item.y + dy
+		end
 	end
 end
 
 --- DOCME
+-- @tparam SectionHandle handle
 function M:Collapse (handle)
 	Seal(self)
 
@@ -217,7 +292,7 @@ function M:Collapse (handle)
 		-- so it will be wasted effort if a parent is closed. Otherwise, proceed.
 		if parents_open then
 			local lines, item1, item2 = self.m_lines, igroup[from], igroup[to]
---vdump(lines)
+
 			line1, line2 = lines[item1.m_line], lines[item2.m_line]
 
 			-- The section begins with a "partial" line, i.e. the right-hand side of the first
@@ -259,16 +334,8 @@ function M:Collapse (handle)
 			end
 		end
 
-		-- Hide all items in the collapsed region, accounting for spacers.
-		for i = from, to do
-			local item = igroup[i]
-
-			if item.m_collapsed ~= nil then
-				item.m_collapsed = true
-			else
-				item.isVisible = false
-			end
-		end
+		-- Hide all items in the collapsed region.
+		Apply(handle, Hide, igroup)
 
 		-- As above, the following only matters if the objects will be visible.
 		if parents_open then
@@ -294,13 +361,16 @@ end
 
 --- DOCME
 function M:EndSection ()
+	-- Pull the section off the stack.
 	local list = assert(self.m_list, "No sections begun")
-	local section = assert(remove(list), "Empty section stack")
+	local section = assert(list[list.stack], "Empty section stack")
 
-	--
+	list.stack = list.stack + 1
+
+	-- Assign the last-added item as the section's end boundary.
 	section.m_to = ItemCount(self)
 
-	--
+	-- If this is a subsection, add it to its parent's list.
 	local parent = self.m_list[section.m_parent]
 
 	if parent then
@@ -308,43 +378,22 @@ function M:EndSection ()
 	end
 end
 
--- Helper to apply an operation (recursively) to a dialog section
-local function Apply (handle, op, igroup)
-	if handle.m_is_open then
-		local index, to, si = handle.m_from, handle.m_to, 1
+-- --
+local FadeInParams = { alpha = 1, time = 150 }
 
-		while index <= to do
-			-- Perform the operation on each entry, stopping if a new subsection begins.
-			local sub = handle[si]
-			local up_to = sub and sub.m_from - 1 or to
-
-			while index <= up_to do
-				op(igroup[index])
-
-				index = index + 1
-			end
-
-			-- If a subsection was encountered, apply the operation on it recursively.
-			-- Update the subsection index and move the entry index past it.
-			if sub then
-				Apply(sub, op, igroup)
-
-				si, index = si + 1, sub.m_to + 1
-			end
-		end
-	end
-end
-
---
+-- Shows an element, which may be a spacer
 local function Show (item)
 	if item.m_collapsed ~= nil then
 		item.m_collapsed = false
 	else
-		item.isVisible = true
+		item.alpha, item.isVisible = .3, true
+
+		transition.to(item, FadeInParams)
 	end
 end
 
 --- DOCME
+-- @tparam SectionHandle handle
 function M:Expand (handle)
 	Seal(self)
 
@@ -378,14 +427,27 @@ function M:Expand (handle)
 end
 
 --- DOCME
-function M:FlipSiblingStates (to_expand, to_collapse)
+-- @tparam SectionHandle to_expand
+-- @tparam SectionHandle to_collapse
+function M:FlipTwoStates (to_expand, to_collapse)
 	Seal(self)
-	
-	if to_expand.m_parent == to_collapse.m_parent then
-		M:Expand(to_expand)
-		M:Collapse(to_collapse)
 
-		-- Accumulate whatever, for display...
+	-- One of the operations cannot be performed: attempt the other.
+	if to_expand.m_is_open then
+		self:Collapse(to_collapse)
+	elseif not to_collapse.m_is_open then
+		self:Expand(to_expand)
+
+	-- Both operations are on the same section, and would cancel out: no-op. Otherwise, expand
+	-- and then collapse the sections, interspersing a delay to let the transitions catch up.
+	elseif to_expand ~= to_collapse then
+		self:Expand(to_expand)
+
+		FadeOutParams.delay, MoveParams.delay = 200, 200
+
+		self:Collapse(to_collapse)
+
+		FadeOutParams.delay, MoveParams.delay = nil
 	end
 end
 
