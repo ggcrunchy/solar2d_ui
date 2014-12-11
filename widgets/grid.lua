@@ -219,8 +219,7 @@ function M.Grid (group, x, y, w, h, cols, rows, opts)
 	end
 
 	-- Add lines above the container.
-	local lines = display.newGroup()
-	local xf, yf = x + w - 1, y + h - 1
+	local lines, xf, yf = display.newGroup(), w - 1, h - 1
 
 	Grid:insert(lines)
 -- TODO: The boundary lines fatten the group up slightly (perhaps if stroke alignment is ever added...)
@@ -228,27 +227,30 @@ function M.Grid (group, x, y, w, h, cols, rows, opts)
 	local xoff, dw = 0, w / cols
 
 	for _ = 1, cols do
-		local cx = floor(x + xoff)
+		local cx = floor(xoff)
 
-		AddGridLine(lines, skin, cx, y, cx, yf)
+		AddGridLine(lines, skin, cx, 0, cx, yf)
 
 		xoff = xoff + dw
 	end
 
-	AddGridLine(lines, skin, xf, y, xf, yf)
+	AddGridLine(lines, skin, xf, 0, xf, yf)
 
 	-- ...and horizontal ones.
 	local yoff, dh = 0, h / rows
 
 	for _ = 1, rows do
-		local cy = floor(y + yoff)
+		local cy = floor(yoff)
 
-		AddGridLine(lines, skin, x, cy, xf, cy)
+		AddGridLine(lines, skin, 0, cy, xf, cy)
 
 		yoff = yoff + dh
 	end
 
-	AddGridLine(lines, skin, x, yf, xf, yf)
+	AddGridLine(lines, skin, 0, yf, xf, yf)
+
+	--
+	lines:translate(x, y)
 
 	--- Getter.
 	-- @treturn DisplayGroup Canvas group, to be populated and translated by the user.
@@ -387,7 +389,7 @@ end
 
 -- Main grid skin --
 skins.AddToDefaultSkin("grid", {
-	backcolor = { .375, .375, .375, .75 },
+	backcolor = { .375, .75 },
 	linecolor = "white",
 	linewidth = 2,
 	trapinput = true
