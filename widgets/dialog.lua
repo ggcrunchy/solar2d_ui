@@ -28,7 +28,6 @@ local pairs = pairs
 
 -- Method modules --
 local data = require("corona_ui.dialog_impl.data")
-local items = require("corona_ui.dialog_impl.items")
 local layout = require("corona_ui.dialog_impl.layout")
 local methods = require("corona_ui.dialog_impl.methods")
 local net = require("corona_ui.patterns.net")
@@ -44,7 +43,7 @@ local M = {}
 -- Import dialog methods.
 local Methods = {} 
 
-for _, mod in ipairs{ data, items, layout, methods, sections } do
+for _, mod in ipairs{ data, layout, methods, sections } do
 	for k, v in pairs(mod) do
 		Methods[k] = v
 	end
@@ -77,6 +76,15 @@ function M.Dialog (group, options)
 
 		if options.is_modal then
 			net.AddNet(group, Dialog)
+		end
+	end
+
+	--
+	local augment = options and options.augment
+
+	if augment then
+		for k, v in pairs(augment) do
+			Dialog[k] = v
 		end
 	end
 
