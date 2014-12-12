@@ -97,6 +97,25 @@ function M.TabsHack (group, tabs, n, x, y, w, h)
 		rect:translate(rect.width / 2, rect.height / 2)
 	end
 
+	local old = getmetatable(tabs)
+
+	setmetatable(tabs, {
+		__index = old.__index,
+		__newindex = function(t, k, v)
+			if k == "isVisible" then
+				rect.isHitTestable = v
+			end
+
+			old.__newindex(t, k, v)
+		end
+	})
+
+	tabs:addEventListener("finalize", function()
+		if rect.parent then
+			rect:removeSelf()
+		end
+	end)
+
 	rect:addEventListener("touch", function(event)
 		local bounds = event.target.contentBounds
 		local index = math.min(require("tektite_core.array.index").FitToSlot(event.x, bounds.xMin, (bounds.xMax - bounds.xMin) / n), n)
