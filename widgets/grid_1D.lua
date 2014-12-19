@@ -219,7 +219,7 @@ function M.OptionsHGrid (group, x, y, w, h, text, opts)
 		end
 
 		--
-		if images then
+		if images and count > 0 then
 			for i = 1, 4 do
 				parts[i] = sheet.NewImage(pgroup, images, 0, 0, dw, dh)
 			end
