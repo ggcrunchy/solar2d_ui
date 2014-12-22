@@ -49,14 +49,15 @@ local _RightOf_
 -- Exports --
 local M = {}
 
+
 --
 local function AnchorX (object, t)
-	return object.x + t * object.width
+	return object.x + t * object.contentWidth
 end
 
 --
 local function AnchorY (object, t)
-	return object.y + t * object.height
+	return object.y + t * object.contentHeight
 end
 
 --
@@ -82,7 +83,7 @@ end
 
 --
 local function NonGroup (object)
-	return object.anchorChildren == nil
+	return object._type ~= "GroupObject"
 end
 
 --
@@ -126,32 +127,6 @@ local function RightX (object)
 end
 
 --
-local function ToCenterX (object) -- TEST!
-	local x = display.contentCenterX
-
-	if NonGroup(object) then
-		return x - AnchorX(object, .5 - object.anchorX)
-	else
-		local bounds = object.contentBounds
-
-		return x - .5 * (bounds.xMin + bounds.xMax)
-	end
-end
-
---
-local function ToCenterY (object) -- TEST!
-	local y = display.contentCenterY
-
-	if NonGroup(object) then
-		return y - AnchorY(object, .5 - object.anchorY)
-	else
-		local bounds = object.contentBounds
-
-		return y - .5 * (bounds.yMin + bounds.yMax)
-	end
-end
-
---
 local function TopY (object)
 	if Number(object) then
 		return DY(object)
@@ -178,13 +153,45 @@ function M.BottomAlignWith (object, ref, dy)
 end
 
 --
-local function CenterX (object, x)
-	return floor(object.x + ToCenterX(object) + DX(x))
+local function CenterX (object)
+	if NonGroup(object) then
+		return AnchorX(object, .5 - object.anchorX)
+	else
+		local bounds = object.contentBounds
+
+		return .5 * (bounds.xMin + bounds.xMax)
+	end
 end
 
 --
-local function CenterY (object, y)
-	return floor(object.y + ToCenterY(object) + DY(y))
+local function CenterY (object)
+	if NonGroup(object) then
+		return AnchorY(object, .5 - object.anchorY)
+	else
+		local bounds = object.contentBounds
+
+		return .5 * (bounds.yMin + bounds.yMax)
+	end
+end
+
+--
+local function ToCenterX (object, x, dx)
+	return floor(object.x + DX(x) - CenterX(object) + DX(dx))
+end
+
+--
+local function ToCenterY (object, y, dy)
+	return floor(object.y + DY(y) - CenterY(object) + DY(dy))
+end
+
+--
+local function ToContentCenterX (object, dx)
+	return ToCenterX(object, display.contentCenterX, dx)
+end
+
+--
+local function ToContentCenterY (object, dy)
+	return ToCenterY(object, display.contentCenterY, dy)
 end
 
 --- DOCME
@@ -193,18 +200,24 @@ function M.CenterAlignWith (object, ref_object, dx, dy) -- TEST!
 end
 
 --- DOCME
-function M.CenterAt (object, x, y)
-	object.x = CenterX(object, x) - display.contentCenterX
-	object.y = CenterY(object, y) - display.contentCenterY
+function M.CenterAt (object, x, y, dx, dy)
+	object.x = ToCenterX(object, x, dx)
+	object.y = ToCenterY(object, y, dy)
+end
+
+--- DOCME
+function M.CenterAtX (object, x, dx)
+	object.x = ToCenterX(object, x, dx)
+end
+
+--- DOCME
+function M.CenterAtY (object, y, dy)
+	object.y = ToCenterY(object, y, dy)
 end
 
 --- DOCME
 function M.CenterOf (object, dx, dy) -- TEST!
-	local bounds = object.contentBounds
-
-	-- group, nongroup?
-
-	return floor(.5 * (bounds.xMin + bounds.xMax) + DX(dx)), floor(.5 * (bounds.yMin + bounds.yMax) + DY(dy))
+	return CenterX(object, dx), CenterY(object, dy)
 end
 
 --- DOCME
@@ -232,7 +245,7 @@ function M.PutAbove (object, ref, dy)
 	local y = TopY(ref)
 
 	if NonGroup(object) then
-		y = y - (1 - object.anchorY) * object.height
+		y = y - (1 - object.anchorY) * object.contentHeight
 	else
 		y = y - (object.contentBounds.yMax - object.y)
 	end
@@ -242,7 +255,7 @@ end
 
 --- DOCME
 function M.PutAtBottomCenter (object, dx, dy)
-	object.x = CenterX(object, dx)
+	object.x = ToContentCenterX(object, dx)
 
 	_PutAbove_(object, display.contentHeight, dy)
 end
@@ -261,25 +274,36 @@ end
 
 --- DOCME
 function M.PutAtCenter (object, dx, dy)
-	object.x = CenterX(object, dx)
-	object.y = CenterY(object, dy)
+	object.x = ToContentCenterX(object, dx)
+	object.y = ToContentCenterY(object, dy)
 end
 
 --- DOCME
 function M.PutAtCenterLeft (object, dx, dy)
 	_PutRightOf_(object, 0, dx)
 
-	object.y = CenterY(object, dy)
+	object.y = ToContentCenterY(object, dy)
 end
 
 --- DOCME
 function M.PutAtCenterRight (object, dx, dy)
 	_PutLeftOf_(object, display.contentWidth, dx)
 
-	object.y = CenterY(object, dy)
+	object.y = ToCenterY(object, dy)
 end
 
 --- DOCME
+function M.PutAtCenterX (object, dx)
+	object.x = ToContentCenterX(object, dx)
+end
+
+--- DOCME
+function M.PutAtCenterY (object, dy)
+	object.y = ToContentCenterY(object, dy)
+end
+
+--- DOCME
+-- TODO: This doesn't seem to be adequate, needs to be split on (x, y)
 function M.PutAtFirstHit (object, ref_object, choices, center_on_fail)
 	local x, y, dx, dy = object.x, object.y, DX(choices.dx), DY(choices.dy)
 
@@ -331,7 +355,7 @@ end
 
 --- DOCME
 function M.PutAtTopCenter (object, dx, dy)
-	object.x = CenterX(object, dx)
+	object.x = ToContentCenterX(object, dx)
 
 	_PutAbove_(object, 0, dy)
 end
@@ -353,7 +377,7 @@ function M.PutBelow (object, ref, dy)
 	local y = BottomY(ref)
 
 	if NonGroup(object) then
-		y = y + object.anchorY * object.height
+		y = y + object.anchorY * object.contentHeight
 	else
 		y = y + (object.y - object.contentBounds.yMin)
 	end
@@ -366,7 +390,7 @@ function M.PutLeftOf (object, ref, dx)
 	local x = LeftX(ref)
 
 	if NonGroup(object) then
-		x = x - (1 - object.anchorX) * object.width
+		x = x - (1 - object.anchorX) * object.contentWidth
 	else
 		x = x - (object.contentBounds.xMax - object.x)
 	end
@@ -379,7 +403,7 @@ function M.PutRightOf (object, ref, dx)
 	local x = RightX(ref)
 
 	if NonGroup(object) then
-		x = x + object.anchorX * object.width
+		x = x + object.anchorX * object.contentWidth
 	else
 		x = x + (object.x - object.contentBounds.xMin)
 	end
@@ -414,9 +438,6 @@ _PutBelow_ = M.PutBelow
 _PutLeftOf_ = M.PutLeftOf
 _PutRightOf_ = M.PutRightOf
 _RightOf_ = M.RightOf
-
--- TODO: Pens, cursors
--- ^^ Some sort of DSL for widgets?
 
 -- Export the module.
 return M

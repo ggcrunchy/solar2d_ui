@@ -116,6 +116,15 @@ local function EvalBasic (arg, choices, dim)
 end
 
 --
+local function Center (func, coord)
+	return {
+		function(delta)
+			return func(display[coord], delta)
+		end, 1
+	}
+end
+
+--
 local function ReverseBasic (func)
 	return {
 		function(delta)
@@ -126,7 +135,7 @@ end
 
 -- --
 local ChoicesX = {
-	center = false, -- NYI
+	center = Center(layout.RightOf, "contentCenterX"),
 	from_right = ReverseBasic(layout.LeftOf),
 	left_of = { layout.LeftOf, 2 },
 	right_of = { layout.RightOf, 2 }
@@ -134,7 +143,7 @@ local ChoicesX = {
 
 -- --
 local ChoicesY = {
-	center = false, -- NYI
+	center = Center(layout.Below, "contentCenterY"),
 	from_bottom = ReverseBasic(layout.Above),
 	above = { layout.Above, 2 },
 	below = { layout.Below, 2 }
@@ -205,7 +214,7 @@ end
 
 -- --
 local PutChoicesX = {
-	center = false, -- NYI
+	center = { layout.PutAtCenterX, 2 }, -- NYI
 	from_right = ReversePut(layout.PutLeftOf),
 	from_right_align = ReversePut(layout.RightAlignWith),
 	left_align = { layout.LeftAlignWith, 2 },
@@ -216,7 +225,7 @@ local PutChoicesX = {
 
 -- --
 local PutChoicesY = {
-	center = false, -- NYI
+	center = { layout.PutAtCenterY, 2 }, -- NYI
 	above = { layout.PutAbove, 2 },
 	bottom_align = { layout.BottomAlignWith, 2 },
 	below = { layout.PutBelow, 2 },
@@ -234,6 +243,9 @@ end
 -- Cache module members.
 _EvalDims_ = M.EvalDims
 _EvalPos_ = M.EvalPos
+
+-- TODO: Pens, cursors?
+-- center stuff...
 
 -- Export the module.
 return M

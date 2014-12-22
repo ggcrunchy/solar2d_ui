@@ -142,7 +142,7 @@ function M.WriteEntry_MightExist (name, opts, arg)
 
 			if event.action == "clicked" then
 				timers.Defer(function()
-					local editable = editable_patterns.Editable_XY(group, display.contentCenterX, display.contentCenterY, eopts)
+					local editable = editable_patterns.Editable_XY(group, "center", "center", eopts)
 
 					editable:addEventListener("closing", function()
 						name = editable:GetString().text
