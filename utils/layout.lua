@@ -175,48 +175,63 @@ local function CenterY (object)
 end
 
 --
-local function ToCenterX (object, x, dx)
-	return floor(object.x + DX(x) - CenterX(object) + DX(dx))
+local function PutCenterAtX (object, x, dx)
+	object.x = floor(object.x + DX(x) - CenterX(object) + DX(dx))
 end
 
 --
-local function ToCenterY (object, y, dy)
-	return floor(object.y + DY(y) - CenterY(object) + DY(dy))
+local function PutCenterAtY (object, y, dy)
+	object.y = floor(object.y + DY(y) - CenterY(object) + DY(dy))
 end
 
 --
-local function ToContentCenterX (object, dx)
-	return ToCenterX(object, display.contentCenterX, dx)
+local function PutAtContentCenterX (object, dx)
+	PutCenterAtX(object, display.contentCenterX, dx)
 end
 
 --
-local function ToContentCenterY (object, dy)
-	return ToCenterY(object, display.contentCenterY, dy)
+local function PutAtContentCenterY (object, dy)
+	PutCenterAtY(object, display.contentCenterY, dy)
 end
 
 --- DOCME
-function M.CenterAlignWith (object, ref_object, dx, dy) -- TEST!
+function M.CenterAlignWith (object, ref_object, dx, dy)
 	_CenterAt_(object, _CenterOf_(ref_object, dx, dy))
 end
 
 --- DOCME
 function M.CenterAt (object, x, y, dx, dy)
-	object.x = ToCenterX(object, x, dx)
-	object.y = ToCenterY(object, y, dy)
+	PutCenterAtX(object, x, dx)
+	PutCenterAtY(object, y, dy)
 end
 
 --- DOCME
 function M.CenterAtX (object, x, dx)
-	object.x = ToCenterX(object, x, dx)
+	PutCenterAtY(object, x, dx)
 end
 
 --- DOCME
 function M.CenterAtY (object, y, dy)
-	object.y = ToCenterY(object, y, dy)
+	PutCenterAtY(object, y, dy)
 end
 
 --- DOCME
-function M.CenterOf (object, dx, dy) -- TEST!
+function M.CenterOf (object, dx, dy)
+	return CenterX(object, dx), CenterY(object, dy)
+end
+
+--- DOCME
+function M.CenterX (object, dx)
+	return CenterX(object, dx)
+end
+
+--- DOCME
+function M.CenterY (object, dy)
+	return CenterY(object, dy)
+end
+
+--- DOCME
+function M.CenterOf (object, dx, dy)
 	return CenterX(object, dx), CenterY(object, dy)
 end
 
@@ -255,8 +270,7 @@ end
 
 --- DOCME
 function M.PutAtBottomCenter (object, dx, dy)
-	object.x = ToContentCenterX(object, dx)
-
+	PutAtContentCenterX(object, dx)
 	_PutAbove_(object, display.contentHeight, dy)
 end
 
@@ -274,32 +288,30 @@ end
 
 --- DOCME
 function M.PutAtCenter (object, dx, dy)
-	object.x = ToContentCenterX(object, dx)
-	object.y = ToContentCenterY(object, dy)
+	PutAtContentCenterX(object, dx)
+	PutAtContentCenterY(object, dy)
 end
 
 --- DOCME
 function M.PutAtCenterLeft (object, dx, dy)
 	_PutRightOf_(object, 0, dx)
-
-	object.y = ToContentCenterY(object, dy)
+	PutAtContentCenterY(object, dy)
 end
 
 --- DOCME
 function M.PutAtCenterRight (object, dx, dy)
 	_PutLeftOf_(object, display.contentWidth, dx)
-
-	object.y = ToCenterY(object, dy)
+	PutAtContentCenterY(object, dy)
 end
 
 --- DOCME
 function M.PutAtCenterX (object, dx)
-	object.x = ToContentCenterX(object, dx)
+	PutAtContentCenterX(object, dx)
 end
 
 --- DOCME
 function M.PutAtCenterY (object, dy)
-	object.y = ToContentCenterY(object, dy)
+	PutAtContentCenterY(object, dy)
 end
 
 --- DOCME
@@ -355,8 +367,7 @@ end
 
 --- DOCME
 function M.PutAtTopCenter (object, dx, dy)
-	object.x = ToContentCenterX(object, dx)
-
+	PutAtContentCenterX(object, dx)
 	_PutAbove_(object, 0, dy)
 end
 

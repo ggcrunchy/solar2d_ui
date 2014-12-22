@@ -26,9 +26,12 @@
 -- Standard library imports --
 local assert = assert
 local ceil = math.ceil
+local getmetatable = getmetatable
 local gsub = string.gsub
 local sub = string.sub
+local setmetatable = setmetatable
 local tonumber = tonumber
+local type = type
 
 -- Modules --
 local layout = require("corona_ui.utils.layout")
@@ -37,11 +40,72 @@ local layout = require("corona_ui.utils.layout")
 local display = display
 
 -- Cached module references --
+local _AddProperties_Metatable_
 local _EvalDims_
 local _EvalPos_
 
 -- Exports --
 local M = {}
+
+--- DOCME
+function M.AddProperties (object)
+	local mt = getmetatable(object)
+
+	_AddProperties_Metatable_(mt)
+
+	setmetatable(object, mt)
+end
+
+-- --
+local Index = {
+	left = layout.LeftOf, center_x = layout.CenterX, right = layout.RightOf,
+	bottom = layout.Below, center_y = layout.CenterY, top = layout.Above
+}
+
+-- --
+local NewIndex = {
+	left = layout.LeftAlignWith, center_x = layout.CenterAtX, right = layout.RightAlignWith,
+	bottom = layout.BottomAlignWith, center_y = layout.CenterAtY, top = layout.TopAlignWith
+}
+
+-- Forward declarations --
+local EvalNewIndex
+
+--- DOCME
+function M.AddProperties_Metatable (mt)
+	local index = assert(mt.__index, "Missing __index metamethod")
+	local newindex = assert(mt.__newindex, "Missing __newindex method")
+
+	-- Augment __index...
+	function mt.__index (object, k)
+		local prop = Index[k]
+
+		if prop then
+			return prop(object)
+		else
+			return index(object, k)
+		end
+	end
+
+	-- ...and __newindex.
+	function mt.__newindex (object, k, v)
+		local prop = NewIndex[k]
+
+		if type(v) == "string" then
+			v = EvalNewIndex(object, k, v)
+
+			if v == nil then
+				return
+			end
+		end
+
+		if prop then
+			prop(object, v)
+		else
+			newindex(object, k, v)
+		end
+	end
+end
 
 --
 local function ParseNumber (arg, dim, can_fail)
@@ -190,20 +254,6 @@ function M.ProcessWidgetParams_InPlace (params)
 end
 
 --
-local function EvalPut (object, arg, choices, coord)
-	if arg then
-		local dim = coord == "x" and "contentWidth" or "contentHeight"
-		local num = ParseNumber(arg, dim, true)
-
-		if num then
-			object[coord] = num
-		else
-			AuxEvalCoord(arg, choices, dim)(object, Num1, Num2)
-		end
-	end
-end
-
---
 local function ReversePut (func)
 	return {
 		function(object, delta)
@@ -214,7 +264,7 @@ end
 
 -- --
 local PutChoicesX = {
-	center = { layout.PutAtCenterX, 2 }, -- NYI
+	center = { layout.PutAtCenterX, 2 },
 	from_right = ReversePut(layout.PutLeftOf),
 	from_right_align = ReversePut(layout.RightAlignWith),
 	left_align = { layout.LeftAlignWith, 2 },
@@ -225,7 +275,7 @@ local PutChoicesX = {
 
 -- --
 local PutChoicesY = {
-	center = { layout.PutAtCenterY, 2 }, -- NYI
+	center = { layout.PutAtCenterY, 2 },
 	above = { layout.PutAbove, 2 },
 	bottom_align = { layout.BottomAlignWith, 2 },
 	below = { layout.PutBelow, 2 },
@@ -234,18 +284,53 @@ local PutChoicesY = {
 	top_align = { layout.TopAlignWith, 2 }
 }
 
+--
+local function EvalPut (object, arg, choices, coord, dim)
+	if arg then
+		local dim = choices == PutChoicesX and "contentWidth" or "contentHeight"
+		local num = ParseNumber(arg, dim, true)
+
+		if num then
+			object[coord] = num
+		else
+			AuxEvalCoord(arg, choices, dim)(object, Num1, Num2)
+		end
+	end
+end
+
 --- DOCME
 function M.PutObjectAt (object, x, y)
 	EvalPut(object, x, PutChoicesX, "x")
 	EvalPut(object, y, PutChoicesY, "y")
 end
 
+-- --
+local X = { x = true, left = true, center_x = true, right = true }
+
+-- --
+local Y = { y = true, bottom = true, center_y = true, top = true }
+
+--
+function EvalNewIndex (object, k, v)
+	if k == "width" or k == "height" then
+		local w, h = _EvalDims_(v, v)
+
+		return k == "width" and w or h
+	elseif X[k] then
+		EvalPut(object, v, PutChoicesX, k)
+	elseif Y[k] then
+		EvalPut(object, v, PutChoicesY, k)
+	else
+		return v
+	end
+end
+
 -- Cache module members.
+_AddProperties_Metatable_ = M.AddProperties_Metatable
 _EvalDims_ = M.EvalDims
 _EvalPos_ = M.EvalPos
 
 -- TODO: Pens, cursors?
--- center stuff...
 
 -- Export the module.
 return M
