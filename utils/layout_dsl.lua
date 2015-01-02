@@ -48,6 +48,7 @@ local _EvalPos_
 local M = {}
 
 --- DOCME
+-- @pobject object
 function M.AddProperties (object)
 	local mt = getmetatable(object)
 
@@ -56,13 +57,13 @@ function M.AddProperties (object)
 	setmetatable(object, mt)
 end
 
--- --
+-- Lookup for __index properties --
 local Index = {
 	left = layout.LeftOf, center_x = layout.CenterX, right = layout.RightOf,
 	bottom = layout.Below, center_y = layout.CenterY, top = layout.Above
 }
 
--- --
+-- Lookup for __newindex properties --
 local NewIndex = {
 	left = layout.LeftAlignWith, center_x = layout.CenterAtX, right = layout.RightAlignWith,
 	bottom = layout.BottomAlignWith, center_y = layout.CenterAtY, top = layout.TopAlignWith
@@ -72,6 +73,7 @@ local NewIndex = {
 local EvalNewIndex
 
 --- DOCME
+-- @ptable mt
 function M.AddProperties_Metatable (mt)
 	local index = assert(mt.__index, "Missing __index metamethod")
 	local newindex = assert(mt.__newindex, "Missing __newindex method")
@@ -125,6 +127,10 @@ local function ParseNumber (arg, dim, can_fail)
 end
 
 --- DOCME
+-- ???
+-- ???
+-- @treturn ?|number|nil
+-- @treturn ?|number|nil
 function M.EvalDims (w, h)
 	w = w and ceil(ParseNumber(w, "contentWidth")) or nil
 	h = h and ceil(ParseNumber(h, "contentHeight")) or nil
@@ -214,6 +220,10 @@ local ChoicesY = {
 }
 
 --- DOCME
+-- ???
+-- ???
+-- @treturn ?|number|nil
+-- @treturn ?|number|nil
 function M.EvalPos (x, y)
 	x = x and EvalBasic(x, ChoicesX, "contentWidth")
 	y = y and EvalBasic(y, ChoicesY, "contentHeight")
@@ -232,6 +242,11 @@ local function AuxProcessWidgetParams (params, t)
 end
 
 --- DOCME
+-- @ptable[opt] params
+-- @ptable[opt] t
+-- @treturn ?|table|nil
+-- @treturn ?|number|nil
+-- @treturn ?|number|nil
 function M.ProcessWidgetParams (params, t)
 	local x, y
 
@@ -243,6 +258,10 @@ function M.ProcessWidgetParams (params, t)
 end
 
 --- DOCME
+-- @ptable[opt] params
+-- @treturn ?|table|nil
+-- @treturn ?|number|nil
+-- @treturn ?|number|nil
 function M.ProcessWidgetParams_InPlace (params)
 	local t, x, y
 
@@ -299,6 +318,9 @@ local function EvalPut (object, arg, choices, coord, dim)
 end
 
 --- DOCME
+-- @pobject object
+-- ???
+-- ???
 function M.PutObjectAt (object, x, y)
 	EvalPut(object, x, PutChoicesX, "x")
 	EvalPut(object, y, PutChoicesY, "y")
@@ -310,18 +332,18 @@ local X = { x = true, left = true, center_x = true, right = true }
 -- --
 local Y = { y = true, bottom = true, center_y = true, top = true }
 
---
+-- Helper to evaluate a __newindex'd property
 function EvalNewIndex (object, k, v)
 	if k == "width" or k == "height" then
 		local w, h = _EvalDims_(v, v)
 
-		return k == "width" and w or h
+		return k == "width" and w or h -- Let the original __newindex take it from here
 	elseif X[k] then
-		EvalPut(object, v, PutChoicesX, k)
+		EvalPut(object, v, PutChoicesX, k) -- All done, so return nothing
 	elseif Y[k] then
-		EvalPut(object, v, PutChoicesY, k)
+		EvalPut(object, v, PutChoicesY, k) -- Ditto
 	else
-		return v
+		return v -- Unhandled; just let the original __newindex handle it
 	end
 end
 

@@ -1,4 +1,18 @@
 --- Utilities for layout handling.
+--
+-- These are designed to allow layout decisions and queries, without worrying about the
+-- anchor points of the objects in question. In many cases, positions may be substituted
+-- for objects, as well.
+--
+-- With respect to this module, a **Number** may be any of the following:
+--
+-- * A number, or a string that @{tonumber} is able to convert. These values are used as is.
+-- * A string of the form _amount_**"%"**, where _amount_ resolves to the indicated percent
+-- of the content width or height.
+-- * **nil**, which resolves to 0.
+--
+-- TODO: Where two objects are concerned, layout should be able to handle mixed parents
+-- TODO: Positions should respect parent's positions, and not assume screen coordiantes
 
 --
 -- Permission is hereby granted, free of charge, to any person obtaining
@@ -49,18 +63,7 @@ local _RightOf_
 -- Exports --
 local M = {}
 
-
---
-local function AnchorX (object, t)
-	return object.x + t * object.contentWidth
-end
-
---
-local function AnchorY (object, t)
-	return object.y + t * object.contentHeight
-end
-
---
+-- Resolves a Number (most often being a delta) to a value
 local function Delta (n, dim)
 	if type(n) ~= "string" then
 		return n or 0
@@ -71,91 +74,111 @@ local function Delta (n, dim)
 	end
 end
 
---
+-- Helper for horizontal deltas...
 local function DX (n)
 	return Delta(n, "contentWidth")
 end
 
---
+-- ...and vertical ones
 local function DY (n)
 	return Delta(n, "contentHeight")
 end
 
---
+-- Is the object not a group?
 local function NonGroup (object)
 	return object._type ~= "GroupObject"
 end
 
---
+-- Is the object a number, or can it be coerced / defaulted to one?
 local function Number (object)
 	local otype = type(object)
 
 	return object == nil or otype == "string" or otype == "number"
 end
 
---
+-- Helper to get an x-coordinate relative to a position, in terms of width...
+local function RelativeX (object, t)
+	return object.x + t * object.contentWidth
+end
+
+-- ...and y-coordinate, in terms of height
+local function RelativeY (object, t)
+	return object.y + t * object.contentHeight
+end
+
+-- Finds the y-coordinate at the bottom of an object; Numbers resolve like deltas, directly to themselves
 local function BottomY (object)
 	if Number(object) then
 		return DY(object)
 	elseif NonGroup(object) then
-		return AnchorY(object, 1 - object.anchorY)
+		return RelativeY(object, 1 - object.anchorY)
 	else
 		return object.contentBounds.yMax
 	end
 end
 
---
+-- Finds the x-coordinate at the left side of an object; Numbers behave as per BottomY
 local function LeftX (object)
 	if Number(object) then
 		return DX(object)
 	elseif NonGroup(object) then
-		return AnchorX(object, -object.anchorX)
+		return RelativeX(object, -object.anchorX)
 	else
 		return object.contentBounds.xMin
 	end
 end
 
---
+-- Finds the x-coordinate at the right side of an object; Numbers behave as per BottomY
 local function RightX (object)
 	if Number(object) then
 		return DX(object)
 	elseif NonGroup(object) then
-		return AnchorX(object, 1 - object.anchorX)
+		return RelativeX(object, 1 - object.anchorX)
 	else
 		return object.contentBounds.xMax
 	end
 end
 
---
+-- Finds the y-coordinate at the top of an object; Numbers behave as per BottomY
 local function TopY (object)
 	if Number(object) then
 		return DY(object)
 	elseif NonGroup(object) then
-		return AnchorY(object, -object.anchorY)
+		return RelativeY(object, -object.anchorY)
 	else
 		return object.contentBounds.yMin
 	end
 end
 
---- DOCME
+--- Finds the y-coordinate above an object or position.
+-- @tparam ?|DisplayObject|Number ref Reference object or y-coordinate.
+-- @tparam Number[opt] dy Displacement from the "above" position.
+-- @treturn number Final result, i.e. y-coordinate plus any displacement.
 function M.Above (ref, dy)
 	return floor(TopY(ref) + DY(dy))
 end
 
---- DOCME
+--- Finds the y-coordinate below an object or position.
+-- @tparam ?|DisplayObject|Number ref Reference object or y-coordinate.
+-- @tparam Number[opt] dy Displacement from the "below" position.
+-- @treturn number Final result, i.e. y-coordinate plus any displacement.
 function M.Below (ref, dy)
 	return floor(BottomY(ref) + DY(dy))
 end
 
---- DOCME
+--- Assigns an object's y-coordinate so that its bottom aligns with either the bottom of a
+-- reference object or a y-coordinate.
+-- @pobject object Object to align.
+-- @tparam ?|DisplayObject|Number ref Reference object or y-coordinate.
+-- @tparam Number[opt] dy Displacement from the aligned position.
 function M.BottomAlignWith (object, ref, dy)
 	_PutAbove_(object, _Below_(ref), dy)
 end
 
---
+-- Finds the x-coordinate at the center of an object...
 local function CenterX (object)
 	if NonGroup(object) then
-		return AnchorX(object, .5 - object.anchorX)
+		return RelativeX(object, .5 - object.anchorX)
 	else
 		local bounds = object.contentBounds
 
@@ -163,10 +186,10 @@ local function CenterX (object)
 	end
 end
 
---
+-- ...and the y-coordinate
 local function CenterY (object)
 	if NonGroup(object) then
-		return AnchorY(object, .5 - object.anchorY)
+		return RelativeY(object, .5 - object.anchorY)
 	else
 		local bounds = object.contentBounds
 
@@ -174,88 +197,124 @@ local function CenterY (object)
 	end
 end
 
---
+-- Aligns an object's center x-coordinate to an x-coordinate (plus optional delta)...
 local function PutCenterAtX (object, x, dx)
 	object.x = floor(object.x + DX(x) - CenterX(object) + DX(dx))
 end
 
---
+-- ...and aligns the y-coordinate, likewise
 local function PutCenterAtY (object, y, dy)
 	object.y = floor(object.y + DY(y) - CenterY(object) + DY(dy))
 end
 
---
+-- Centers an object horizontally at the content center x-coordinate...
 local function PutAtContentCenterX (object, dx)
 	PutCenterAtX(object, display.contentCenterX, dx)
 end
 
---
+-- ...and vertically at the y-coordinate
 local function PutAtContentCenterY (object, dy)
 	PutCenterAtY(object, display.contentCenterY, dy)
 end
 
---- DOCME
+--- Assigns an object's x- and y-coordinates so that its center aligns with the center of a
+-- reference object.
+-- @pobject object Object to align.
+-- @pobject ref_object Reference object.
+-- @tparam Number[opt] dx Displacement from the aligned position's x-coordinate...
+-- @tparam Number[opt] dy ...and from its y-coordinate.
 function M.CenterAlignWith (object, ref_object, dx, dy)
 	_CenterAt_(object, _CenterOf_(ref_object, dx, dy))
 end
 
---- DOCME
+--- Assigns an object's x- and y-coordinates so that its center is at a position.
+-- @pobject object Object to center.
+-- @tparam Number[opt] x Position x-coordinate...
+-- @tparam Number[opt] y ...and y-coordinate.
+-- @tparam Number[opt] dx Displacement from the center's x-coordinate...
+-- @tparam Number[opt] dy ...and from its y-coordinate.
 function M.CenterAt (object, x, y, dx, dy)
 	PutCenterAtX(object, x, dx)
 	PutCenterAtY(object, y, dy)
 end
 
---- DOCME
+--- Variant of @{CenterAt} that only assigns the x-coordinate.
+-- @pobject object Object to center.
+-- @tparam Number[opt] x Position x-coordinate.
+-- @tparam Number[opt] dx Displacement from the x-coordinate.
 function M.CenterAtX (object, x, dx)
 	PutCenterAtY(object, x, dx)
 end
 
---- DOCME
+--- Variant of @{CenterAt} that only assigns the y-coordinate.
+-- @pobject object Object to center.
+-- @tparam Number[opt] y Position y-coordinate.
+-- @tparam Number[opt] dy Displacement from the y-coordinate.
 function M.CenterAtY (object, y, dy)
 	PutCenterAtY(object, y, dy)
 end
 
---- DOCME
+--- Finds the x- and y-coordinates of an object's center.
+-- @pobject object Object to query.
+-- @tparam Number[opt] dx Displacement from the "center" position, x-coordinate...
+-- @tparam Number[opt] dy ...and the y-coordinate.
+-- @treturn number Final result, i.e. x-coordinate plus any displacement...
+-- @treturn number ...and likewise, for the y-coordinate.
 function M.CenterOf (object, dx, dy)
 	return CenterX(object, dx), CenterY(object, dy)
 end
 
---- DOCME
+--- Variant of @{CenterOf} that only supplies the x-coordinate.
+-- @pobject object Object to query.
+-- @tparam Number[opt] dx Displacement from the "center" position.
+-- @treturn number Final result, i.e. x-coordinate plus any displacement.
 function M.CenterX (object, dx)
 	return CenterX(object, dx)
 end
 
---- DOCME
+--- Variant of @{CenterOf} that only supplies the y-coordinate.
+-- @pobject object Object to query.
+-- @tparam Number[opt] dy Displacement from the "center" position.
+-- @treturn number Final result, i.e. y-coordinate plus any displacement.
 function M.CenterY (object, dy)
 	return CenterY(object, dy)
 end
 
---- DOCME
-function M.CenterOf (object, dx, dy)
-	return CenterX(object, dx), CenterY(object, dy)
-end
-
---- DOCME
+--- Assigns an object's x-coordinate so that its left side aligns with either the left side
+-- of a reference object or an x-coordinate.
+-- @pobject object Object to align.
+-- @tparam ?|DisplayObject|Number ref Reference object or x-coordinate.
+-- @tparam Number[opt] dx Displacement from the aligned position.
 function M.LeftAlignWith (object, ref, dx)
 	_PutRightOf_(object, _LeftOf_(ref), dx)
 end
 
---- DOCME
+--- Finds the x-coordinate to the left of an object or position.
+-- @tparam ?|DisplayObject|Number ref Reference object or x-coordinate.
+-- @tparam Number[opt] dx Displacement from the "left of" position.
+-- @treturn number Final result, i.e. x-coordinate plus any displacement.
 function M.LeftOf (ref, dx)
 	return floor(LeftX(ref) + DX(dx))
 end
 
---- DOCME
+--- Moves an object along the x-axis relative to its current position.
+-- @pobject object Object to move.
+-- @tparam Number[opt] dx Displacement.
 function M.MoveX (object, dx)
 	object.x = floor(object.x + DX(dx))
 end
 
---- DOCME
+--- Moves an object along the y-axis relative to its current position.
+-- @pobject object Object to move.
+-- @tparam Number[opt] dy Displacement.
 function M.MoveY (object, dy)
 	object.y = floor(object.y + DY(dy))
 end
 
 --- DOCME
+-- @pobject object
+-- @tparam ?|DisplayObject|Number ref Reference object or y-coordinate.
+-- @tparam Number[opt] dy
 function M.PutAbove (object, ref, dy)
 	local y = TopY(ref)
 
@@ -268,48 +327,70 @@ function M.PutAbove (object, ref, dy)
 	object.y = floor(y + DY(dy))
 end
 
---- DOCME
+--- Centers an object horizontally and bottom-aligns it to the content bottom.
+-- @pobject object Object to position.
+-- @tparam Number[opt] dx Displacement from the center.
+-- @tparam Number[opt] dy Displacement from the bottom.
 function M.PutAtBottomCenter (object, dx, dy)
 	PutAtContentCenterX(object, dx)
 	_PutAbove_(object, display.contentHeight, dy)
 end
 
 --- DOCME
+-- @pobject object
+-- @tparam Number[opt] dx
+-- @tparam Number[opt] dy
 function M.PutAtBottomLeft (object, dx, dy)
 	_PutRightOf_(object, 0, dx)
 	_PutAbove_(object, display.contentHeight, dy)
 end
 
 --- DOCME
+-- @pobject object
+-- @tparam Number[opt] dx
+-- @tparam Number[opt] dy
 function M.PutAtBottomRight (object, dx, dy)
 	_PutLeftOf_(object, display.contentWidth, dx)
 	_PutAbove_(object, display.contentHeight, dy)
 end
 
 --- DOCME
+-- @pobject object
+-- @tparam Number[opt] dx
+-- @tparam Number[opt] dy
 function M.PutAtCenter (object, dx, dy)
 	PutAtContentCenterX(object, dx)
 	PutAtContentCenterY(object, dy)
 end
 
 --- DOCME
+-- @pobject object
+-- @tparam Number[opt] dx
+-- @tparam Number[opt] dy
 function M.PutAtCenterLeft (object, dx, dy)
 	_PutRightOf_(object, 0, dx)
 	PutAtContentCenterY(object, dy)
 end
 
 --- DOCME
+-- @pobject object
+-- @tparam Number[opt] dx
+-- @tparam Number[opt] dy
 function M.PutAtCenterRight (object, dx, dy)
 	_PutLeftOf_(object, display.contentWidth, dx)
 	PutAtContentCenterY(object, dy)
 end
 
---- DOCME
+--- Variant of @{PutAtCenter} that only assigns the x-coordinate.
+-- @pobject object
+-- @tparam Number[opt] dx
 function M.PutAtCenterX (object, dx)
 	PutAtContentCenterX(object, dx)
 end
 
 --- DOCME
+-- @pobject object
+-- @tparam Number[opt] dy
 function M.PutAtCenterY (object, dy)
 	PutAtContentCenterY(object, dy)
 end
@@ -366,24 +447,36 @@ function M.PutAtFirstHit (object, ref_object, choices, center_on_fail)
 end
 
 --- DOCME
+-- @pobject object
+-- @tparam Number[opt] dx
+-- @tparam Number[opt] dy
 function M.PutAtTopCenter (object, dx, dy)
 	PutAtContentCenterX(object, dx)
 	_PutAbove_(object, 0, dy)
 end
 
 --- DOCME
+-- @pobject object
+-- @tparam Number[opt] dx
+-- @tparam Number[opt] dy
 function M.PutAtTopLeft (object, dx, dy)
 	_PutRightOf_(object, 0, dx)
 	_PutBelow_(object, 0, dy)
 end
 
 --- DOCME
+-- @pobject object
+-- @tparam Number[opt] dx
+-- @tparam Number[opt] dy
 function M.PutAtTopRight (object, dx, dy)
 	_PutLeftOf_(object, display.contentWidth, dx)
 	_PutBelow_(object, 0, dy)
 end
 
 --- DOCME
+-- @pobject object
+-- @tparam ?|DisplayObject|Number ref Reference object or y-coordinate.
+-- @tparam Number[opt] dy
 function M.PutBelow (object, ref, dy)
 	local y = BottomY(ref)
 
@@ -397,6 +490,9 @@ function M.PutBelow (object, ref, dy)
 end
 
 --- DOCME
+-- @pobject object
+-- @tparam ?|DisplayObject|Number ref Reference object or x-coordinate.
+-- @tparam Number[opt] dx
 function M.PutLeftOf (object, ref, dx)
 	local x = LeftX(ref)
 
@@ -410,6 +506,9 @@ function M.PutLeftOf (object, ref, dx)
 end
 
 --- DOCME
+-- @pobject object
+-- @tparam ?|DisplayObject|Number ref Reference object or x-coordinate.
+-- @tparam Number[opt] dx
 function M.PutRightOf (object, ref, dx)
 	local x = RightX(ref)
 
@@ -422,17 +521,28 @@ function M.PutRightOf (object, ref, dx)
 	object.x = floor(x + DX(dx))
 end
 
---- DOCME
+--- Assigns an object's x-coordinate so that its right side aligns with either the right side
+-- of a reference object or an x-coordinate.
+-- @pobject object Object to align.
+-- @tparam ?|DisplayObject|Number ref Reference object or x-coordinate.
+-- @tparam Number[opt] dx Displacement from the aligned position.
 function M.RightAlignWith (object, ref, dx)
 	_PutLeftOf_(object, _RightOf_(ref), dx)
 end
 
---- DOCME
+--- Finds the x-coordinate to the right of an object or position.
+-- @tparam ?|DisplayObject|Number ref Reference object or x-coordinate.
+-- @tparam Number[opt] dx Displacement from the "right of" position.
+-- @treturn number Final result, i.e. x-coordinate plus any displacement.
 function M.RightOf (ref, dx)
 	return floor(RightX(ref) + DX(dx))
 end
 
---- DOCME
+--- Assigns an object's y-coordinate so that its top aligns with either the top of a
+-- reference object or a y-coordinate.
+-- @pobject object Object to align.
+-- @tparam ?|DisplayObject|Number ref Reference object or y-coordinate.
+-- @tparam Number[opt] dy Displacement from the aligned position.
 function M.TopAlignWith (object, ref, dy)
 	_PutBelow_(object, _Above_(ref), dy)
 end
