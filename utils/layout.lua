@@ -311,10 +311,11 @@ function M.MoveY (object, dy)
 	object.y = floor(object.y + DY(dy))
 end
 
---- DOCME
--- @pobject object
+--- Assigns an object's y-coordinate such that its bottom is aligned with the top of a
+-- reference object or a y-coordinate.
+-- @pobject object Object to position.
 -- @tparam ?|DisplayObject|Number ref Reference object or y-coordinate.
--- @tparam Number[opt] dy
+-- @tparam Number[opt] dy Displacement from the "above" position.
 function M.PutAbove (object, ref, dy)
 	local y = TopY(ref)
 
@@ -327,7 +328,7 @@ function M.PutAbove (object, ref, dy)
 	object.y = floor(y + DY(dy))
 end
 
---- Centers an object horizontally and bottom-aligns it to the content bottom.
+--- Centers an object horizontally and bottom-aligns it to the bottom of the content.
 -- @pobject object Object to position.
 -- @tparam Number[opt] dx Displacement from the center.
 -- @tparam Number[opt] dy Displacement from the bottom.
@@ -336,61 +337,63 @@ function M.PutAtBottomCenter (object, dx, dy)
 	_PutAbove_(object, display.contentHeight, dy)
 end
 
---- DOCME
--- @pobject object
--- @tparam Number[opt] dx
--- @tparam Number[opt] dy
+--- Left-aligns an object to the left side of the content and bottom-aligns it to the
+-- bottom of the content.
+-- @pobject object Object to position.
+-- @tparam Number[opt] dx Displacement from the left side.
+-- @tparam Number[opt] dy Displacement from the bottom.
 function M.PutAtBottomLeft (object, dx, dy)
 	_PutRightOf_(object, 0, dx)
 	_PutAbove_(object, display.contentHeight, dy)
 end
 
---- DOCME
--- @pobject object
--- @tparam Number[opt] dx
--- @tparam Number[opt] dy
+--- Right-aligns an object to the right side of the content and bottom-aligns it to the
+-- bottom of the content.
+-- @pobject object Object to position.
+-- @tparam Number[opt] dx Displacement from the right side.
+-- @tparam Number[opt] dy Displacement from the bottom.
 function M.PutAtBottomRight (object, dx, dy)
 	_PutLeftOf_(object, display.contentWidth, dx)
 	_PutAbove_(object, display.contentHeight, dy)
 end
 
---- DOCME
--- @pobject object
--- @tparam Number[opt] dx
--- @tparam Number[opt] dy
+--- Assigns an object's x- and y-coordinates so that its center is at the content center.
+-- @pobject object Object to center.
+-- @tparam Number[opt] dx Displacement from the center position's x-coordinate...
+-- @tparam Number[opt] dy ...and from its y-coordinate.
 function M.PutAtCenter (object, dx, dy)
 	PutAtContentCenterX(object, dx)
 	PutAtContentCenterY(object, dy)
 end
 
---- DOCME
--- @pobject object
--- @tparam Number[opt] dx
--- @tparam Number[opt] dy
+--- Left-aligns an object to the left side of the content and centers it vertically.
+-- @pobject object Object to position.
+-- @tparam Number[opt] dx Displacement from the left side.
+-- @tparam Number[opt] dy Displacement from the center.
 function M.PutAtCenterLeft (object, dx, dy)
 	_PutRightOf_(object, 0, dx)
 	PutAtContentCenterY(object, dy)
 end
 
---- DOCME
--- @pobject object
--- @tparam Number[opt] dx
--- @tparam Number[opt] dy
+--- Right-aligns an object to the right side of the content and centers it vertically.
+-- @pobject object Object to position.
+-- @tparam Number[opt] dx Displacement from the right side.
+-- @tparam Number[opt] dy Displacement from the center.
 function M.PutAtCenterRight (object, dx, dy)
 	_PutLeftOf_(object, display.contentWidth, dx)
 	PutAtContentCenterY(object, dy)
 end
 
 --- Variant of @{PutAtCenter} that only assigns the x-coordinate.
--- @pobject object
--- @tparam Number[opt] dx
+-- @pobject object Object to center.
+-- @tparam Number[opt] dx Displacement from the x-coordinate.
 function M.PutAtCenterX (object, dx)
 	PutAtContentCenterX(object, dx)
 end
 
---- DOCME
--- @pobject object
--- @tparam Number[opt] dy
+--- Variant of @{PutAtCenter} that only assigns the y-coordinate.
+-- @pobject object Object to center.
+-- @tparam Number[opt] dy Displacement from the y-coordinate.
 function M.PutAtCenterY (object, dy)
 	PutAtContentCenterY(object, dy)
 end
@@ -446,37 +449,40 @@ function M.PutAtFirstHit (object, ref_object, choices, center_on_fail)
 	end
 end
 
---- DOCME
--- @pobject object
--- @tparam Number[opt] dx
--- @tparam Number[opt] dy
+--- Centers an object horizontally and top-aligns it to the top of the content.
+-- @pobject object Object to position.
+-- @tparam Number[opt] dx Displacement from the center.
+-- @tparam Number[opt] dy Displacement from the top.
 function M.PutAtTopCenter (object, dx, dy)
 	PutAtContentCenterX(object, dx)
 	_PutAbove_(object, 0, dy)
 end
 
---- DOCME
--- @pobject object
--- @tparam Number[opt] dx
--- @tparam Number[opt] dy
+--- Left-aligns an object to the left side of the content and top-aligns it to the top of
+-- the content.
+-- @pobject object Object to position.
+-- @tparam Number[opt] dx Displacement from the left side.
+-- @tparam Number[opt] dy Displacement from the top.
 function M.PutAtTopLeft (object, dx, dy)
 	_PutRightOf_(object, 0, dx)
 	_PutBelow_(object, 0, dy)
 end
 
---- DOCME
--- @pobject object
--- @tparam Number[opt] dx
--- @tparam Number[opt] dy
+--- Right-aligns an object to the right side of the content and top-aligns it to the top
+-- of the content.
+-- @pobject object Object to position.
+-- @tparam Number[opt] dx Displacement from the right side.
+-- @tparam Number[opt] dy Displacement from the top.
 function M.PutAtTopRight (object, dx, dy)
 	_PutLeftOf_(object, display.contentWidth, dx)
 	_PutBelow_(object, 0, dy)
 end
 
---- DOCME
--- @pobject object
+--- Assigns an object's y-coordinate such that its top is aligned with the bottom of a
+-- reference object or a y-coordinate.
+-- @pobject object Object to position.
 -- @tparam ?|DisplayObject|Number ref Reference object or y-coordinate.
--- @tparam Number[opt] dy
+-- @tparam Number[opt] dy Displacement from the "below" position.
 function M.PutBelow (object, ref, dy)
 	local y = BottomY(ref)
 
@@ -489,10 +495,11 @@ function M.PutBelow (object, ref, dy)
 	object.y = floor(y + DY(dy))
 end
 
---- DOCME
--- @pobject object
+--- Assigns an object's x-coordinate so that its right side is to the left of a reference
+-- object or an x-coordinate.
+-- @pobject object Object to position.
 -- @tparam ?|DisplayObject|Number ref Reference object or x-coordinate.
--- @tparam Number[opt] dx
+-- @tparam Number[opt] dx Displacement from the "left of" position.
 function M.PutLeftOf (object, ref, dx)
 	local x = LeftX(ref)
 
@@ -505,10 +512,11 @@ function M.PutLeftOf (object, ref, dx)
 	object.x = floor(x + DX(dx))
 end
 
---- DOCME
--- @pobject object
+--- Assigns an object's x-coordinate so that its left side is to the right of a reference
+-- object or an x-coordinate.
+-- @pobject object Object to position.
 -- @tparam ?|DisplayObject|Number ref Reference object or x-coordinate.
--- @tparam Number[opt] dx
+-- @tparam Number[opt] dx Displacement from the "right of" position.
 function M.PutRightOf (object, ref, dx)
 	local x = RightX(ref)
 
