@@ -126,6 +126,10 @@ function M.AddNet (group, object, opts)
 end
 
 --- DOCME
+-- @pgroup group
+-- @pobject object
+-- @ptable[opt] opts
+-- @treturn DisplayObject net
 function M.AddNet_Hide (group, object, opts)
 	local net = _AddNet_(group, object, opts)
 
@@ -137,7 +141,10 @@ end
 --
 local function DefTouch () return true end
 
---
+--- DOCME
+-- @pgroup group
+-- @ptable[opt] opts
+-- @treturn DisplayObject blocker
 function M.Blocker (group, opts)
 	local blocker = Rect(group, DefTouch)
 
@@ -181,6 +188,11 @@ end
 -- ^^^ TODO: Can this and AddNet() be unified?
 
 --- DOCME
+-- @pobject object
+-- @callable on_close
+-- @bool blocking
+-- @treturn DisplayObject stub
+-- @treturn DisplayObject net
 function M.HoistOntoStage (object, on_close, blocking)
 	--
 	local pos, stub = FindInGroup(object.parent, object), display.newRect(0, 0, 1, 1)
@@ -207,6 +219,7 @@ function M.HoistOntoStage (object, on_close, blocking)
 end
 
 --- DOCME
+-- @pobject object
 -- @pobject stub
 -- @pobject[opt] net
 function M.RestoreAfterHoist (object, stub, net)

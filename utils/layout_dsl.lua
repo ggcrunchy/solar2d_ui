@@ -1,11 +1,11 @@
---- Implements a small domain-specific language, on top of the layout system, with the intent
--- of making positions and dimensions more expressive.
+--- Implements a small domain-specific language on top of the layout system, in order to
+-- make positions and dimensions more expressive.
 --
 -- With respect to this module, a **DSL_Number** may be either of the following:
 --
 -- * A number, or a string that @{tonumber} is able to convert. These values are used as is.
--- * A string of the form _amount_**"%"**, where _amount_ resolves to the indicated percent
--- of the content width or height.
+-- * A string of the form **"AMOUNT%"**, e.g. `"20%"` or `"-4.2%"`, which resolves to the
+-- indicated percent of the content width or height.
 
 --
 -- Permission is hereby granted, free of charge, to any person obtaining
@@ -137,8 +137,8 @@ local function ParseNumber (arg, dim, can_fail)
 end
 
 --- Normalizes width and height values.
--- @tparam DSL_Number[opt] w If present, the width (e.g. 20, "10%") to normalize...
--- @tparam DSL_Number[opt] h ...and likewise, the height.
+-- @tparam[opt] DSL_Number w If present, the width (e.g. 20, "10%") to normalize...
+-- @tparam[opt] DSL_Number h ...and likewise, the height.
 -- @treturn ?|number|nil If _w_ is absent, **nil**. Otherwise, the evaluated width.
 -- @treturn ?|number|nil As per _w_, for the height.
 function M.EvalDims (w, h)
@@ -229,7 +229,7 @@ local ChoicesY = {
 }
 
 --- Normalizes position values.
--- @tparam ?|DSL_Number|string[opt] x If _x_ is a **DSL_Number**, it evaluates as described
+-- @tparam[opt] ?|DSL_Number|string x If _x_ is a **DSL_Number**, it evaluates as described
 -- in the summary. Otherwise, if it is a string, the following commands are available:
 --
 -- * **"at xpos dx"**: Evaluates both _xpos_ and _dx_ and returns their sum.
@@ -239,7 +239,7 @@ local ChoicesY = {
 -- In the above, _xpos_ and _dx_ are of type **DSL_Number**, and resolve to 0 when absent.
 --
 -- Example commands: `"at 20 5%"`, `"center 10%"`, `"from_right -20"`, `"from_right -3.5%"`.
--- @tparam ?|DSL_Number|string[opt] y As per _x_. The corresponding choices are **"at"**,
+-- @tparam[opt] ?|DSL_Number|string y As per _x_. The corresponding choices are **"at"**,
 -- **"center"**, and **"from_bottom"**, with the obvious changes.
 -- @treturn ?|number|nil If _x_ is absent, **nil**. Otherwise, the evaluated x-coordinate.
 -- @treturn ?|number|nil As per _x_.
@@ -277,7 +277,7 @@ end
 --
 -- If **x** (or **y**) is present, any **left** (or **top**) field is removed from _t_.
 -- Otherwise, that field is evaluated, cf. @{EvalPos}, and added to _t_.
--- TODO: The width / height are not used, say, to allow from-right/bottom alignment since
+-- @todo: The width / height are not used, say, to allow from-right/bottom alignment since
 -- they aren't officially known until widget creation, and likewise this motivates the
 -- separate x, y handling... however the widgets are probably predictable enough in general
 -- to relax this, with some relevant notes
@@ -352,20 +352,20 @@ end
 
 --- Puts an object at a given normalized position.
 -- @pobject object Object to position.
--- @tparam ?|DSL_Number|string|nil If absent, the x-coordinate is untouched. Otherwise,
+-- @tparam ?|DSL_Number|string|nil x If absent, the x-coordinate is untouched. Otherwise,
 -- the number is evaluated as in @{EvalPos} and assigned to the x-coordinate. Available
 -- commands, and the corresponding x-coordinate, are:
 --
 -- * **"center dx"**: The content center's x-coordinate.
 -- * **"from_right dx"**: The right side of the content.
--- * **"from_right_align dx"**: The value that aligns the right side of _object_ to the right
+-- * **"from\_right\_align dx"**: The value that aligns the right side of _object_ to the right
 -- side of the content.
 -- * **"left_of xpos dx"**: The value that puts the right side of _object_ at _xpos_.
 -- * **"right_of xpos dx"**: The value that puts the left side of _object_ at _xpos_.
 --
 -- In each case, _dx_ is evaluated and added to the coordinate; the sum is the final result.
--- @tparam ?|DSL_Number|string|nil As per _x_. The corresponding choices are **"center"**,
--- **"from_bottom"**, **"from_bottom_align"**, **"above"**, and **"below"**, with the obvious changes.
+-- @tparam ?|DSL_Number|string|nil y As per _x_. The corresponding choices are **"center"**,
+-- **"from_bottom"**, **"from\_bottom\_align"**, **"above"**, and **"below"**, with the obvious changes.
 function M.PutObjectAt (object, x, y)
 	EvalPut(object, x, PutChoicesX, "x")
 	EvalPut(object, y, PutChoicesY, "y")
