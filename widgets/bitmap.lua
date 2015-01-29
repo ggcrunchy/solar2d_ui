@@ -106,7 +106,7 @@ local function Dispatch (name, target)
 	Event.name = name
 	Event.target = target
 
-	target:dispatchEvent("name", Event)
+	target:dispatchEvent(Event)
 
 	Event.target = nil
 end
