@@ -254,14 +254,16 @@ function M.OptionsHGrid (group, x, y, w, h, text, opts)
 
 		sprite_index = current
 
-		sheet.SetSpriteSetImageFrame(parts[1], Rotate(true))
-		sheet.SetSpriteSetImageFrame(parts[2], sprite_index)
-		sheet.SetSpriteSetImageFrame(parts[3], Rotate(false))
+		if #parts > 0 then
+			sheet.SetSpriteSetImageFrame(parts[1], Rotate(true))
+			sheet.SetSpriteSetImageFrame(parts[2], sprite_index)
+			sheet.SetSpriteSetImageFrame(parts[3], Rotate(false))
 
-		for i, part in ipairs(parts) do
-			part.x = X(i, dw)
+			for i, part in ipairs(parts) do
+				part.x = X(i, dw)
 
-			SetScale(part, i)
+				SetScale(part, i)
+			end
 		end
 	end
 
