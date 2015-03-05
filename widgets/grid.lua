@@ -31,8 +31,8 @@ local remove = table.remove
 
 -- Modules --
 local array_index = require("tektite_core.array.index")
+local bresenham = require("iterator_ops.grid.bresenham")
 local colors = require("corona_ui.utils.color")
-local grid_iterators = require("iterator_ops.grid")
 local layout_dsl = require("corona_ui.utils.layout_dsl")
 local range = require("tektite_core.number.range")
 local skins = require("corona_ui.utils.skin")
@@ -105,7 +105,7 @@ end, function(event, back)
 	local first, dw, dh = true, GetCellDims(back)
 	local context, coff, roff = event.context, GetOffsets(back)
 
-	for col, row in grid_iterators.LineIter(back.m_col, back.m_row, end_col, end_row) do
+	for col, row in bresenham.LineIter(back.m_col, back.m_row, end_col, end_row) do
 		-- Invoke the listener on each new traversed cell.
 		if not first then
 			Dispatch(back, col, row, (col + coff) * dw, (row + roff) * dh, context, false)

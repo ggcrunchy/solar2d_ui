@@ -29,7 +29,7 @@ local max = math.max
 local tonumber = tonumber
 
 -- Modules --
-local grid_iterators = require("iterator_ops.grid")
+local bresenham = require("iterator_ops.grid.bresenham")
 
 -- Corona globals --
 local display = display
@@ -207,7 +207,7 @@ function M.TileImage (name, ncols, nrows, x1, y1, x2, y2)
 	-- of each column; accumulate these into the widths list.
 	local curcol, prevx = -1, x1
 
-	for col, xoff in grid_iterators.LineIter(1, x1, ncols, x2) do
+	for col, xoff in bresenham.LineIter(1, x1, ncols, x2) do
 		if col > curcol then
 			if col >= 2 then
 				Widths[col - 1], prevx = xoff - prevx, xoff
@@ -226,7 +226,7 @@ function M.TileImage (name, ncols, nrows, x1, y1, x2, y2)
 	-- row), so we can build all the frames along the row.
 	local frames, currow, prevy = {}, -1, y1
 
-	for row, yoff in grid_iterators.LineIter(1, y1, nrows, y2) do
+	for row, yoff in bresenham.LineIter(1, y1, nrows, y2) do
 		if row > currow then
 			if row >= 2 then
 				DoRow(name, frames, row - 1, ncols, x1, prevy, yoff - prevy)
