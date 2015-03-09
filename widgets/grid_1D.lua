@@ -34,7 +34,7 @@ local array_index = require("tektite_core.array.index")
 local button = require("corona_ui.widgets.button")
 local colors = require("corona_ui.utils.color")
 local layout_dsl = require("corona_ui.utils.layout_dsl")
-local sheet = require("corona_ui.utils.sheet")
+local sheet = require("corona_utils.sheet")
 local skins = require("corona_ui.utils.skin")
 local touch = require("corona_ui.utils.touch")
 
