@@ -128,11 +128,12 @@ end
 
 --
 local function UpdateCaret (info, str, pos)
--- local cc = require("corona_ui.utils.cursor")
--- print("CURSOR!", cc.GetCaretPosition(str, pos, info))
-	info.text, info.m_pos = sub(str.text, 1, pos), pos
+local cc = require("corona_ui.utils.cursor")
+local cpos = cc.GetPosition(str, pos, info)
+--	info.text, info.m_pos = sub(str.text, 1, pos), pos
+	info.m_pos = pos
 
-	layout.LeftAlignWith(info.parent:GetCaret(), str, #info.text > 0 and info.width or 0)
+	layout.LeftAlignWith(info.parent:GetCaret(), str, cpos)--#info.text > 0 and info.width or 0)
 end
 
 --- ^^ COULD be stretched to current character width, by taking difference between it and next character,
@@ -342,7 +343,8 @@ local function AuxEditable (group, x, y, opts)
 
 	--
 	local text, font, size = opts and opts.text or "", opts and opts.font or native.systemFontBold, opts and opts.size or 20
-	local str, ow, oh = display.newText(Editable, text, 0, 0, font, size), layout_dsl.EvalDims(opts and opts.width or 0, opts and opts.height or 0)
+local str, info = require("corona_ui.utils.cursor").NewText(Editable, text, 0, 0, font, size)
+	local --[[str, ]]ow, oh = --[[display.newText(Editable, text, 0, 0, font, size),]] layout_dsl.EvalDims(opts and opts.width or 0, opts and opts.height or 0)
 	local w, h, align = max(str.width, ow, 80), max(str.height, oh, 25), opts and opts.align
 
 	SetText(str, str.text, align, w)
@@ -358,9 +360,9 @@ local function AuxEditable (group, x, y, opts)
 	caret.isVisible = false
 
 	--
-	local info = display.newText(Editable, "", 0, 0, font, size)
+--	local info = display.newText(Editable, "", 0, 0, font, size)
 
-	info.isVisible, info.m_align, info.m_pos, info.m_width = false, align, #text, w
+--[[	info.isVisible, ]]info.m_align, info.m_pos, info.m_width = --[[false, ]]align, #text, w
 
 	--
 	local style, keys = opts and opts.style
