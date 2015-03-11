@@ -128,6 +128,8 @@ end
 
 --
 local function UpdateCaret (info, str, pos)
+-- local cc = require("corona_ui.utils.cursor")
+-- print("CURSOR!", cc.GetCaretPosition(str, pos, info))
 	info.text, info.m_pos = sub(str.text, 1, pos), pos
 
 	layout.LeftAlignWith(info.parent:GetCaret(), str, #info.text > 0 and info.width or 0)
