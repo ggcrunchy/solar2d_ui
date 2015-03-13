@@ -25,25 +25,24 @@
 
 -- Standard library imports --
 local format = string.format
+local gmatch = string.gmatch
 local sub = string.sub
+
+-- Modules --
+local layout = require("corona_ui.utils.layout")
 
 -- Corona globals --
 local display = display
 
+-- Cached module references --
+local _GetPosition_XY_
+
 -- Exports --
 local M = {}
-
--- --
-local Offsets = setmetatable({}, { __mode = "k" })
 
 --
 local function GetChar (text, pos)
 	return sub(text, pos, pos)
-end
-
---
-local function GetKey (size, penult, last, sep)
-	return format("%i%s%s%s%s", size, sep, penult, sep, last)
 end
 
 --
@@ -52,128 +51,164 @@ local function GetWidth (proxy, text)
 
 	return proxy.width
 end
-TT={}
+
 --
-local function GetOffset (offsets, proxy, key, most, full, last)--text, proxy, key, penult, last, pos)
-	local koff, most_w = offsets[key], GetWidth(proxy, most)--GetWidth(proxy, sub(text, 1, pos))
+local function ComputeOffset (proxy, penult, last)
+	local pw = GetWidth(proxy, penult)
+	local both_w = pw + GetWidth(proxy, last)
+	local last2_w = GetWidth(proxy, penult .. last)
 
---	if not koff then
-		local full_w, last_w = GetWidth(proxy, full), GetWidth(proxy, last)--sub(text, 1, pos + 1)), GetWidth(proxy, last)
-		local most_w_offseted = full_w - last_w
-TT[1]={"MOST, W", most, most_w}
-TT[2]={"FULL, W", full, full_w}
-TT[3]={"MOST_W_OFF", most_w_offseted}
-		koff = most_w_offseted - most_w
---print("KOFF", penult, last, koff, key, pos)
-		offsets[key] = koff
---	end
-
-	return koff
---	return most_w - koff
+	return last2_w - both_w, pw
 end
+
+--
+local function GetOffset (offsets, proxy, text, pos, size, sep)
+	sep = sep or ";"
+
+	local penult, last, pw = GetChar(text, pos), GetChar(text, pos + 1)
+	local key = format("%i%s%s%s%s", size, sep, penult, sep, last)
+	local koff = offsets[key]
+
+	if koff then
+		return koff
+	else
+		return ComputeOffset(proxy, penult, last)
+	end
+end
+
+-- --
+local Offsets = {}
+
+-- --
+local Proxies = {}
 
 --- DOCME
-function M.GetPosition (str, pos, proxy, sep)
+-- @tparam TextObject str
+-- @uint pos
+-- @string[opt=";"] sep
+-- @treturn uint P
+function M.GetOffset (str, pos, sep)
 	local text = str.text
 	local n = #text
-if false then--not AAA then
-	AAA=true
-local ca, cz = string.byte("a"), string.byte("z")
-local CA, CZ = string.byte("A"), string.byte("Z")
-local nn=0
-for ii = 1, 2 do
-	local ilo, ihi
-	if ii == 1 then
-		ilo, ihi = ca, cz
-	else
-		ilo, ihi = CA, CZ
-	end
-	for i = ilo, ihi do
-		local ic = string.char(i)
-		local iw = GetWidth(proxy, ic)
-		for jj = 1, 2 do
-			local jlo, jhi
-			if jj == 1 then
-				jlo, jhi = ca, cz
-			else
-				jlo, jhi = CA, CZ
-			end
-			for j = jlo, jhi do
-				local jc = string.char(j)
-				local jw = GetWidth(proxy, jc)
-				local sumw = GetWidth(proxy, ic .. jc)
-				if iw + jw ~= sumw then
-					print("DISCREP at", ic, jc, iw, jw, sumw)
-					nn=nn+1
-				end
-			end
-		end
-	end
-end
-print("N DISC", nn)
-print("WSP", GetWidth(proxy, " "))
-end
-	if n == 0 then
+
+	if n == 0 or pos == 0 then
 		return 0
 	else
-		local offsets, size, penult, last, most, full, a, b = Offsets[str], str.size
+		local proxy, size = Proxies[str], str.size
 
 		proxy.size = size
 
-		--
-		if pos == 0 then
-			return 0
-			--[[
-			penult, last = " ", GetChar(text, 1)
-			most, a, b = last, " ", last]]
-		elseif pos >= n then
-		return GetWidth(proxy, text)
-		--[[
-			penult, last = GetChar(text, n), " "
-			most, a, b = text, text, " "
-			]]
+		if pos >= n then
+			return GetWidth(proxy, text)
 		else
-			penult, last, most = GetChar(text, pos), GetChar(text, pos + 1), sub(text, 1, pos)
-			full = sub(text, 1, pos + 1)
-		end
+			local koff, pw = GetOffset(Offsets[str], proxy, text, pos, size, sep)
 
-		--
-		local key, most_w = GetKey(size, penult, last, sep or ";"), GetWidth(proxy, most)
-local aa=offsets[key]
-		local koff = offsets[key] or GetOffset(offsets, proxy, key, most, full or (a .. b), last)
-if true then--not aa then
-print("POS", pos)
-print("KEY", key)
-for i = 1, #TT do
-	print(unpack(TT[i]))
-end
-print("KOFF, POSITION", koff, most_w - koff)
-print("PENULT, LAST", penult, last)
-print("CURSOR", most_w - koff)
-print("")
-end
-		return most_w + koff -- tOffset(offsets, text, proxy, key, penult, last, pos)
+			if pos > 1 or not pw then
+				pw = GetWidth(proxy, sub(text, 1, pos))
+			end
+
+			return pw + koff
+		end
 	end
+end
+
+--- DOCME
+-- @tparam TextObject str
+-- @number x
+-- @number y
+-- @string[opt=";"] sep
+-- @treturn uint P
+function M.GetPosition_XY (str, x, y, sep)
+	local left = layout.LeftOf(str)
+
+	if x < left then
+		return 0
+	else
+		local proxy, size, text = Proxies[str], str.size, str.text
+
+		proxy.size = size
+
+		if x >= layout.RightOf(str) then
+			return GetWidth(proxy, text)
+		else
+			x = x - left
+
+			local pos, substr, prev = 0, ""
+
+			for char in gmatch(text, ".") do
+				if prev then
+					substr = substr .. char
+
+					local w = GetWidth(proxy, substr) + ComputeOffset(proxy, prev, char)
+
+					if x < w then
+						return pos
+					else
+						pos = pos + 1
+					end
+				end
+
+				prev = char
+			end
+
+			return pos
+		end
+	end
+end
+
+--- DOCME
+-- @tparam TextObject str
+-- @number x
+-- @number y
+-- @string[opt=";"] sep
+-- @treturn uint P
+function M.GetPosition_GlobalXY (str, x, y, sep)
+	x, y = str.parent:contentToLocal(x, y)
+
+	return _GetPosition_XY_(str, x, y, sep)
+end
+
+--- DOCME
+-- @tparam TextObject str
+-- @treturn ?|TextObject|nil X
+function M.GetProxy (str)
+	return Proxies[str]
+end
+
+--
+local function Cleanup (event)
+	Offsets[event.target], Proxies[event.target] = nil
 end
 
 --
 local function AuxNewText (func, ...)
 	local str, proxy = func(...), func(...)
 
-	Offsets[str], proxy.isVisible = {}, false
+	Offsets[str], Proxies[str], proxy.isVisible = {}, proxy, false
+
+	str:addEventListener("finalize", Cleanup)
 
 	return str, proxy
 end
 
 --- DOCME
+-- @param ...
+-- @treturn TextObject str
+-- @treturn TextObject proxy
 function M.NewEmbossedText (...)
 	return AuxNewText(display.newEmbossedText, ...)
 end
 
 --- DOCME
+-- @param ...
+-- @treturn TextObject str
+-- @treturn TextObject proxy
 function M.NewText (...)
 	return AuxNewText(display.newText, ...)
 end
+
+-- Cache module members.
+_GetPosition_XY_ = M.GetPosition_XY
 
 -- Export the module.
 return M

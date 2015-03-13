@@ -31,6 +31,7 @@ local tonumber = tonumber
 local upper = string.upper
 
 -- Modules --
+local cursor = require("corona_ui.utils.cursor")
 local keyboard = require("corona_ui.widgets.keyboard")
 local layout = require("corona_ui.utils.layout")
 local net = require("corona_ui.patterns.net")
@@ -57,7 +58,7 @@ local function Char (name, is_shift_down)
 		return "_"
 
 	--
-	elseif #name == 1 then -- what about accents?
+	elseif #name == 1 then -- what about UTF8?
 		local ln, un = lower(name), upper(name)
 
 		if ln ~= name then
@@ -128,24 +129,36 @@ end
 
 --
 local function UpdateCaret (info, str, pos)
-local cc = require("corona_ui.utils.cursor")
-local cpos = cc.GetPosition(str, pos, info)
---	info.text, info.m_pos = sub(str.text, 1, pos), pos
-	info.m_pos = pos
+	if pos then
+		info.m_pos = pos
 
-	layout.LeftAlignWith(info.parent:GetCaret(), str, cpos)--#info.text > 0 and info.width or 0)
+		layout.LeftAlignWith(info.parent:GetCaret(), str, cursor.GetOffset(str, pos))
+	end
 end
 
 --- ^^ COULD be stretched to current character width, by taking difference between it and next character,
 -- or rather the consecutive substrings they define (some default width at string end)
 
+-- --
+local KeyType = {}
+
+for gname, group in pairs{
+	delete = { "deleteBack", "deleteForward" },
+	horz_move = { "end", "home", "left", "right" },
+	vert_move = { "down", "pageDown", "pageUp", "up" }
+} do
+	for i = 1, #group do
+		KeyType[group[i]] = gname
+	end
+end
+
 --
 local function DoKey (info, name, is_shift_down)
 	local str = info.parent:GetString()
-	local text = str.text
+	local text, gname = str.text, KeyType[name]
 
 	--
-	if name == "deleteBack" or name == "deleteForward" then
+	if gname == "delete" then
 		local new_pos, remove_at = AdjustAndClamp(info, #text, name == "deleteBack" and "dec")
 
 		if remove_at then
@@ -156,15 +169,24 @@ local function DoKey (info, name, is_shift_down)
 		end
 
 	--
-	elseif name == "left" or name == "right" then
-		local new_pos = AdjustAndClamp(info, #text, name == "left" and "dec" or "inc")
+	elseif gname == "horz_move" then
+		local pos
 
-		if new_pos then
-			UpdateCaret(info, str, new_pos)
+		if name == "left" or name == "right" then
+			pos = AdjustAndClamp(info, #text, name == "left" and "dec" or "inc")
+		else
+			pos = name == "home" and 0 or #text
 		end
+
+		UpdateCaret(info, str, pos)
+
+	--
+	elseif gname == "vert_move" then
+		-- TODO! (multiline)
 
 	--
 	else
+-- Tab?
 		local result, pos = (info.m_filter or Any)(name, is_shift_down), info.m_pos
 
 		if result then
@@ -293,40 +315,47 @@ local KeyFadeInParams = { alpha = 1 }
 local PlaceKeys = { "below", "above", "left", "right", dx = 5, dy = 5 }
 
 --
-local function AuxEnterInputMode (editable)
-	if not Editable then
-		Editable, OldListenFunc = editable, scenes.SetListenFunc(Listen)
+local function EnterInputMode (editable)
+	Editable, OldListenFunc = editable, scenes.SetListenFunc(Listen)
 
-		--
-		editable.m_stub, editable.m_net = net.HoistOntoStage(editable, CloseKeysAndText, editable.m_blocking)
+	--
+	editable.m_stub, editable.m_net = net.HoistOntoStage(editable, CloseKeysAndText, editable.m_blocking)
 
-		--
-		local caret, keys = editable:GetCaret(), editable:GetKeyboard()
+	--
+	local caret, keys = editable:GetCaret(), editable:GetKeyboard()
 
-		if keys then
-			keys:toFront()
-		end
+	if keys then
+		keys:toFront()
+	end
 
-		--
-		caret.alpha, caret.isVisible, Editable.m_net.alpha = .6, true, .01
+	--
+	caret.alpha, caret.isVisible, Editable.m_net.alpha = .6, true, .01
 
-		transition.to(caret, CaretParams)
-		transition.to(Editable.m_net, FadeInParams)
+	transition.to(caret, CaretParams)
+	transition.to(Editable.m_net, FadeInParams)
 
-		if keys then
-			layout.PutAtFirstHit(keys, editable, PlaceKeys, true)
+	if keys then
+		layout.PutAtFirstHit(keys, editable, PlaceKeys, true)
 
-			keys.alpha, keys.isVisible = .2, true
+		keys.alpha, keys.isVisible = .2, true
 
-			transition.to(keys, KeyFadeInParams)
-		end
+		transition.to(keys, KeyFadeInParams)
 	end
 end
 
 --
-local function EnterInputMode (event)
+local function Touch (event)
 	if event.phase == "began" then
-		AuxEnterInputMode(event.target.parent)
+		if Editable then
+			local str = event.target.parent:GetString()
+			local pos = cursor.GetPosition_GlobalXY(str, event.x, event.y)
+
+			UpdateCaret(cursor.GetProxy(str), str, pos)
+
+			-- TODO: detect drags
+		else
+			EnterInputMode(event.target.parent)
+		end
 	end
 
 	return true
@@ -343,8 +372,8 @@ local function AuxEditable (group, x, y, opts)
 
 	--
 	local text, font, size = opts and opts.text or "", opts and opts.font or native.systemFontBold, opts and opts.size or 20
-local str, info = require("corona_ui.utils.cursor").NewText(Editable, text, 0, 0, font, size)
-	local --[[str, ]]ow, oh = --[[display.newText(Editable, text, 0, 0, font, size),]] layout_dsl.EvalDims(opts and opts.width or 0, opts and opts.height or 0)
+	local str, info = cursor.NewText(Editable, text, 0, 0, font, size)
+	local ow, oh = layout_dsl.EvalDims(opts and opts.width or 0, opts and opts.height or 0)
 	local w, h, align = max(str.width, ow, 80), max(str.height, oh, 25), opts and opts.align
 
 	SetText(str, str.text, align, w)
@@ -360,9 +389,7 @@ local str, info = require("corona_ui.utils.cursor").NewText(Editable, text, 0, 0
 	caret.isVisible = false
 
 	--
---	local info = display.newText(Editable, "", 0, 0, font, size)
-
---[[	info.isVisible, ]]info.m_align, info.m_pos, info.m_width = --[[false, ]]align, #text, w
+	info.m_align, info.m_pos, info.m_width = align, #text, w
 
 	--
 	local style, keys = opts and opts.style
@@ -373,8 +400,6 @@ local str, info = require("corona_ui.utils.cursor").NewText(Editable, text, 0, 0
 		keys = keyboard.Keyboard(display.getCurrentStage(), { type = opts.mode })
 
 		info.m_filter, keys.isVisible = Filter[opts.mode], false
-
-		-- keys:SetClosePredicate()?
 	else
 		-- native textbox... not sure about filtering
 		--[[
@@ -400,7 +425,7 @@ local str, info = require("corona_ui.utils.cursor").NewText(Editable, text, 0, 0
 	--
 	local body = display.newRoundedRect(Editable, 0, 0, w + 5, h + 5, 12)
 
-	body:addEventListener("touch", EnterInputMode)
+	body:addEventListener("touch", Touch)
 	body:setFillColor(0, 0, .9, .6)
 	body:setStrokeColor(.125)
 	body:toBack()
@@ -434,10 +459,11 @@ local str, info = require("corona_ui.utils.cursor").NewText(Editable, text, 0, 0
 
 	--- DOCME
 	function Editable:EnterInputMode ()
-		-- if textinput then
+		if false then -- textinput...
 			--
-		-- else
-		AuxEnterInputMode(self)
+		elseif not Editable then
+			EnterInputMode(self)
+		end
 	end
 
 	--- DOCME
