@@ -36,6 +36,7 @@ local colors = require("corona_ui.utils.color")
 local layout_dsl = require("corona_ui.utils.layout_dsl")
 local range = require("tektite_core.number.range")
 local skins = require("corona_ui.utils.skin")
+local stencil = require("iterator_ops.grid.stencil")
 local touch = require("corona_ui.utils.touch")
 
 -- Corona globals --
@@ -77,46 +78,40 @@ local function Dispatch (back, col, row, x, y, context, is_first)
 end
 
 -- Helper to get the in-cell offsets
-local function GetOffsets (back)
+local function GetLocalOffsets (back)
 	return -back.m_cx, -back.m_cy
 end
 
 -- Touch listener
 local Touch = touch.TouchHelperFunc(function(event, back)
-	-- Track initial coordinates for dragging.
-	local coff, roff = GetOffsets(back)
+	local coff, roff = back.m_coffset, back.m_roffset
 	local col, row = Cell(back, event.x, event.y)
+	local context, cx, cy = event.context, GetLocalOffsets(back)
+	local ncols, nrows = back.m_ncols, back.m_nrows
 	local dw, dh = GetCellDims(back)
 
-	col = col + back.m_coffset
-	row = row + back.m_roffset
+	-- Fit the new coordinate to a stencil-based swath of cells. During moves, the previous and
+	-- new coordinates may not be adjacent, so line-based traversal is performed to approximate
+	-- the intermediate coordinates.
+	local began, f, s, v = event.phase == "began"
 
-	Dispatch(back, col, row, (col + coff) * dw, (row + roff) * dh, event.context, true)
+	if began then
+		f, s, v = stencil.StencilIter(back.m_stencil, col, row)
+	else
+		f, s, v = stencil.StencilIter_FromTo(back.m_stencil, back.m_col, back.m_row, col, row, true)
+	end
 
-	back.m_col, back.m_row, Event.target = col, row
-end, function(event, back)
-	-- Fit the new position to a cell, detecting whether the coordinates have changed. Since the
-	-- new cell may be non-adjacent, a line traversal is performed to approximate the movement.
-	local end_col, end_row = Cell(back, event.x, event.y)
+	for c, r in f, s, v do
+		if c >= 1 and c <= ncols and r >= 1 and r <= nrows then
+			local cres, rres = c + coff, r + roff
 
-	end_col = range.ClampIn(end_col, 1, back.m_ncols) + back.m_coffset
-	end_row = range.ClampIn(end_row, 1, back.m_nrows) + back.m_roffset
-
-	local first, dw, dh = true, GetCellDims(back)
-	local context, coff, roff = event.context, GetOffsets(back)
-
-	for col, row in bresenham.LineIter(back.m_col, back.m_row, end_col, end_row) do
-		-- Invoke the listener on each new traversed cell.
-		if not first then
-			Dispatch(back, col, row, (col + coff) * dw, (row + roff) * dh, context, false)
+			Dispatch(back, cres, rres, (cres + cx) * dw, (rres + cy) * dh, context, began)
 		end
-
-		first = false
 	end
 
 	-- Commit the new previous coordinates.
-	back.m_col, back.m_row, Event.target = end_col, end_row
-end)
+	back.m_col, back.m_row, Event.target = col, row
+end, "began")
 
 -- Common line add logic
 local function AddGridLine (group, skin, x1, y1, x2, y2)
@@ -159,6 +154,9 @@ local function MoveTouch (event, x, y)
 
 	Touch(event)
 end
+
+-- --
+local DefStencil = stencil.NewStencil{ 0, 0 }
 
 --- Creates a new two-dimensional grid, with background and lines enabled.
 --
@@ -318,6 +316,12 @@ function M.Grid (group, x, y, w, h, cols, rows, opts)
 		back.m_roffset = roffset or 0
 	end
 
+	--- DOCME
+	-- @tparam ?|array|Stencil|nil arr X
+	function Grid:SetStencil (arr)
+		back.m_stencil = arr and stencil.NewStencil(arr) or DefStencil
+	end
+
 	--- Setter.
 	-- @bool show Show a background behind the cells?
 	function Grid:ShowBack (show)
@@ -382,6 +386,9 @@ function M.Grid (group, x, y, w, h, cols, rows, opts)
 
 		self.m_col, self.m_row = scol, srow
 	end
+
+	-- Apply a default stencil.
+	Grid:SetStencil(nil)
 
 	-- Provide the grid.
 	return Grid
