@@ -26,6 +26,7 @@
 --
 
 -- Standard library imports --
+local ceil = math.ceil
 local floor = math.floor
 local remove = table.remove
 
@@ -187,6 +188,10 @@ function M.Grid (group, x, y, w, h, cols, rows, opts)
 
 	-- Begin with a container which will hold the background and canvas.
 	w, h = layout_dsl.EvalDims(w, h)
+
+	if opts and opts.round_up then
+		w, h = ceil(w / cols) * cols, ceil(h / rows) * rows
+	end
 
 	local cgroup = display.newContainer(w, h)
 
