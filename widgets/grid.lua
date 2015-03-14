@@ -192,7 +192,6 @@ function M.Grid (group, x, y, w, h, cols, rows, opts)
 
 	Grid:insert(cgroup, true)
 
-	cgroup.x, cgroup.y = x, y -- HOW TO DSL-ify these? (not obvious because of the lines...)
 -- TODO: Does the background get anything out of being contained?
 	-- Put a background and canvas into the container and line everything up.
 	local canvas = display.newGroup()
@@ -246,9 +245,6 @@ function M.Grid (group, x, y, w, h, cols, rows, opts)
 	end
 
 	AddGridLine(lines, skin, 0, yf, xf, yf)
-
-	--
-	lines:translate(x, y)
 
 	--- Getter.
 	-- @treturn DisplayGroup Canvas group, to be populated and translated by the user.
@@ -387,8 +383,10 @@ function M.Grid (group, x, y, w, h, cols, rows, opts)
 		self.m_col, self.m_row = scol, srow
 	end
 
-	-- Apply a default stencil.
+	-- Apply a default stencil and move the grid into position.
 	Grid:SetStencil(nil)
+
+	layout_dsl.PutObjectAt(Grid, x, y)
 
 	-- Provide the grid.
 	return Grid
