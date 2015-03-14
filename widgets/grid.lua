@@ -43,8 +43,16 @@ local touch = require("corona_ui.utils.touch")
 -- Corona globals --
 local display = display
 
+-- Cached module references --
+local _Grid_XY_
+
 -- Exports --
 local M = {}
+
+--- DOCME
+function M.Grid (group, w, h, cols, rows, opts)
+	return _Grid_XY_(group, 0, 0, w, h, cols, rows, opts)
+end
 
 -- Helper to get the per-cell dimensions
 local function GetCellDims (back)
@@ -178,7 +186,7 @@ local DefStencil = stencil.NewStencil{ 0, 0 }
 -- @ptable opts[opt] TODO: Skin, etc.
 -- @treturn DisplayObject Grid widget. 
 -- @see corona_ui.utils.skin.GetSkin
-function M.Grid (group, x, y, w, h, cols, rows, opts)
+function M.Grid_XY (group, x, y, w, h, cols, rows, opts)
 	local skin = skins.GetSkin(opts and opts.skin)
 
 	--
@@ -404,6 +412,9 @@ skins.AddToDefaultSkin("grid", {
 	linewidth = 2,
 	trapinput = true
 })
+
+-- Cache module members.
+_Grid_XY_ = M.Grid_XY
 
 -- Export the module.
 return M
