@@ -246,7 +246,7 @@ function M.ColorPicker_XY (group, x, y, w, h, opts)
 	colors.anchorX, colors.x = 0, 20
 	colors.anchorY, colors.y = 0, 20
 
-	picker.m_colors = colors
+	ColorPicker.m_colors = colors
 
 	-- Add an equal-sized overlay above the colors to apply the fade-to-black gradient.
 	FadeTo[1], FadeTo[2], FadeTo[3] = 0, 0, 0
