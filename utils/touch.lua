@@ -60,10 +60,10 @@ end
 -- @todo May start in "broken" state, i.e. in violation of the clamping
 -- DOCMEMORE!
 function M.DragParentTouch (opts)
-	local find, hscale
+	local find, hscale, no_clamp
 
 	if opts then
-		find, hscale = opts.find, opts.hscale
+		find, hscale, no_clamp = opts.find, opts.hscale, not not opts.no_clamp
 	end
 
 	hscale = hscale or 1
@@ -75,9 +75,14 @@ function M.DragParentTouch (opts)
 		object.m_dragy = parent.y - event.y
 	end, function(event, object)
 		local parent = GetParent(object, find)
+		local newx, newy = object.m_dragx + event.x, object.m_dragy + event.y
 
-		parent.x = ClampIn(object.m_dragx + event.x, 0, display.contentWidth - object.contentWidth)
-		parent.y = ClampIn(object.m_dragy + event.y, 0, display.contentHeight - object.contentHeight * hscale)
+		if no_clamp then
+			parent.x, parent.y = newx, newy
+		else
+			parent.x = ClampIn(newx, 0, display.contentWidth - object.contentWidth)
+			parent.y = ClampIn(newy, 0, display.contentHeight - object.contentHeight * hscale)
+		end
 	end)
 end
 
@@ -118,7 +123,7 @@ function M.DragTouch ()
 		local h = object.contentHeight / 2
 
 		object.x = ClampIn(object.m_dragx + event.x, w, display.contentWidth - w)
-		object.y = ClampIn(object.m_dragy + event.y, w, display.contentHeight - h)
+		object.y = ClampIn(object.m_dragy + event.y, h, display.contentHeight - h)
 	end)
 end
 
