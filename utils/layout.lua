@@ -84,11 +84,6 @@ local function DY (n)
 	return Delta(n, "contentHeight")
 end
 
--- Is the object not a group?
-local function NonGroup (object)
-	return object._type ~= "GroupObject"
-end
-
 -- Is the object a number, or can it be coerced / defaulted to one?
 local function Number (object)
 	local otype = type(object)
@@ -96,22 +91,10 @@ local function Number (object)
 	return object == nil or otype == "string" or otype == "number"
 end
 
--- Helper to get an x-coordinate relative to a position, in terms of width...
-local function RelativeX (object, t)
-	return object.x + t * object.contentWidth
-end
-
--- ...and y-coordinate, in terms of height
-local function RelativeY (object, t)
-	return object.y + t * object.contentHeight
-end
-
 -- Finds the y-coordinate at the bottom of an object; Numbers resolve like deltas, directly to themselves
 local function BottomY (object)
 	if Number(object) then
 		return DY(object)
-	elseif NonGroup(object) then
-		return RelativeY(object, 1 - object.anchorY)
 	else
 		return object.contentBounds.yMax
 	end
@@ -121,8 +104,6 @@ end
 local function LeftX (object)
 	if Number(object) then
 		return DX(object)
-	elseif NonGroup(object) then
-		return RelativeX(object, -object.anchorX)
 	else
 		return object.contentBounds.xMin
 	end
@@ -132,8 +113,6 @@ end
 local function RightX (object)
 	if Number(object) then
 		return DX(object)
-	elseif NonGroup(object) then
-		return RelativeX(object, 1 - object.anchorX)
 	else
 		return object.contentBounds.xMax
 	end
@@ -143,8 +122,6 @@ end
 local function TopY (object)
 	if Number(object) then
 		return DY(object)
-	elseif NonGroup(object) then
-		return RelativeY(object, -object.anchorY)
 	else
 		return object.contentBounds.yMin
 	end
@@ -176,35 +153,55 @@ function M.BottomAlignWith (object, ref, dy)
 end
 
 -- Finds the x-coordinate at the center of an object...
-local function CenterX (object)
-	if NonGroup(object) then
-		return RelativeX(object, .5 - object.anchorX)
-	else
-		local bounds = object.contentBounds
+local function CenterX (object, bounds)
+	bounds = bounds or object.contentBounds
 
-		return .5 * (bounds.xMin + bounds.xMax)
-	end
+	return .5 * (bounds.xMin + bounds.xMax)
 end
 
 -- ...and the y-coordinate
-local function CenterY (object)
-	if NonGroup(object) then
-		return RelativeY(object, .5 - object.anchorY)
-	else
-		local bounds = object.contentBounds
+local function CenterY (object, bounds)
+	bounds = bounds or object.contentBounds
 
-		return .5 * (bounds.yMin + bounds.yMax)
-	end
+	return .5 * (bounds.yMin + bounds.yMax)
+end
+
+-- Gets the (anchor-aware) content x-coordinate of the object...
+local function GetX (object, bounds)
+	return bounds.xMin + object.anchorX * (bounds.xMax - bounds.xMin)
+end
+
+-- ...and the y-coordinate
+local function GetY (object, bounds)
+	return bounds.yMin + object.anchorY * (bounds.yMax - bounds.yMin)
+end
+
+-- Sets the (anchor-aware) content x-coordinate of the object...
+local function SetX (object, x)
+	local lx, _ = object.parent:contentToLocal(x, 0)
+
+	object.x = lx
+end
+
+-- ...and the y-coordinate
+local function SetY (object, y)
+	local _, ly = object.parent:contentToLocal(0, y)
+
+	object.y = ly
 end
 
 -- Aligns an object's center x-coordinate to an x-coordinate (plus optional delta)...
 local function PutCenterAtX (object, x, dx)
-	object.x = floor(object.x + DX(x) - CenterX(object) + DX(dx))
+	local bounds = object.contentBounds
+
+	SetX(object, floor(GetX(object, bounds) + DX(x) - CenterX(object, bounds) + DX(dx)))
 end
 
 -- ...and aligns the y-coordinate, likewise
 local function PutCenterAtY (object, y, dy)
-	object.y = floor(object.y + DY(y) - CenterY(object) + DY(dy))
+	local bounds = object.contentBounds
+
+	SetY(object, floor(GetY(object, bounds) + DY(y) - CenterY(object, bounds) + DY(dy)))
 end
 
 -- Centers an object horizontally at the content center x-coordinate...
@@ -261,7 +258,9 @@ end
 -- @treturn number Final result, i.e. x-coordinate plus any displacement...
 -- @treturn number ...and likewise, for the y-coordinate.
 function M.CenterOf (object, dx, dy)
-	return CenterX(object, dx), CenterY(object, dy)
+	local bounds = object.contentBounds
+
+	return floor(CenterX(object, bounds) + DX(dx)), floor(CenterY(object, bounds) + DY(dy))
 end
 
 --- Variant of @{CenterOf} that only supplies the x-coordinate.
@@ -269,7 +268,7 @@ end
 -- @tparam[opt] Number dx Displacement from the "center" position.
 -- @treturn number Final result, i.e. x-coordinate plus any displacement.
 function M.CenterX (object, dx)
-	return CenterX(object, dx)
+	return floor(CenterX(object) + DX(dx))
 end
 
 --- Variant of @{CenterOf} that only supplies the y-coordinate.
@@ -277,7 +276,7 @@ end
 -- @tparam[opt] Number dy Displacement from the "center" position.
 -- @treturn number Final result, i.e. y-coordinate plus any displacement.
 function M.CenterY (object, dy)
-	return CenterY(object, dy)
+	return floor(CenterY(object) + DY(dy))
 end
 
 --- Assigns an object's x-coordinate so that its left side aligns with either the left side
@@ -317,15 +316,9 @@ end
 -- @tparam ?|DisplayObject|Number ref Reference object or y-coordinate.
 -- @tparam[opt] Number dy Displacement from the "above" position.
 function M.PutAbove (object, ref, dy)
-	local y = TopY(ref)
+	local y = TopY(ref) + (object.anchorY - 1) * object.contentHeight
 
-	if NonGroup(object) then
-		y = y - (1 - object.anchorY) * object.contentHeight
-	else
-		y = y - (object.contentBounds.yMax - object.y)
-	end
-
-	object.y = floor(y + DY(dy))
+	SetY(object, floor(y + DY(dy)))
 end
 
 --- Centers an object horizontally and bottom-aligns it to the bottom of the content.
@@ -484,15 +477,9 @@ end
 -- @tparam ?|DisplayObject|Number ref Reference object or y-coordinate.
 -- @tparam[opt] Number dy Displacement from the "below" position.
 function M.PutBelow (object, ref, dy)
-	local y = BottomY(ref)
+	local y = BottomY(ref) + object.anchorY * object.contentHeight
 
-	if NonGroup(object) then
-		y = y + object.anchorY * object.contentHeight
-	else
-		y = y + (object.y - object.contentBounds.yMin)
-	end
-
-	object.y = floor(y + DY(dy))
+	SetY(object, floor(y + DY(dy)))
 end
 
 --- Assigns an object's x-coordinate so that its right side is to the left of a reference
@@ -501,15 +488,9 @@ end
 -- @tparam ?|DisplayObject|Number ref Reference object or x-coordinate.
 -- @tparam[opt] Number dx Displacement from the "left of" position.
 function M.PutLeftOf (object, ref, dx)
-	local x = LeftX(ref)
+	local x = LeftX(ref) + (object.anchorX - 1) * object.contentWidth
 
-	if NonGroup(object) then
-		x = x - (1 - object.anchorX) * object.contentWidth
-	else
-		x = x - (object.contentBounds.xMax - object.x)
-	end
-
-	object.x = floor(x + DX(dx))
+	SetX(object, floor(x + DX(dx)))
 end
 
 --- Assigns an object's x-coordinate so that its left side is to the right of a reference
@@ -518,15 +499,9 @@ end
 -- @tparam ?|DisplayObject|Number ref Reference object or x-coordinate.
 -- @tparam[opt] Number dx Displacement from the "right of" position.
 function M.PutRightOf (object, ref, dx)
-	local x = RightX(ref)
+	local x = RightX(ref) + object.anchorX * object.contentWidth
 
-	if NonGroup(object) then
-		x = x + object.anchorX * object.contentWidth
-	else
-		x = x + (object.x - object.contentBounds.xMin)
-	end
-
-	object.x = floor(x + DX(dx))
+	SetX(object, floor(x + DX(dx)))
 end
 
 --- Assigns an object's x-coordinate so that its right side aligns with either the right side
