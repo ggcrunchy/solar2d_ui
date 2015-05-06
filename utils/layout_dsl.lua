@@ -337,15 +337,25 @@ local PutChoicesY = {
 }
 
 -- Evaluate commands that involve objects
-local function EvalPut (object, arg, choices, coord, dim)
+local function EvalPut (object, arg, choices, coord)
 	if arg then
-		local dim = choices == PutChoicesX and "contentWidth" or "contentHeight"
+		local in_xset = choices == PutChoicesX
+		local dim = in_xset and "contentWidth" or "contentHeight"
 		local num = ParseNumber(arg, dim, true)
 
-		if num then
-			object[coord] = num
-		else
+		if not num then
 			AuxEvalCoord(arg, choices, dim)(object, Num1, Num2)
+		else
+--[[
+			if coord ~= "x" and coord ~= "y" then
+				local a, b = object.parent:localToContent(num, num)
+
+				num = in_xset and a or b
+			end
+]]
+-- ^^^ TODO: x and y are local, so some consistency should be defined, like above
+-- Also brings up the idea of adding *_local or *_content variant properties
+			object[coord] = num
 		end
 	end
 end
