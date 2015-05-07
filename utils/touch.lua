@@ -32,6 +32,9 @@ local ClampIn = range.ClampIn
 -- Corona globals --
 local display = display
 
+-- Cached module references --
+local _TouchHelperFunc_
+
 -- Exports --
 local M = {}
 
@@ -68,7 +71,7 @@ function M.DragParentTouch (opts)
 
 	hscale = hscale or 1
 
-	return M.TouchHelperFunc(function(event, object)
+	return _TouchHelperFunc_(function(event, object)
 		local parent = GetParent(object, find)
 
 		object.m_dragx = parent.x - event.x
@@ -90,7 +93,7 @@ end
 function M.DragParentTouch_Child (key, opts)
 	local find = opts and opts.find
 
-	return M.TouchHelperFunc(function(event, object)
+	return _TouchHelperFunc_(function(event, object)
 		local parent = GetParent(object, find)
 
 		object.m_dragx = parent.x - event.x
@@ -115,7 +118,7 @@ end
 --
 -- @todo As per @{DragParentTouch}
 function M.DragTouch ()
-	return M.TouchHelperFunc(function(event, object)
+	return _TouchHelperFunc_(function(event, object)
 		object.m_dragx = object.x - event.x
 		object.m_dragy = object.y - event.y
 	end, function(event, object)
@@ -124,6 +127,19 @@ function M.DragTouch ()
 
 		object.x = ClampIn(object.m_dragx + event.x, w, display.contentWidth - w)
 		object.y = ClampIn(object.m_dragy + event.y, h, display.contentHeight - h)
+	end)
+end
+
+--- DOCME
+function M.DragViewTouch (view)
+	return _TouchHelperFunc_(function(event, object)
+		object.m_dragx = event.x
+		object.m_dragy = event.y
+	end, function(event, object)
+		local ex, ey = event.x, event.y
+
+		view.x, object.m_dragx = view.x + ex - object.m_dragx, ex
+		view.y, object.m_dragy = view.y + ey - object.m_dragy, ey
 	end)
 end
 
@@ -192,6 +208,9 @@ function M.TouchHelperFunc (began, moved, ended)
 		return true
 	end
 end
+
+-- Cache module members.
+_TouchHelperFunc_ = M.TouchHelperFunc
 
 -- Export the module.
 return M
