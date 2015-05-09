@@ -26,7 +26,6 @@
 -- Standard library imports --
 local assert = assert
 local ipairs = ipairs
-local remove = table.remove
 
 -- Modules --
 local file_utils = require("corona_utils.file")
@@ -124,6 +123,7 @@ function M.FileList (group, options)
 
 		if offset then
 			FileList:scrollToIndex(offset, 0)
+			-- ^^^ TODO: scrollToPosition{ y = y }
 		end
 	end
 
@@ -149,42 +149,34 @@ function M.FileList (group, options)
 	return FileList
 end
 
+--
+local function Identity (str)
+	return str
+end
+
 -- --
-local RowAdder = {
-	isCategory = false,
-	lineHeight = 16,
-	lineColor = { .45 },
-	rowColor = { default = { 1 }, over = { 0, 0, 1, .75 } }
-}
-
---
-local function GetText (index, stash)
-	return stash and stash[index]
-end
-
---
-local function Highlight (row)
-	row.alpha = .5
-end
-
---
-local function GetListbox (row)
-	return row.parent.parent
-end
+local Event = {}
 
 ---
-local function TouchEvent (func, listbox, index, str)
+local function TouchEvent (func, rect, listbox, get_text)
 	if func then
-		func{ listbox = listbox, index = index, str = str or "" }
+		Event.listbox = listbox
+
+		local group = rect.parent
+
+		for i = 1, group.numChildren, 2 do
+			if group[i] == rect then
+				Event.index, Event.str = i, get_text(rect.m_data) or ""
+
+				func(Event)
+
+				break
+			end
+		end
+
+		Event.listbox, Event.str = nil
 	end
 end
-
--- Each of the arguments is a function that takes _event_.**index** as argument, where
--- _event_ is the parameter of **onEvent** or **onRender**.
--- @callable press Optional, called when a listbox row is pressed.
--- @callable release Optional, called when a listbox row is released.
--- @callable get_text Returns a row's text string.
--- @treturn table Argument to `tableView:insertRow`.
 
 --- Creates a listbox, built on top of `widget.newTableView`.
 -- @pgroup group Group to which listbox will be inserted.
@@ -195,93 +187,83 @@ function M.Listbox (group, options)
 	local lopts, x, y = layout_dsl.ProcessWidgetParams(options, { width = 300, height = 150 })
 
 	-- On Render --
-	local get_text, selection, stash = GetText
+	local get_text = Identity
 
 	if options and options.get_text then
 		local getter = options.get_text
 
-		function get_text (index, stash)
-			local item = GetText(index, stash)
-
+		function get_text (item)
 			return getter(item) or item
 		end
 	end
 
-	function lopts.onRowRender (event)
-		local row = event.row
-		local text, index = display.newText(row, "", 0, 0, native.systemFont, 20), row.index
-		local str = get_text(index, stash)
-
-		text:setFillColor(0)
-
-		text.text = str or ""
-		text.anchorX, text.x = 0, 15
-		text.y = row.height / 2
-
-		if str == selection then
-			Highlight(row)
-		end
-	end
-
-	-- On Touch --
-	local press, release, old_row = options and options.press, options and options.release
-
-	function lopts.onRowTouch (event)
-		local row = event.target
-		local index, listbox = row.index, GetListbox(row)
-		local phase, str = event.phase, get_text(index, stash)
-
-		-- Listbox item pressed...
-		if phase == "press" then
-			--
-			selection = str
-
-			TouchEvent(press, listbox, index, str)
-
-			-- Show row at full opacity, while held.
-			event.row.alpha = 1
-
-		-- ...and released.
-		elseif phase == "release" then
-			TouchEvent(release, listbox, index, str)
-
-			-- Unmark the previously selected row (if any), and mark the new row.
-			if old_row then
-				old_row.alpha = 1
-			end
-
-			Highlight(event.row)
-
-			old_row = event.row
-		end
-
-		return true
-	end
-
 	--
-	local Listbox = widget.newTableView(lopts)
+	lopts.horizontalScrollDisabled = true
+
+	local Listbox = widget.newScrollView(lopts)
 
 	layout_dsl.PutObjectAt(Listbox, x, y)
 
 	group:insert(Listbox)
 
+	--
+	local press, release, selection = options and options.press, options and options.release
+
+	local function Select (event)
+		local phase, rect = event.phase, event.target
+
+		if phase == "began" then
+			if rect ~= selection then
+				if selection then
+					selection:setFillColor(1)
+				end
+
+				rect.m_text:setFillColor(0, .5)
+				rect:setFillColor(0, 0, 1)
+
+				selection = rect
+			end
+
+			TouchEvent(press, rect, Listbox, get_text)
+		elseif phase == "ended" then
+			rect.m_text:setFillColor(0)
+
+			TouchEvent(release, rect, Listbox, get_text)
+		end
+
+		-- Fall through, for scroll view
+	end
+
+	--
+	local AddGroup
+
+	local function Append (str)
+		local rect = display.newRect(0, 0, Listbox.width, 40)
+		local text = display.newText(get_text(str), 0, 0, native.systemFont, 24)
+
+		Listbox:insert(rect)
+		Listbox:insert(text)
+
+		AddGroup = AddGroup or rect.parent
+
+		rect:addEventListener("touch", Select)
+		text:setFillColor(0)
+
+		rect.x, rect.y = Listbox.width / 2, (AddGroup.numChildren / 2 - .5) * 40
+		text.anchorX, text.x, text.y = 0, 5, rect.y
+
+		rect.m_text, rect.m_data = text, str
+	end
+
 	--- DOCME
 	function Listbox:Append (str)
-		stash = stash or {}
-
-		stash[#stash + 1] = str
-
-		self:insertRow(RowAdder)
+		Append(str)
 	end
 
 	--- DOCME
 	function Listbox:AppendList (list)
-		stash = stash or {}
-
 		for i = 1, #list do
-			stash[#stash + 1] = list[i]
-
-			self:insertRow(RowAdder)
+			Append(list[i])
 		end
 	end
 
@@ -293,34 +275,57 @@ function M.Listbox (group, options)
 
 	--- DOCME
 	function Listbox:Clear ()
-		selection, stash = nil
+		selection = nil
 
-		self:deleteAllRows()
+		for i = AddGroup and AddGroup.numChildren or 0, 1, -2 do
+			local rect, text = AddGroup[i - 1], AddGroup[i]
+
+			rect.m_text, rect.m_data = nil
+
+			text:removeSelf()
+			rect:removeSelf()
+		end
 	end
 
 	--- DOCME
 	function Listbox:ClearSelection ()
+		if selection then
+			selection:setFillColor(1)
+		end
+
 		selection = nil
 	end
 
 	--- DOCME
 	function Listbox:Delete (index)
-		if stash then
-			if get_text(index, stash) == selection then
+		index = index * 2 - 1
+
+		if AddGroup and index > 1 and index < AddGroup.numChildren then
+			local rect, text = AddGroup[index], AddGroup[index + 1]
+
+			if rect == selection then
 				selection = nil
 			end
 
-			remove(stash, index)
-		end
+			rect.m_data, rect.m_text = nil
 
-		self:deleteRow(index)
+			text:removeSelf()
+			rect:removeSelf()
+
+			--
+			for i = index, AddGroup.numChildren do
+				local item = AddGroup[i]
+
+				item.y = item.y - 40
+			end
+		end
 	end
 
 	--- DOCME
 	function Listbox:Find (str)
-		for i = 1, #(str and stash or "") do
-			if get_text(i, stash) == str then
-				return i
+		for i = 1, (str and AddGroup) and AddGroup.numChildren or 0, 2 do
+			if get_text(AddGroup[i].m_data) == str then
+				return (i + 1) / 2
 			end
 		end
 
@@ -329,7 +334,7 @@ function M.Listbox (group, options)
 
 	--- DOCME
 	function Listbox:GetSelection ()
-		return selection
+		return selection and get_text(selection.m_data)
 	end
 
 	--
