@@ -159,23 +159,21 @@ local Event = {}
 
 ---
 local function TouchEvent (func, rect, listbox, get_text)
-	if func then
-		Event.listbox = listbox
+	Event.listbox = listbox
 
-		local group = rect.parent
+	local group = rect.parent
 
-		for i = 1, group.numChildren, 2 do
-			if group[i] == rect then
-				Event.index, Event.str = i, get_text(rect.m_data) or ""
+	for i = 1, group.numChildren, 2 do
+		if group[i] == rect then
+			Event.index, Event.str = i, get_text(rect.m_data) or ""
 
-				func(Event)
+			func(Event)
 
-				break
-			end
+			break
 		end
-
-		Event.listbox, Event.str = nil
 	end
+
+	Event.listbox, Event.str = nil
 end
 
 --- Creates a listbox, built on top of `widget.newTableView`.
@@ -210,25 +208,28 @@ function M.Listbox (group, options)
 	local press, release, selection = options and options.press, options and options.release
 
 	local function Select (event)
-		local phase, rect = event.phase, event.target
+		local phase, rect, func = event.phase, event.target
 
+		--
 		if phase == "began" then
 			if rect ~= selection then
 				if selection then
 					selection:setFillColor(1)
 				end
 
-				rect.m_text:setFillColor(0, .5)
 				rect:setFillColor(0, 0, 1)
 
-				selection = rect
+				selection, func = rect, press
 			end
 
-			TouchEvent(press, rect, Listbox, get_text)
+		--
 		elseif phase == "ended" then
-			rect.m_text:setFillColor(0)
+			func = release
+		end
 
-			TouchEvent(release, rect, Listbox, get_text)
+		--
+		if func then
+			TouchEvent(func, rect, Listbox, get_text)
 		end
 
 		-- Fall through, for scroll view
@@ -252,7 +253,7 @@ function M.Listbox (group, options)
 		rect.x, rect.y = Listbox.width / 2, (AddGroup.numChildren / 2 - .5) * 40
 		text.anchorX, text.x, text.y = 0, 5, rect.y
 
-		rect.m_text, rect.m_data = text, str
+		rect.m_data = str
 	end
 
 	--- DOCME
@@ -280,7 +281,7 @@ function M.Listbox (group, options)
 		for i = AddGroup and AddGroup.numChildren or 0, 1, -2 do
 			local rect, text = AddGroup[i - 1], AddGroup[i]
 
-			rect.m_text, rect.m_data = nil
+			rect.m_data = nil
 
 			text:removeSelf()
 			rect:removeSelf()
@@ -300,14 +301,14 @@ function M.Listbox (group, options)
 	function Listbox:Delete (index)
 		index = index * 2 - 1
 
-		if AddGroup and index > 1 and index < AddGroup.numChildren then
+		if AddGroup and index >= 1 and index < AddGroup.numChildren then
 			local rect, text = AddGroup[index], AddGroup[index + 1]
 
 			if rect == selection then
 				selection = nil
 			end
 
-			rect.m_data, rect.m_text = nil
+			rect.m_data = nil
 
 			text:removeSelf()
 			rect:removeSelf()
