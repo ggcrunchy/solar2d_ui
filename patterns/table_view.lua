@@ -165,7 +165,7 @@ local function TouchEvent (func, rect, listbox, get_text)
 
 	for i = 1, group.numChildren, 2 do
 		if group[i] == rect then
-			Event.index, Event.str = i, get_text(rect.m_data) or ""
+			Event.index, Event.str = (i + 1) / 2, get_text(rect.m_data) or ""
 
 			func(Event)
 
@@ -334,8 +334,26 @@ function M.Listbox (group, options)
 	end
 
 	--- DOCME
+	function Listbox:FindSelection ()
+		return self:Find(self:GetSelection())
+	end
+
+	--- DOCME
 	function Listbox:GetSelection ()
 		return selection and get_text(selection.m_data)
+	end
+
+	--- DOCME
+	function Listbox:Update (index, str)
+		index = index * 2 - 1
+
+		if AddGroup and str and index >= 1 and index < AddGroup.numChildren then
+			if str ~= nil then
+				AddGroup[index].m_data = str
+			end
+
+			AddGroup[index + 1].text = get_text(AddGroup[index].m_data)
+		end
 	end
 
 	--

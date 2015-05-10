@@ -24,6 +24,8 @@
 --
 
 -- Standard library imports --
+local concat = table.concat
+local gmatch = string.gmatch
 local lower = string.lower
 local max = math.max
 local sub = string.sub
@@ -221,11 +223,11 @@ local KeyFadeOutParams = {
 }
 
 --
-local function CloseKeysAndText ()
+local function CloseKeysAndText (by_key)
 	local caret, keys = Editable:GetCaret(), Editable:GetKeyboard()
 
 	--
-	Event.name, Event.target = "closing", Editable
+	Event.name, Event.target, Event.closed_by_key = "closing", Editable, by_key ~= nil
 
 	Editable:dispatchEvent(Event)
 
@@ -286,7 +288,7 @@ local function HandleKey (event)
 
 	--
 	elseif event.phase == "down" then
-		CloseKeysAndText()
+		CloseKeysAndText(true)
 	end
 
 	return true
@@ -392,14 +394,14 @@ local function AuxEditable (group, x, y, opts)
 	info.m_align, info.m_pos, info.m_width = align, #text, w
 
 	--
-	local style, keys = opts and opts.style
+	local style, keys, mode = opts and opts.style, opts and opts.mode
 
 	if style == "text_only" then
-		info.m_filter = Filter[opts.mode]
+		info.m_filter = Filter[mode]
 	elseif style == "keys_and_text" or system.getInfo("platformName") == "Win" then
-		keys = keyboard.Keyboard(display.getCurrentStage(), { type = opts.mode })
+		keys = keyboard.Keyboard(display.getCurrentStage(), mode and { type = mode })
 
-		info.m_filter, keys.isVisible = Filter[opts.mode], false
+		info.m_filter, keys.isVisible = Filter[mode], false
 	else
 		-- native textbox... not sure about filtering
 		--[[
@@ -468,7 +470,15 @@ local function AuxEditable (group, x, y, opts)
 
 	--- DOCME
 	function Editable:SetText (text)
-		SetText(str, (info.m_filter or Any)(text) or "", align, w)
+		local filter, chars = info.m_filter or Any
+
+		for char in gmatch(text, ".") do
+			chars = chars or {}
+
+			chars[#chars + 1] = filter(char)
+		end
+
+		SetText(str, chars and concat(chars, "") or "", align, w)
 	end
 
 	--
