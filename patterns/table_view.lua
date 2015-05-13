@@ -150,6 +150,15 @@ function M.FileList (group, options)
 end
 
 --
+local function GetIndex (index, add_group)
+	if index and add_group then
+		index = index * 2 - 1
+
+		return (index >= 1 and index < add_group.numChildren) and index
+	end
+end
+
+--
 local function Identity (str)
 	return str
 end
@@ -250,15 +259,19 @@ function M.Listbox (group, options)
 		rect:addEventListener("touch", Select)
 		text:setFillColor(0)
 
-		rect.x, rect.y = Listbox.width / 2, (AddGroup.numChildren / 2 - .5) * 40
+		local count = AddGroup.numChildren / 2
+
+		rect.x, rect.y = Listbox.width / 2, (count - .5) * 40
 		text.anchorX, text.x, text.y = 0, 5, rect.y
 
 		rect.m_data = str
+
+		return count
 	end
 
 	--- DOCME
 	function Listbox:Append (str)
-		Append(str)
+		return Append(str)
 	end
 
 	--- DOCME
@@ -299,9 +312,9 @@ function M.Listbox (group, options)
 
 	--- DOCME
 	function Listbox:Delete (index)
-		index = index * 2 - 1
+		index = GetIndex(index, AddGroup)
 
-		if AddGroup and index >= 1 and index < AddGroup.numChildren then
+		if index then
 			local rect, text = AddGroup[index], AddGroup[index + 1]
 
 			if rect == selection then
@@ -339,17 +352,59 @@ function M.Listbox (group, options)
 	end
 
 	--- DOCME
+	function Listbox:ForEach (func)
+		for i = 1, AddGroup and AddGroup.numChildren or 0, 2 do
+			local data = AddGroup[i].m_data
+
+			func(get_text(data), data)
+		end
+	end
+
+	--- DOCME
+	function Listbox:GetCount ()
+		return (AddGroup and AddGroup.numChildren or 0) / 2
+	end
+
+	--- DOCME
+	function Listbox:GetData (index)
+		index = GetIndex(index, AddGroup)
+
+		return index and AddGroup[index].m_data
+	end
+
+	--- DOCME
+	function Listbox:GetRect (index)
+		index = GetIndex(index, AddGroup)
+
+		return index and AddGroup[index]
+	end
+
+	--- DOCME
 	function Listbox:GetSelection ()
 		return selection and get_text(selection.m_data)
 	end
 
 	--- DOCME
-	function Listbox:Update (index, str)
-		index = index * 2 - 1
+	function Listbox:GetString (index)
+		index = GetIndex(index)
 
-		if AddGroup and str and index >= 1 and index < AddGroup.numChildren then
-			if str ~= nil then
-				AddGroup[index].m_data = str
+		return index and AddGroup[index + 1]
+	end
+
+	--- DOCME
+	function Listbox:GetText (index)
+		index = GetIndex(index, AddGroup)
+
+		return index and get_text(AddGroup[index].m_data)
+	end
+
+	--- DOCME
+	function Listbox:Update (index, data)
+		index = GetIndex(index, AddGroup)
+
+		if index then
+			if data ~= nil then
+				AddGroup[index].m_data = data
 			end
 
 			AddGroup[index + 1].text = get_text(AddGroup[index].m_data)
