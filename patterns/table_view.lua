@@ -352,11 +352,11 @@ function M.Listbox (group, options)
 	end
 
 	--- DOCME
-	function Listbox:ForEach (func)
+	function Listbox:ForEach (func, ...)
 		for i = 1, AddGroup and AddGroup.numChildren or 0, 2 do
 			local data = AddGroup[i].m_data
 
-			func(get_text(data), data)
+			func(get_text(data), data, ...)
 		end
 	end
 
