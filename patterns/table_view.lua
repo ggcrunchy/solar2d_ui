@@ -26,6 +26,7 @@
 -- Standard library imports --
 local assert = assert
 local ipairs = ipairs
+local rawequal = rawequal
 
 -- Modules --
 local file_utils = require("corona_utils.file")
@@ -339,6 +340,17 @@ function M.Listbox (group, options)
 	function Listbox:Find (str)
 		for i = 1, (str and AddGroup) and AddGroup.numChildren or 0, 2 do
 			if get_text(AddGroup[i].m_data) == str then
+				return (i + 1) / 2
+			end
+		end
+
+		return nil
+	end
+
+	--- DOCME
+	function Listbox:FindData (data)
+		for i = 1, (data and AddGroup) and AddGroup.numChildren or 0, 2 do
+			if rawequal(AddGroup[i].m_data, data) then
 				return (i + 1) / 2
 			end
 		end
