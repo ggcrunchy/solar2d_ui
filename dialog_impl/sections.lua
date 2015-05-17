@@ -31,6 +31,7 @@ local assert = assert
 
 -- Corona globals --
 local transition = transition
+local timer = timer
 
 -- Exports --
 local M = {}
@@ -355,6 +356,48 @@ function M:FlipTwoStates (to_expand, to_collapse)
 
 		FadeOutParams.delay, MoveParams.delay = nil
 	end
+end
+
+--- DOCME
+-- @tparam SectionHandle handle
+-- @param name
+-- @bool use_false
+function M:SetStateFromValue (handle, name, use_false)
+	if not self:GetValue(name) ~= not use_false then
+		self:Expand(handle)
+	else
+		self:Collapse(handle)
+	end
+end
+
+
+--- DOCME
+-- @tparam SectionHandle handle
+-- @param name
+-- @bool use_false
+function M:SetStateFromValue_Watch (handle, name, use_false)
+	self:SetStateFromValue(handle, name, use_false)
+
+	local list = self.m_watch_sections
+
+	if not list then
+		list = {}
+
+		self.m_watch_sections = list
+		self.m_watch_sections_timer = timer.performWithDelay(30, function()
+			for i = 1, #list, 3 do
+				self:SetStateFromValue(list[i], list[i + 1], list[i + 2])
+			end
+		end, 0)
+
+		self:addEventListener("finalize", function(event)
+			timer.cancel(event.target.m_watch_sections_timer)
+		end)
+	end
+
+	list[#list + 1] = handle
+	list[#list + 1] = name
+	list[#list + 1] = use_false or false
 end
 
 -- Export the module.
