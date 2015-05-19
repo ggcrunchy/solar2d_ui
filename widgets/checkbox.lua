@@ -126,13 +126,13 @@ function M.Checkbox_XY (group, x, y, w, h, opts)
 	-- The follow-up logic is performed even if the check state does not change.
 	-- @bool check If true, check; otherwise, uncheck.
 	function Checkbox:Check (check)
-		Check(Checkbox, Checkbox[2], not not check)
+		Check(Checkbox, image, not not check)
 	end
 
 	--- Predicate.
 	-- @treturn boolean The checkbox is checked?
 	function Checkbox:IsChecked ()
-		return Checkbox[2].isVisible
+		return image.isVisible
 	end
 
 	--- Toggles the checkbox state, checked &rarr; unchecked (or vice versa).

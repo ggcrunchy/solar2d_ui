@@ -72,22 +72,23 @@ end
 
 --
 local function AddText (button)
-	local kgroup, bstr = button.parent.parent, button.parent[2]
-	local btext = bstr.text
+	button = button.parent -- TODO: should fix this in button functions...
+
+	local kgroup, btext = button.parent, button:GetText()
 
 	--
 	if btext == "A>a" or btext == "a>A" then
 		local func = btext == "A>a" and lower or upper
 
 		for i = 2, kgroup.numChildren do
-			local cstr = kgroup[i][2]
+			local ctext = kgroup[i]:GetText()
 
-			if #cstr.text == 1 then
-				cstr.text = func(cstr.text)
+			if #ctext == 1 then
+				kgroup[i]:SetText(func(ctext))
 			end
 		end
 
-		bstr.text = func == lower and "a>A" or "A>a"
+		button:SetText(func == lower and "a>A" or "A>a")
 
 	--
 	elseif btext == "<-" then
