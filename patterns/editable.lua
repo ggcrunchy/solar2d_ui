@@ -115,9 +115,9 @@ local function SetText (str, text, align, w)
 	str.text = text
 
 	if align == "left" then
-		layout.LeftAlignWith(str, 2)
+		layout.LeftAlignWith(str, ".25%")
 	elseif align == "right" then
-		layout.RightAlignWith(str, w - 2)
+		layout.RightAlignWith(str, w, "-.25%")
 	end
 
 	-- Alert listeners.
@@ -315,7 +315,10 @@ local FadeInParams = { alpha = .4 }
 local KeyFadeInParams = { alpha = 1 }
 
 -- --
-local PlaceKeys = { "below", "above", "bottom_center", "top_center", dx = 5, dy = 5 }
+local XSep, YSep = layout_dsl.EvalDims(".625%", "1.04%")
+
+-- --
+local PlaceKeys = { "below", "above", "bottom_center", "top_center", dx = XSep, dy = YSep }
 
 --
 local function EnterInputMode (editable)
@@ -374,10 +377,10 @@ local function AuxEditable (group, x, y, opts)
 	Editable.anchorChildren = true
 
 	--
-	local text, font, size = opts and opts.text or "", opts and opts.font or native.systemFontBold, opts and opts.size or 20
+	local text, font, size = opts and opts.text or "", opts and opts.font or native.systemFontBold, layout.ResolveY(opts and opts.size or "4.2%")
 	local str, info = cursor.NewText(Editable, text, 0, 0, font, size)
 	local ow, oh = layout_dsl.EvalDims(opts and opts.width or 0, opts and opts.height or 0)
-	local w, h, align = max(str.width, ow, 80), max(str.height, oh, 25), opts and opts.align
+	local w, h, align = max(str.width, ow, layout.ResolveX("10%")), max(str.height, oh, layout.ResolveY("5.2%")), opts and opts.align
 
 	SetText(str, str.text, align, w)
 
@@ -385,7 +388,7 @@ local function AuxEditable (group, x, y, opts)
 	Editable.m_blocking = not not (opts and opts.blocking)
 
 	--
-	local caret = display.newRect(Editable, 0, 0, 5, str.height)
+	local caret = display.newRect(Editable, 0, 0, XSep, str.height)
 
 	layout.PutRightOf(caret, str)
 
@@ -426,7 +429,7 @@ local function AuxEditable (group, x, y, opts)
 	end
 
 	--
-	local body = display.newRoundedRect(Editable, 0, 0, w + 5, h + 5, 12)
+	local body = display.newRoundedRect(Editable, 0, 0, w + XSep, h + YSep, layout.ResolveX("1.5%"))
 
 	body:addEventListener("touch", Touch)
 	body:setFillColor(0, 0, .9, .6)

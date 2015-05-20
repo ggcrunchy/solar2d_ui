@@ -24,6 +24,7 @@
 --
 -- Modules --
 local editable_patterns = require("corona_ui.patterns.editable")
+local layout = require("corona_ui.utils.layout")
 local utils = require("corona_ui.dialog_impl.utils")
 
 -- Corona globals --
@@ -58,7 +59,7 @@ function M:CommonAdd (object, options, static_text)
 			local igroup = self:ItemGroup()
 
 			if static_text then
-				text = display.newText(igroup, options.text, 0, 0, native.systemFontBold, 22)
+				text = display.newText(igroup, options.text, 0, 0, native.systemFontBold, layout.ResolveY("4.6%"))
 			else
 				text = editable_patterns.Editable(igroup, options)
 
@@ -108,15 +109,20 @@ function M:ItemGroup ()
 	return self.m_items
 end
 
+-- --
+local BeforeRemoveEvent = { name = "before_remove" }
+
 --- Removes the dialog. This does some additional cleanup beyond what is done by
 -- `display.remove` and `object:removeSelf`.
 function M:RemoveSelf ()
 	self.m_defs = nil
 	self.m_values = nil
 
-	if self.m_before_remove then
-		self:m_before_remove() -- can be subsumed into finalize?
-	end
+	BeforeRemoveEvent.target = self
+
+	self:dispatchEvent(BeforeRemoveEvent)
+
+	BeforeRemoveEvent.target = nil
 
 	local igroup, namespace = self:ItemGroup(), utils.GetNamespace(self)
 
@@ -133,9 +139,8 @@ function M:RemoveSelf ()
 	self:removeSelf()
 end
 
---- DOCME
-function M:SetBeforeRemove (func)
-	self.m_before_remove = func
+function M:Begin ()
+	self:addEventListener("finalize", AuxRemove)
 end
 
 -- Export the module.

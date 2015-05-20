@@ -32,6 +32,8 @@ local min = math.min
 local type = type
 
 -- Modules --
+local layout = require("corona_ui.utils.layout")
+local layout_dsl = require("corona_ui.utils.layout_dsl")
 local utils = require("corona_ui.dialog_impl.utils")
 
 -- Corona globals --
@@ -56,7 +58,7 @@ local function CurrentLine (dialog)
 end
 
 -- Separation distances between objects and dialog edges --
-local XSep, YSep = 5, 5
+local XSep, YSep = layout_dsl.EvalDims(".625%", "1.04%")
 
 -- Common logic to advance the pen's y-coordinate
 local function SetPenY (dialog, addy)
@@ -90,7 +92,7 @@ function M:AddSeparator ()
 
 	CR(self, true)
 
-	local sep = display.newRect(self:ItemGroup(), 0, 0, SepWidth(self), 8)
+	local sep = display.newRect(self:ItemGroup(), 0, 0, SepWidth(self), layout.ResolveY("1.67%"))
 
 	sep:setFillColor(.0625)
 
@@ -178,7 +180,7 @@ local function MustGrow (dialog, what, comp)
 end
 
 -- How much the dialog can stretch before we make it scrollable --
-local WMax, HMax = 500, 350
+local WMax, HMax = layout_dsl.EvalDims("62.5%", "72.92%")--500, 350
 
 -- Fixes up various dialog state when its size changes
 local function ResizeBack (dialog)

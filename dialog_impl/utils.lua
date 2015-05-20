@@ -30,6 +30,7 @@ local setmetatable = setmetatable
 local type = type
 
 -- Modules --
+local layout = require("corona_ui.utils.layout")
 local table_funcs = require("tektite_core.table.funcs")
 
 -- Corona globals --
@@ -48,13 +49,13 @@ local function NoTouch () return true end
 
 --- DOCME
 function M.AddBack (dialog, w, h)
-	display.remove(dialog[1])
+	display.remove(dialog[1]) -- TODO: Something more robust!
 
-	local back = display.newRoundedRect(dialog, 0, 0, w, h, 12)
+	local back = display.newRoundedRect(dialog, 0, 0, w, h, layout.ResolveX("1.5%"))
 
 	back:addEventListener("touch", NoTouch)
 	back:setFillColor(.5)
-	back:setStrokeColor(.375, .375, .375)
+	back:setStrokeColor(.375)
 	back:toBack()
 
 	back.anchorX, back.x = 0, 0
@@ -76,67 +77,6 @@ end
 function M.GetNamespace (dialog)
 	return dialog and dialog.m_namespace
 end
-
---- DOCME
-function M.GetValue (object, alt)
-	local dialog, value = _GetDialog_(alt or object)
-
-	if dialog then
-		local values, value_name = dialog.m_values, _GetProperty_(object, "value_name", dialog.m_namespace)
-
-		if values and value_name then
-			value = values[value_name]
-
-			if type(value) == "table" then
-				value = table_funcs.Copy(value)
-			end
-		end
-	end
-
-	return value
-end
-
--- --
-local Event = { name = "update_object" }
-
---- DOCMEMORE
--- Updates the value bound to an object (dirties the editor state)
-function M.UpdateObject (object, value, alt)
-	local dialog = _GetDialog_(alt or object)
-	local values = dialog.m_values
-	local value_name = _GetProperty_(object, "value_name", dialog.m_namespace)
-
-	if values and value_name then
-		if type(value) == "table" then
-			-- If the values are already a table, copy into it instead of overwriting the reference.
-			if type(values[value_name]) == "table" then
-				local cur = values[value_name]
-
-				for k, v in pairs(value) do
-					cur[k] = v
-				end
-
-				value = cur
-
-			-- Otherwise, assign a shallow table copy to avoid capturing the input reference.
-			else
-				value = table_funcs.Copy(value)
-			end
-		end
-
-		values[value_name] = value
-
-		--
-		Event.target, Event.object = dialog, object
-
-		dialog:dispatchEvent(Event)
-
-		Event.target, Event.object = nil
-	end
-end
-
--- TODO: Make this instantiable:
--- Make weak-keyed master table, start with "default" key
 
 -- --
 local SubPropsMT = {
@@ -186,6 +126,25 @@ function M.GetProperty_Table (item, namespace)
 end
 
 --- DOCME
+function M.GetValue (object, alt)
+	local dialog, value = _GetDialog_(alt or object)
+
+	if dialog then
+		local values, value_name = dialog.m_values, _GetProperty_(object, "value_name", dialog.m_namespace)
+
+		if values and value_name then
+			value = values[value_name]
+
+			if type(value) == "table" then
+				value = table_funcs.Copy(value)
+			end
+		end
+	end
+
+	return value
+end
+
+--- DOCME
 function M.SetProperty (item, name, value, namespace)
 	GetProps(item, namespace)[item][name] = value
 end
@@ -193,6 +152,48 @@ end
 function M.SetProperty_Table (item, props, namespace)
 	GetProps(item, namespace)[item] = props
 end
+
+-- --
+local Event = { name = "update_object" }
+
+--- DOCMEMORE
+-- Updates the value bound to an object (dirties the editor state)
+function M.UpdateObject (object, value, alt)
+	local dialog = _GetDialog_(alt or object)
+	local values = dialog.m_values
+	local value_name = _GetProperty_(object, "value_name", dialog.m_namespace)
+
+	if values and value_name then
+		if type(value) == "table" then
+			-- If the values are already a table, copy into it instead of overwriting the reference.
+			if type(values[value_name]) == "table" then
+				local cur = values[value_name]
+
+				for k, v in pairs(value) do
+					cur[k] = v
+				end
+
+				value = cur
+
+			-- Otherwise, assign a shallow table copy to avoid capturing the input reference.
+			else
+				value = table_funcs.Copy(value)
+			end
+		end
+
+		values[value_name] = value
+
+		--
+		Event.target, Event.object = dialog, object
+
+		dialog:dispatchEvent(Event)
+
+		Event.target, Event.object = nil
+	end
+end
+
+-- TODO: Make this instantiable:
+-- Make weak-keyed master table, start with "default" key
 
 -- Cache module members.
 _GetDialog_ = M.GetDialog
