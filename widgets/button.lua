@@ -32,6 +32,7 @@ local type = type
 -- Modules --
 local colors = require("corona_ui.utils.color")
 local geom2d_preds = require("tektite_core.geom2d.predicates")
+local layout = require("corona_ui.utils.layout")
 local layout_dsl = require("corona_ui.utils.layout_dsl")
 local skins = require("corona_ui.utils.skin")
 
@@ -133,7 +134,7 @@ local function OnTouch (event)
 			SetFocus(nil)
 
 			if not button.m_doing_timeouts and event.phase == "ended" and button.m_inside then
-				button:m_func()
+				button.m_func(button.parent)
 			end
 
 			button.m_is_touched = false
@@ -172,7 +173,7 @@ end
 
 -- Rounded rect button
 function Factories.rounded_rect (bgroup, skin, w, h)
-	local button = display.newRoundedRect(bgroup, 0, 0, w, h, skin.button_corner)
+	local button = display.newRoundedRect(bgroup, 0, 0, w, h, layout.ResolveX(skin.button_corner))
 
 	button.strokeWidth = skin.button_borderwidth
 
@@ -247,7 +248,7 @@ function M.Button_XY (group, x, y, w, h, func, opts)
 
 	Button:insert(str_cont)
 
-	local string = display.newText(str_cont, text or "", 0, 0, skin.button_font, skin.button_textsize)
+	local string = display.newText(str_cont, text or "", 0, 0, skin.button_font, layout.ResolveY(skin.button_textsize))
 
 	string:setFillColor(GetColor(skin.button_textcolor))
 
@@ -268,12 +269,6 @@ function M.Button_XY (group, x, y, w, h, func, opts)
 	-- Assign custom button state.
 	button.m_func = func
 	button.m_skin = skin
-
-	--- Getter.
-	-- @treturn DisplayObject Button object.
-	function Button:GetButton ()
-		return button
-	end
 
 	--- Getter.
 	-- @treturn string Button text.
@@ -315,10 +310,10 @@ skins.AddToDefaultSkin("button", {
 	normal = "blue",
 	held = "red",
 	touch = "green",
-	corner = 12,
+	corner = "1.5%",
 	font = "PeacerfulDay",
 	textcolor = "white",
-	textsize = 33,
+	textsize = "6.875%",
 	type = "rounded_rect"
 })
 

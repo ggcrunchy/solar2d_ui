@@ -35,6 +35,7 @@ local upper = string.upper
 -- Imports --
 local button = require("corona_ui.widgets.button")
 local colors = require("corona_ui.utils.color")
+local layout = require("corona_ui.utils.layout")
 local layout_dsl = require("corona_ui.utils.layout_dsl")
 local skins = require("corona_ui.utils.skin")
 local touch = require("corona_ui.utils.touch")
@@ -72,8 +73,6 @@ end
 
 --
 local function AddText (button)
-	button = button.parent -- TODO: should fix this in button functions...
-
 	local kgroup, btext = button.parent, button:GetText()
 
 	--
@@ -218,7 +217,7 @@ function M.Keyboard_XY (group, x, y, opts)
 
 	--
 	local Keyboard = display.newGroup()
-	local backdrop = display.newRoundedRect(Keyboard, 0, 0, 1, 1, skin.keyboard_backdropborderradius)
+	local backdrop = display.newRoundedRect(Keyboard, 0, 0, 1, 1, layout.ResolveX(skin.keyboard_backdropborderradius))
 
 	if not no_drag then
 		backdrop:addEventListener("touch", BackTouch)
@@ -266,12 +265,12 @@ skins.AddToDefaultSkin("keyboard", {
 	backdropcolor = { type = "gradient", color1 = { .25 }, color2 = { .75 }, direction = "up" },
 	backdropbordercolor = "white",
 	backdropborderwidth = 2,
-	backdropborderradius = 8,
+	backdropborderradius = "1%",
 	keyskin = nil,
-	keywidth = 40,
-	keyheight = 40,
-	xsep = 5,
-	ysep = 5
+	keywidth = "5%",
+	keyheight = "8.33%",
+	xsep = ".625%",
+	ysep = "1.42%"
 })
 
 -- Cache module members.
