@@ -30,6 +30,7 @@ local rawequal = rawequal
 
 -- Modules --
 local file_utils = require("corona_utils.file")
+local layout = require("corona_ui.utils.layout")
 local layout_dsl = require("corona_ui.utils.layout_dsl")
 
 -- Corona globals --
@@ -192,7 +193,8 @@ end
 -- @treturn DisplayObject Listbox object.
 -- TODO: Update, reincorporate former Adder docs...
 function M.Listbox (group, options)
-	local lopts, x, y = layout_dsl.ProcessWidgetParams(options, { width = 300, height = 150 })
+	local w, h = layout_dsl.EvalDims("37.5%", "31.25%")
+	local lopts, x, y = layout_dsl.ProcessWidgetParams(options, { width = w, height = h })
 
 	-- On Render --
 	local get_text = Identity
@@ -249,8 +251,9 @@ function M.Listbox (group, options)
 	local AddGroup
 
 	local function Append (str)
-		local rect = display.newRect(0, 0, Listbox.width, 40)
-		local text = display.newText(get_text(str), 0, 0, native.systemFont, 24)
+		local h = layout.ResolveY("8.3%")
+		local rect = display.newRect(0, 0, Listbox.width, h)
+		local text = display.newText(get_text(str), 0, 0, native.systemFont, layout.ResolveY("5%"))
 
 		Listbox:insert(rect)
 		Listbox:insert(text)
@@ -262,8 +265,8 @@ function M.Listbox (group, options)
 
 		local count = AddGroup.numChildren / 2
 
-		rect.x, rect.y = Listbox.width / 2, (count - .5) * 40
-		text.anchorX, text.x, text.y = 0, 5, rect.y
+		rect.x, rect.y = Listbox.width / 2, (count - .5) * h
+		text.anchorX, text.x, text.y = 0, layout.ResolveX(".625%"), rect.y
 
 		rect.m_data = str
 

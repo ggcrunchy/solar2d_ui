@@ -28,6 +28,7 @@ local ipairs = ipairs
 local pairs = pairs
 
 -- Modules --
+local layout = require("corona_ui.utils.layout")
 local layout_dsl = require("corona_ui.utils.layout_dsl")
 local table_funcs = require("tektite_core.table.funcs")
 
@@ -49,9 +50,11 @@ end
 -- @treturn DisplayObject Tab bar object.
 function M.TabBar (group, buttons, options)
 	--
+	local w, h = layout_dsl.EvalDims("4%", "6.67%")
+
 	for _, button in ipairs(buttons) do
 		button.overFile, button.defaultFile = Name("Icon-down"), Name("Icon")
-		button.width, button.height, button.size = 32, 32, 14
+		button.width, button.height, button.size = w, h, layout.ResolveY("2.92%")
 	end
 
 	local topts, x, y

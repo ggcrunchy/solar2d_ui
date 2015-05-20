@@ -33,6 +33,7 @@ local ipairs = ipairs
 local array_index = require("tektite_core.array.index")
 local button = require("corona_ui.widgets.button")
 local colors = require("corona_ui.utils.color")
+local layout = require("corona_ui.utils.layout")
 local layout_dsl = require("corona_ui.utils.layout_dsl")
 local sheet = require("corona_utils.sheet")
 local skins = require("corona_ui.utils.skin")
@@ -137,7 +138,7 @@ function M.OptionsHGrid (group, x, y, w, h, text, opts)
 	local bar = display.newRect(ggroup, cx, dh / 2, w, dh)
 	local backdrop = display.newRect(ggroup, cx, cy, w, dh)
 	local choice = display.newRect(ggroup, cx, cy, dw, dh - 2)
-	local string = display.newText(ggroup, text or "", bar.x, bar.y, skin.optiongrid_font, skin.optiongrid_textsize)
+	local string = display.newText(ggroup, text or "", bar.x, bar.y, skin.optiongrid_font, layout.ResolveY(skin.optiongrid_textsize))
 
 	bar.strokeWidth = skin.optiongrid_barborderwidth
 	backdrop.strokeWidth = skin.optiongrid_backdropborderwidth
@@ -284,7 +285,7 @@ skins.AddToDefaultSkin("optiongrid", {
 	linecolor = "blue",
 	linewidth = 2,
 	textcolor = "white",
-	textsize = 24,
+	textsize = "5%",
 	scrollsep = 0
 })
 
