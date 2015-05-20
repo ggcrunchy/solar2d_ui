@@ -38,6 +38,7 @@ local keyboard = require("corona_ui.widgets.keyboard")
 local layout = require("corona_ui.utils.layout")
 local net = require("corona_ui.patterns.net")
 local layout_dsl = require("corona_ui.utils.layout_dsl")
+local layout_strategies = require("corona_ui.utils.layout_strategies")
 local scenes = require("corona_utils.scenes")
 
 -- Corona globals --
@@ -314,7 +315,7 @@ local FadeInParams = { alpha = .4 }
 local KeyFadeInParams = { alpha = 1 }
 
 -- --
-local PlaceKeys = { "below", "above", "left", "right", dx = 5, dy = 5 }
+local PlaceKeys = { "below", "above", "bottom_center", "top_center", dx = 5, dy = 5 }
 
 --
 local function EnterInputMode (editable)
@@ -337,7 +338,7 @@ local function EnterInputMode (editable)
 	transition.to(Editable.m_net, FadeInParams)
 
 	if keys then
-		layout.PutAtFirstHit(keys, editable, PlaceKeys, true)
+		layout_strategies.PutAtFirstHit(keys, editable, PlaceKeys, true)
 
 		keys.alpha, keys.isVisible = .2, true
 

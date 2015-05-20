@@ -11,9 +11,6 @@
 -- indicated percent of the content width or height.
 -- * **nil**, which resolves to 0.
 
--- TODO: Where two objects are concerned, layout should be able to handle mixed parents
--- TODO: Positions should respect parent's positions, and not assume screen coordiantes
-
 --
 -- Permission is hereby granted, free of charge, to any person obtaining
 -- a copy of this software and associated documentation files (the
@@ -39,7 +36,6 @@
 
 -- Standard library imports --
 local floor = math.floor
-local ipairs = ipairs
 local sub = string.sub
 local tonumber = tonumber
 local type = type
@@ -164,16 +160,29 @@ local function CenterY (object, bounds)
 	bounds = bounds or object.contentBounds
 
 	return .5 * (bounds.yMin + bounds.yMax)
+end 
+
+--
+local function IsAnchored (object)
+	return object._type ~= "GroupObject" or object.anchorChildren
 end
 
 -- Gets the (anchor-aware) content x-coordinate of the object...
 local function GetX (object, bounds)
-	return bounds.xMin + object.anchorX * (bounds.xMax - bounds.xMin)
+	if IsAnchored(object) then
+		return bounds.xMin + object.anchorX * (bounds.xMax - bounds.xMin)
+	else
+		return bounds.xMin
+	end
 end
 
 -- ...and the y-coordinate
 local function GetY (object, bounds)
-	return bounds.yMin + object.anchorY * (bounds.yMax - bounds.yMin)
+	if IsAnchored(object) then
+		return bounds.yMin + object.anchorY * (bounds.yMax - bounds.yMin)
+	else
+		return bounds.yMin
+	end
 end
 
 -- Sets the (anchor-aware) content x-coordinate of the object...
@@ -310,13 +319,18 @@ function M.MoveY (object, dy)
 	object.y = floor(object.y + DY(dy))
 end
 
+--
+local function AnchorY (object, dx)
+	return IsAnchored(object) and object.anchorY or 0
+end
+
 --- Assigns an object's y-coordinate such that its bottom is aligned with the top of a
 -- reference object or a y-coordinate.
 -- @pobject object Object to position.
 -- @tparam ?|DisplayObject|Number ref Reference object or y-coordinate.
 -- @tparam[opt] Number dy Displacement from the "above" position.
 function M.PutAbove (object, ref, dy)
-	local y = TopY(ref) + (object.anchorY - 1) * object.contentHeight
+	local y = TopY(ref) + (AnchorY(object) - 1) * object.contentHeight
 
 	SetY(object, floor(y + DY(dy)))
 end
@@ -391,64 +405,13 @@ function M.PutAtCenterY (object, dy)
 	PutAtContentCenterY(object, dy)
 end
 
---- DOCME
--- TODO: This doesn't seem to be adequate, needs to be split on (x, y)
-function M.PutAtFirstHit (object, ref_object, choices, center_on_fail)
-	local x, y, dx, dy = object.x, object.y, DX(choices.dx), DY(choices.dy)
-
-	--
-	for _, choice in ipairs(choices) do
-		_CenterAlignWith_(object, ref_object)
-
-		--
-		if choice == "above" or choice == "below" then
-			if choice == "above" then
-				_PutAbove_(object, ref_object, -dy)
-
-				if _Above_(object) >= 0 then
-					return
-				end
-			else
-				_PutBelow_(object, ref_object, dy)
-
-				if _Below_(object) < display.contentHeight then
-					return
-				end
-			end
-
-		--
-		elseif choice == "left_of" or choice == "right_of" then
-			if choice == "left_of" then
-				_PutLeftOf_(object, ref_object, -dx)
-
-				if _LeftOf_(object) >= 0 then
-					return
-				end
-			else
-				_PutRightOf_(object, ref_object, dx)
-
-				if _RightOf_(object) < display.contentWidth then
-					return
-				end
-			end
-		end
-	end
-
-	--
-	if center_on_fail then
-		_CenterAlignWith_(object, ref_object)
-	else
-		object.x, object.y = x, y
-	end
-end
-
 --- Centers an object horizontally and top-aligns it to the top of the content.
 -- @pobject object Object to position.
 -- @tparam[opt] Number dx Displacement from the center.
 -- @tparam[opt] Number dy Displacement from the top.
 function M.PutAtTopCenter (object, dx, dy)
 	PutAtContentCenterX(object, dx)
-	_PutAbove_(object, 0, dy)
+	_PutBelow_(object, 0, dy)
 end
 
 --- Left-aligns an object to the left side of the content and top-aligns it to the top of
@@ -477,9 +440,14 @@ end
 -- @tparam ?|DisplayObject|Number ref Reference object or y-coordinate.
 -- @tparam[opt] Number dy Displacement from the "below" position.
 function M.PutBelow (object, ref, dy)
-	local y = BottomY(ref) + object.anchorY * object.contentHeight
+	local y = BottomY(ref) + AnchorY(object) * object.contentHeight
 
 	SetY(object, floor(y + DY(dy)))
+end
+
+--
+local function AnchorX (object, dx)
+	return IsAnchored(object) and object.anchorX or 0
 end
 
 --- Assigns an object's x-coordinate so that its right side is to the left of a reference
@@ -488,7 +456,7 @@ end
 -- @tparam ?|DisplayObject|Number ref Reference object or x-coordinate.
 -- @tparam[opt] Number dx Displacement from the "left of" position.
 function M.PutLeftOf (object, ref, dx)
-	local x = LeftX(ref) + (object.anchorX - 1) * object.contentWidth
+	local x = LeftX(ref) + (AnchorX(object) - 1) * object.contentWidth
 
 	SetX(object, floor(x + DX(dx)))
 end
@@ -499,10 +467,18 @@ end
 -- @tparam ?|DisplayObject|Number ref Reference object or x-coordinate.
 -- @tparam[opt] Number dx Displacement from the "right of" position.
 function M.PutRightOf (object, ref, dx)
-	local x = RightX(ref) + object.anchorX * object.contentWidth
+	local x = RightX(ref) + AnchorX(object) * object.contentWidth
 
 	SetX(object, floor(x + DX(dx)))
 end
+
+--- DOCME
+-- @function ResolveX
+M.ResolveX = DX
+
+--- DOCME
+-- @function ResolveY
+M.ResolveY = DY
 
 --- Assigns an object's x-coordinate so that its right side aligns with either the right side
 -- of a reference object or an x-coordinate.
