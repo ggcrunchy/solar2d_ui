@@ -87,7 +87,7 @@ local function UpdateLines ()
 		-- If one or both of the endpoints was removed, or the keep condition fails, remove
 		-- the line. Since order is unimportant (and we are iterating backwards), backfill
 		-- its slot with another line.
-		if not (p1.parent and p2.parent and line.keep(p1, p2, line.node)) then
+		if not (p1.removeSelf ~= nil and p2.removeSelf ~= nil and line.keep(p1, p2, line.node)) then -- p1, p2 still valid?
 			if group.parent then
 				group:removeSelf()
 			end

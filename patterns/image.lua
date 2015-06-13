@@ -146,7 +146,7 @@ function M.ImageList (group, options)
 		end
 
 		ImageList:addEventListener("finalize", function()
-			if preview.parent then
+			if preview.removeSelf ~= nil then -- preview still valid? (TODO: Try to use display.remove())
 				preview:removeSelf()
 			end
 		end)

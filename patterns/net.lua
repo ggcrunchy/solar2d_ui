@@ -71,8 +71,10 @@ local function WatchNets ()
 			object.isVisible = false
 		end
 
-		if not (net.parent and object.isVisible) then
-			if net.parent then
+		local intact = net.removeSelf ~= nil
+
+		if not (intact and object.isVisible) then
+			if intact then -- TODO: Try to use display.remove()...
 				net:removeSelf()
 			end
 
