@@ -88,7 +88,7 @@ local function UpdateLines ()
 		-- the line. Since order is unimportant (and we are iterating backwards), backfill
 		-- its slot with another line.
 		if not (p1.removeSelf ~= nil and p2.removeSelf ~= nil and line.keep(p1, p2, line.node)) then -- p1, p2 still valid?
-			if group.parent then
+			if group.removeSelf ~= nil then -- group still valid? TODO: just a synonym for display.remove()?
 				group:removeSelf()
 			end
 

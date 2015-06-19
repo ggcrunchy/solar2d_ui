@@ -65,7 +65,7 @@ end
 local function DoTimeouts (button)
 	button.m_since = system.getTimer()
 	button.m_update = timer.performWithDelay(20, function(event)
-		if button.parent and button.m_is_touched then
+		if button.removeSelf ~= nil and button.m_is_touched then -- button still valid?
 			if button.m_inside then
 				local since, timeout = button.m_since, button.m_timeout
 
