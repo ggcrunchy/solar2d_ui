@@ -114,7 +114,7 @@ function M.TabsHack (group, tabs, n, x, y, w, h)
 	})
 
 	tabs:addEventListener("finalize", function()
-		if rect.removeSelf ~= nil then -- rect still valid? (TODO: use display.remove()...)
+		if display.isValid(rect) then -- TODO: use display.remove()...
 			rect:removeSelf()
 		end
 	end)
