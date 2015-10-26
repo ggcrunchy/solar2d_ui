@@ -249,7 +249,7 @@ end
 -- @tparam[opt] Number x Position x-coordinate.
 -- @tparam[opt] Number dx Displacement from the x-coordinate.
 function M.CenterAtX (object, x, dx)
-	PutCenterAtY(object, x, dx)
+	PutCenterAtX(object, x, dx)
 end
 
 --- Variant of @{CenterAt} that only assigns the y-coordinate.
