@@ -399,10 +399,12 @@ local function AuxEditable (group, x, y, opts)
 
 	--
 	local style, keys, mode = opts and opts.style, opts and opts.mode
+	local platform = system.getInfo("platform")
+	local on_desktop = platform == "macos" or platform == "win32" or system.getInfo("environment") == "simulator"
 
 	if style == "text_only" then
 		info.m_filter = Filter[mode]
-	elseif style == "keys_and_text" or system.getInfo("platformName") == "Win" then
+	elseif style == "keys_and_text" or on_desktop then
 		keys = keyboard.Keyboard(display.getCurrentStage(), mode and { type = mode })
 
 		info.m_filter, keys.isVisible = Filter[mode], false
