@@ -28,6 +28,8 @@
 -- Standard library imports --
 local abs = math.abs
 local ipairs = ipairs
+local min = math.min
+local type = type
 
 -- Modules --
 local array_index = require("tektite_core.array.index")
@@ -93,25 +95,44 @@ local function SetScale (object, index)
 	object.yScale = scale
 end
 
+-- --
+local InterpParams = {}
+
 --
-local function Roll (transitions, parts, oindex, dw)
-	local other = parts[4]
+local function Roll (transitions, parts, oindex, dw, advance)
+	local other, with_trans, add = parts[4], type(transitions) == "table", 0
 
-	other.x = X(dw < 0 and 4 or 0, abs(dw))
+	if with_trans then
+		other.m_to_left = dw < 0
+	else
+		other.x, advance = X(dw < 0 and 4 or 0, abs(dw)), true
 
-	other.m_to_left = dw < 0
+		sheet.SetSpriteSetImageFrame(other, oindex)
+	end
 
-	sheet.SetSpriteSetImageFrame(other, oindex)
+	if advance then
+		add = dw < 0 and -1 or 1
+	end
 
-	local add = dw < 0 and -1 or 1
+	local params = with_trans and RollParams or InterpParams
+	local t = params == InterpParams and transitions
 
 	for i, part in ipairs(parts) do
-		SetScale(RollParams, i + add)
+		SetScale(params, i + add)
 
-		RollParams.x = part.x + dw
-		RollParams.onComplete = part == other and transitions.onComplete or nil
+		params.x = part.x + dw
 
-		transitions[i] = transition.to(part, RollParams)
+		if t then
+			local s = 1 - t
+
+			part.x = s * part.x + t * InterpParams.x
+			part.xScale = s * part.xScale + t * InterpParams.xScale
+			part.yScale = s * part.yScale + t * InterpParams.yScale
+		else
+			params.onComplete = part == other and transitions.onComplete or nil
+
+			transitions[i] = transition.to(part, RollParams)
+		end
 	end
 end
 
@@ -182,19 +203,51 @@ function M.OptionsHGrid (group, x, y, w, h, text, opts)
 		end
 	end
 
-	backdrop:addEventListener("touch", function(event)
-		local x = event.target:contentToLocal(event.x, 0)
+	backdrop:addEventListener("touch", touch.TouchHelperFunc(function(event, target)
+		target.m_current = target.parent:GetCurrent()
+		target.m_x = target:contentToLocal(event.x, 0)
+	end, function(event, target)
+		local x = target:contentToLocal(event.x, 0)
+		local diff = x - target.m_x
 
-		if event.phase == "began" and abs(2 * x) > dw and sprite_index and #trans == 0 then
-			local to_left = x < 0
+		if target.m_moved or abs(diff) > 4 then
+			local current, adiff, to_left = target.m_current, abs(diff), diff < 0
 
-			sprite_index = Rotate(to_left)
+			while adiff >= dw do
+				current, adiff = Rotate(to_left, current), adiff - dw
+			end
 
-			Roll(trans, parts, Rotate(to_left), to_left and dw or -dw)
+			target.parent:SetCurrent(current)
+
+			local oindex = current
+
+			for _ = 1, 2 do
+				oindex = Rotate(to_left, oindex)
+			end
+
+			Roll(adiff / dw, parts, oindex, to_left and dw or -dw)
+
+			target.m_moved = true
+		end
+	end, function(event, target)
+		if target.m_moved and sprite_index and #trans == 0 then
+			local diff = target:contentToLocal(event.x, 0) - target.m_x
+			local adiff, to_left = abs(diff) % dw, diff > 0
+			local delta, advance = adiff
+
+			if adiff > dw / 2 then
+				to_left, delta, advance = not to_left, dw - adiff, true
+
+				sprite_index = Rotate(to_left)
+			end
+
+			if delta > 0 then
+				Roll(trans, parts, Rotate(to_left), to_left and delta or -delta, advance)
+			end
 		end
 
-		return true
-	end)
+		target.m_moved = nil
+	end))
 
 	--
 	local pgroup = display.newContainer(w, dh)
