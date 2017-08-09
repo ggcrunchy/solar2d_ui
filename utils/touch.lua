@@ -23,6 +23,9 @@
 -- [ MIT license: http://www.opensource.org/licenses/mit-license.php ]
 --
 
+-- Standard library imports --
+local min = math.min
+
 -- Modules --
 local range = require("tektite_core.number.range")
 
@@ -130,16 +133,46 @@ function M.DragTouch ()
 	end)
 end
 
+--
+local function ClampId (x)
+	return x
+end
+
+--
+local ClampMethods = {
+	--
+	max = function(pos, p0)
+		return min(pos, p0)
+	end
+}
+
+--
+local function ResolveCoordinate (v, cur)
+	return v == "cur" and cur
+end
+
 --- DOCME
-function M.DragViewTouch (view)
+function M.DragViewTouch (view, opts)
+	local xclamp, yclamp, x0, y0
+
+	if opts then
+		x0, y0 = ResolveCoordinate(opts.x0, view.x), ResolveCoordinate(opts.y0, view.y)
+		xclamp = ClampMethods[opts.xclamp]
+		yclamp = ClampMethods[opts.yclamp]
+	end
+
+	x0, y0 = x0 or 0, y0 or 0
+	xclamp = xclamp or ClampId
+	yclamp = yclamp or ClampId
+
 	return _TouchHelperFunc_(function(event, object)
 		object.m_dragx = event.x
 		object.m_dragy = event.y
 	end, function(event, object)
 		local ex, ey = event.x, event.y
 
-		view.x, object.m_dragx = view.x + ex - object.m_dragx, ex
-		view.y, object.m_dragy = view.y + ey - object.m_dragy, ey
+		view.x, object.m_dragx = xclamp(view.x - (ex - object.m_dragx), x0), ex
+		view.y, object.m_dragy = yclamp(view.y - (ey - object.m_dragy), y0), ey
 	end)
 end
 
