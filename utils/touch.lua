@@ -24,6 +24,7 @@
 --
 
 -- Standard library imports --
+local max = math.max
 local min = math.min
 
 -- Modules --
@@ -50,6 +51,27 @@ local function GetParent (object, find)
 	end
 end
 
+--
+local ClampMethods = {
+	--
+	clamp_in = ClampIn,
+
+	--
+	id = function(x)
+		return x
+	end,
+
+	--
+	max = function(pos, p0)
+		return max(pos, p0)
+	end,
+
+	--
+	view_max = function(pos, p0)
+		return min(pos, p0)
+	end
+}
+
 --- Builds a function (on top of @{TouchHelperFunc}) to be assigned as a **"touch"**
 -- listener, which will drag the target's parent around when moved, subject to clamping at
 -- the screen edges.
@@ -66,13 +88,15 @@ end
 -- @todo May start in "broken" state, i.e. in violation of the clamping
 -- DOCMEMORE!
 function M.DragParentTouch (opts)
-	local find, hscale, no_clamp
+	local clamp, find, hscale, xoff, yoff
 
 	if opts then
-		find, hscale, no_clamp = opts.find, opts.hscale, not not opts.no_clamp
+		clamp = opts.no_clamp and ClampMethods.id or ClampMethods[opts.clamp]
+		find, hscale = opts.find, opts.hscale
+		xoff, yoff = opts.x_offset, opts.y_offset
 	end
 
-	hscale = hscale or 1
+	clamp, hscale, xoff, yoff = clamp or ClampMethods.clamp_in, hscale or 1, xoff or 0, yoff or 0
 
 	return _TouchHelperFunc_(function(event, object)
 		local parent = GetParent(object, find)
@@ -83,30 +107,41 @@ function M.DragParentTouch (opts)
 		local parent = GetParent(object, find)
 		local newx, newy = object.m_dragx + event.x, object.m_dragy + event.y
 
-		if no_clamp then
-			parent.x, parent.y = newx, newy
-		else
-			parent.x = ClampIn(newx, 0, display.contentWidth - object.contentWidth)
-			parent.y = ClampIn(newy, 0, display.contentHeight - object.contentHeight * hscale)
-		end
+		parent.x = clamp(newx, xoff, display.contentWidth - object.contentWidth)
+		parent.y = clamp(newy, yoff, display.contentHeight - object.contentHeight * hscale)
 	end)
 end
 
 --- DOCME
 function M.DragParentTouch_Child (key, opts)
-	local find = opts and opts.find
+	local clamp, find, ref
 
+	if opts then
+		clamp, find, ref = opts.clamp, opts.find, opts.ref
+	end
+
+	clamp = ClampMethods[clamp] or ClampIn
+print("A")
 	return _TouchHelperFunc_(function(event, object)
 		local parent = GetParent(object, find)
+
+		if ref == "object" then
+			local sibling = GetParent(object, find)[key]
+
+			object.m_x0 = sibling.contentWidth / 2 - sibling.x
+			object.m_y0 = sibling.contentHeight / 2 - sibling.y
+		else
+			object.m_x0, object.m_y0 = 0, 0
+		end
 
 		object.m_dragx = parent.x - event.x
 		object.m_dragy = parent.y - event.y
 	end, function(event, object)
 		local parent = GetParent(object, find)
-		local sibling = parent[key]
+		local sibling, x0, y0 = parent[key], object.m_x0, object.m_y0
 
-		parent.x = ClampIn(object.m_dragx + event.x, 0, display.contentWidth - sibling.contentWidth)
-		parent.y = ClampIn(object.m_dragy + event.y, 0, display.contentHeight - sibling.contentHeight)
+		parent.x = clamp(object.m_dragx + event.x, x0, x0 + display.contentWidth - sibling.contentWidth)
+		parent.y = clamp(object.m_dragy + event.y, y0, y0 + display.contentHeight - sibling.contentHeight)
 	end)
 end
 
@@ -134,19 +169,6 @@ function M.DragTouch ()
 end
 
 --
-local function ClampId (x)
-	return x
-end
-
---
-local ClampMethods = {
-	--
-	max = function(pos, p0)
-		return min(pos, p0)
-	end
-}
-
---
 local function ResolveCoordinate (v, cur)
 	return v == "cur" and cur
 end
@@ -162,8 +184,8 @@ function M.DragViewTouch (view, opts)
 	end
 
 	x0, y0 = x0 or 0, y0 or 0
-	xclamp = xclamp or ClampId
-	yclamp = yclamp or ClampId
+	xclamp = xclamp or ClampMethods.id
+	yclamp = yclamp or ClampMethods.id
 
 	return _TouchHelperFunc_(function(event, object)
 		object.m_dragx = event.x
