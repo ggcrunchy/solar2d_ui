@@ -114,14 +114,14 @@ end
 
 --- DOCME
 function M.DragParentTouch_Child (key, opts)
-	local clamp, find, ref
+	local clamp, find, on_move, ref
 
 	if opts then
-		clamp, find, ref = opts.clamp, opts.find, opts.ref
+		clamp, find, on_move, ref = opts.clamp, opts.find, opts.on_move, opts.ref
 	end
 
 	clamp = ClampMethods[clamp] or ClampIn
-print("A")
+
 	return _TouchHelperFunc_(function(event, object)
 		local parent = GetParent(object, find)
 
@@ -142,6 +142,10 @@ print("A")
 
 		parent.x = clamp(object.m_dragx + event.x, x0, x0 + display.contentWidth - sibling.contentWidth)
 		parent.y = clamp(object.m_dragy + event.y, y0, y0 + display.contentHeight - sibling.contentHeight)
+
+		if on_move then
+			on_move(parent, sibling)
+		end
 	end)
 end
 
@@ -175,12 +179,13 @@ end
 
 --- DOCME
 function M.DragViewTouch (view, opts)
-	local xclamp, yclamp, x0, y0
+	local on_move, xclamp, yclamp, x0, y0
 
 	if opts then
 		x0, y0 = ResolveCoordinate(opts.x0, view.x), ResolveCoordinate(opts.y0, view.y)
 		xclamp = ClampMethods[opts.xclamp]
 		yclamp = ClampMethods[opts.yclamp]
+		on_move = opts.on_move
 	end
 
 	x0, y0 = x0 or 0, y0 or 0
@@ -195,6 +200,10 @@ function M.DragViewTouch (view, opts)
 
 		view.x, object.m_dragx = xclamp(view.x - (ex - object.m_dragx), x0), ex
 		view.y, object.m_dragy = yclamp(view.y - (ey - object.m_dragy), y0), ey
+
+		if on_move then
+			on_move(view)
+		end
 	end)
 end
 

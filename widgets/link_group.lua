@@ -114,7 +114,7 @@ end
 local function InLink (link, x, y, radius)
 	local lx, ly = link:localToContent(0, 0)
 
-	return (x - lx) * (x - lx) + (y - ly) * (y - ly) < radius * radius
+	return (x - lx)^2 + (y - ly)^2 < radius^2
 end
 
 --
@@ -164,7 +164,11 @@ end
 
 -- Hides or shows links that a given link does not target
 local function HideNonTargets (lg, link, how)
-	local show_or_hide = lg.m_show_or_hide
+	local emphasize, show_or_hide = lg.m_emphasize, lg.m_show_or_hide
+
+	if emphasize then
+		-- ???
+	end
 
 	if show_or_hide then
 		local id, is_source = GetInfo(link)
@@ -195,11 +199,20 @@ local LinkTouch = touch.TouchHelperFunc(function(event, link)
 	lg.m_temp = temp
 
 	if temp then
-		lg:insert(temp)
+		if temp.parent then
+			lg:insert(temp)
 
-		temp:toFront()
+			temp:toFront()
+		end
 
 		temp.x, temp.y = event.x, event.y
+
+		--
+		local gather = lg.m_gather
+
+		if gather then
+			gather(lg.m_items, event, link)
+		end
 
 		--
 		LineOptsMaybe.into = lg.m_lines
@@ -240,12 +253,23 @@ end, function(event, link)
 		end
 
 		--
-		temp:removeSelf()
+		if temp.parent then
+			temp:removeSelf()
+		end
 
 		--
 		HideNonTargets(lg, link, node and "ended" or "cancelled")
 
 		lg.m_over, lg.m_temp = nil
+
+		--
+		if lg.m_gather then
+			local items = lg.m_items
+
+			for i = #items, 1, -1 do
+				items[i] = nil
+			end
+		end
 	end
 end)
 
@@ -272,9 +296,11 @@ function LinkGroup:AddLink (owner_id, is_target, object)
 	object:addEventListener("touch", LinkTouch)
 
 	--
-	local items = self.m_items
+	if not self.m_gather then
+		local items = self.m_items
 
-	items[#items + 1] = object
+		items[#items + 1] = object
+	end
 
 	Group[object] = self
 
@@ -296,10 +322,12 @@ end
 
 --- DOCME
 function LinkGroup:Clear ()
-	for _, item in ipairs(self.m_items) do
-		item:removeEventListener("touch", LinkTouch)
+	if not self.m_gather then
+		for _, item in ipairs(self.m_items) do
+			item:removeEventListener("touch", LinkTouch)
 
-		item.m_is_target, item.m_owner_id = nil
+			item.m_is_target, item.m_owner_id = nil
+		end
 	end
 
 	--
@@ -334,10 +362,12 @@ function M.LinkGroup (group, on_connect, on_touch, options)
 	group:insert(lgroup)
 
 	--
-	local can_touch, make_temp, show_or_hide
+	local can_touch, emphasize, gather, make_temp, show_or_hide
 
 	if options then
 		can_touch = options.can_touch
+		emphasize = options.emphasize
+		gather = options.gather
 		make_temp = options.make_temp
 		show_or_hide = options.show_or_hide
 	end
@@ -345,6 +375,8 @@ function M.LinkGroup (group, on_connect, on_touch, options)
 	--
 	lgroup.m_can_touch = can_touch or DefCanTouch
 	lgroup.m_connect = on_connect
+	lgroup.m_emphasize = emphasize
+	lgroup.m_gather = gather
 	lgroup.m_items = {}
 	lgroup.m_lines = display.newGroup()
 	lgroup.m_make_temp = make_temp or DefMakeTemp
