@@ -114,8 +114,15 @@ local function Highlight (link, is_over)
 end
 
 -- Is the point inside the link object?
-local function InLink (link, x, y, radius)
-	local lx, ly = link:localToContent(0, 0)
+local function InLink (link, x, y)
+	local lpath, lx, ly = link.path, link:localToContent(0, 0)
+	local radius, w = lpath.radius
+
+	if w or not radius then
+		local h = lpath.height
+
+		radius = (w and h) and (w + h) / 4 or 25
+	end
 
 	return (x - lx)^2 + (y - ly)^2 < radius^2
 end
@@ -131,7 +138,7 @@ local function EnumOpposites (lg, link, x, y)
 	local over
 
 	for _, item in ipairs(lg.m_items) do
-		if MayPair(item, id, is_source) and InLink(item, x, y, 25) then
+		if MayPair(item, id, is_source) and InLink(item, x, y) then
 			over = over or {}
 
 			over[#over + 1] = item
@@ -227,7 +234,6 @@ local LinkTouch = touch.TouchHelperFunc(function(event, link)
 			for i = #items, wi, -1 do
 				items[i] = nil
 			end
-			print("!",#items)
 		end
 
 		--
@@ -261,7 +267,7 @@ end, function(event, link)
 		if over then
 			Highlight(over, false)
 
-			if lg.m_can_touch(over) then
+			if lg.m_can_touch(over) and lg.m_can_link(link, over) then
 				node = _Connect_(link, over, lg.m_touch, lg:GetGroups())
 
 				lg:m_connect(link, over, node)
@@ -391,9 +397,10 @@ function M.LinkGroup (group, on_connect, on_touch, options)
 	group:insert(lgroup)
 
 	--
-	local can_touch, emphasize, gather, make_temp, show_or_hide
+	local can_link, can_touch, emphasize, gather, make_temp, show_or_hide
 
 	if options then
+		can_link = options.can_link
 		can_touch = options.can_touch
 		emphasize = options.emphasize
 		gather = options.gather
@@ -402,6 +409,7 @@ function M.LinkGroup (group, on_connect, on_touch, options)
 	end
 
 	--
+	lgroup.m_can_link = can_link or DefCanTouch
 	lgroup.m_can_touch = can_touch or DefCanTouch
 	lgroup.m_connect = on_connect
 	lgroup.m_emphasize = emphasize
