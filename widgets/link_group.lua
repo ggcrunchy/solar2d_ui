@@ -40,6 +40,9 @@ local touch = require("corona_ui.utils.touch")
 -- Corona globals --
 local display = display
 
+-- Cached module references --
+local _Connect_
+
 --- DOCME
 -- @callable on_break
 -- @treturn function F
@@ -205,13 +208,26 @@ local LinkTouch = touch.TouchHelperFunc(function(event, link)
 			temp:toFront()
 		end
 
-		temp.x, temp.y = event.x, event.y
+		temp.x, temp.y = lg:contentToLocal(event.x, event.y)
 
 		--
-		local gather = lg.m_gather
+		local candidates, gather, items = lg.m_candidates, lg.m_gather, lg.m_items
 
 		if gather then
-			gather(lg.m_items, event, link)
+			gather(items, event, link)
+
+			local wi = 1
+
+			for i, item in ipairs(items) do
+				if candidates[item] then
+					items[wi], wi = item, wi + 1
+				end
+			end
+
+			for i = #items, wi, -1 do
+				items[i] = nil
+			end
+			print("!",#items)
 		end
 
 		--
@@ -230,7 +246,7 @@ end, function(event, link)
 	local temp = lg.m_temp
 
 	if temp then
-		temp.x, temp.y = event.x, event.y
+		temp.x, temp.y = lg:contentToLocal(event.x, event.y)
 
 		UpdateOver(lg, link, event.x, event.y)
 	end
@@ -246,7 +262,7 @@ end, function(event, link)
 			Highlight(over, false)
 
 			if lg.m_can_touch(over) then
-				node = M.Connect(link, over, lg.m_touch, lg:GetGroups())
+				node = _Connect_(link, over, lg.m_touch, lg:GetGroups())
 
 				lg:m_connect(link, over, node)
 			end
@@ -296,7 +312,9 @@ function LinkGroup:AddLink (owner_id, is_target, object)
 	object:addEventListener("touch", LinkTouch)
 
 	--
-	if not self.m_gather then
+	if self.m_gather then
+		self.m_candidates[object] = true
+	else
 		local items = self.m_items
 
 		items[#items + 1] = object
@@ -320,13 +338,24 @@ local function WipeGroup (group)
 	end
 end
 
+--
+local function RemoveItem (item)
+	item:removeEventListener("touch", LinkTouch)
+
+	item.m_is_target, item.m_owner_id = nil
+end
+
 --- DOCME
 function LinkGroup:Clear ()
-	if not self.m_gather then
-		for _, item in ipairs(self.m_items) do
-			item:removeEventListener("touch", LinkTouch)
+	if self.m_gather then
+		for item in pairs(self.m_candidates) do
+			RemoveItem(item)
+		end
 
-			item.m_is_target, item.m_owner_id = nil
+		self.m_candidates = {}
+	else
+		for _, item in ipairs(self.m_items) do
+			RemoveItem(item)
 		end
 	end
 
@@ -384,6 +413,10 @@ function M.LinkGroup (group, on_connect, on_touch, options)
 	lgroup.m_show_or_hide = show_or_hide
 	lgroup.m_touch = on_touch
 
+	if gather then
+		lgroup.m_candidates = {}
+	end
+
 	--
 	lgroup:insert(lgroup.m_lines)
 	lgroup:insert(lgroup.m_nodes)
@@ -395,6 +428,9 @@ function M.LinkGroup (group, on_connect, on_touch, options)
 
 	return lgroup
 end
+
+-- Cache module members.
+_Connect_ = M.Connect
 
 -- Export the module.
 return M
