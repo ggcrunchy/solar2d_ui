@@ -189,7 +189,7 @@ local function HideNonTargets (lg, link, how)
 		local id, is_source = _GetLinkInfo_(link)
 
 		for _, item in ipairs(lg.m_items) do
-			emphasize(item, how, item.m_is_target == is_source, id ~= item.m_owner_id)
+			emphasize(item, how, link, item.m_is_target == is_source, id ~= item.m_owner_id)
 		end
 	end
 
