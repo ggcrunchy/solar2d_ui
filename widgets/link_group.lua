@@ -41,7 +41,18 @@ local touch = require("corona_ui.utils.touch")
 local display = display
 
 -- Cached module references --
+local _Break_
 local _Connect_
+local _GetLinkInfo_
+
+--- DOCME
+function M.Break (node)
+	display.remove(node)
+
+	if node then
+		node.m_broken = true
+	end
+end
 
 --- DOCME
 -- @callable on_break
@@ -52,9 +63,7 @@ function M.BreakTouchFunc (on_break)
 	end, nil, function(_, node)
 		on_break(node)
 
-		node:removeSelf()
-
-		node.m_broken = true
+		_Break_(node)
 	end)
 end
 
@@ -97,13 +106,13 @@ function M.Connect (object1, object2, touch, lgroup, ngroup)
 	return node
 end
 
--- --
-local LinkGroup = {}
-
---
-local function GetInfo (item)
+--- DOCME
+function M.GetLinkInfo (item)
 	return item.m_owner_id, not item.m_is_target
 end
+
+-- --
+local LinkGroup = {}
 
 -- Highlights / de-highlights a link
 local function Highlight (link, is_over)
@@ -134,7 +143,7 @@ end
 
 -- Enumerate all opposite typed links in other states that contain the point
 local function EnumOpposites (lg, link, x, y)
-	local id, is_source = GetInfo(link)
+	local id, is_source = _GetLinkInfo_(link)
 	local over
 
 	for _, item in ipairs(lg.m_items) do
@@ -177,11 +186,15 @@ local function HideNonTargets (lg, link, how)
 	local emphasize, show_or_hide = lg.m_emphasize, lg.m_show_or_hide
 
 	if emphasize then
-		-- ???
+		local id, is_source = _GetLinkInfo_(link)
+
+		for _, item in ipairs(lg.m_items) do
+			emphasize(item, how, item.m_is_target == is_source, id ~= item.m_owner_id)
+		end
 	end
 
 	if show_or_hide then
-		local id, is_source = GetInfo(link)
+		local id, is_source = _GetLinkInfo_(link)
 
 		for _, item in ipairs(lg.m_items) do
 			if not MayPair(item, id, is_source) then
@@ -267,10 +280,8 @@ end, function(event, link)
 		if over then
 			Highlight(over, false)
 
-			if lg.m_can_touch(over) and lg.m_can_link(link, over) then
-				node = _Connect_(link, over, lg.m_touch, lg:GetGroups())
-
-				lg:m_connect(link, over, node)
+			if lg.m_can_touch(over) then
+				node = lg:ConnectObjects(link, over)
 			end
 		end
 
@@ -373,6 +384,19 @@ function LinkGroup:Clear ()
 end
 
 --- DOCME
+function LinkGroup:ConnectObjects (obj1, obj2)
+	local node
+
+	if self.m_can_link(obj1, obj2) then
+		node = _Connect_(obj1, obj2, self.m_touch, self:GetGroups())
+
+		self:m_connect(obj1, obj2, node)
+	end
+
+	return node
+end
+
+--- DOCME
 function LinkGroup:GetGroups ()
 	return self.m_lines, self.m_nodes
 end
@@ -438,7 +462,9 @@ function M.LinkGroup (group, on_connect, on_touch, options)
 end
 
 -- Cache module members.
+_Break_ = M.Break
 _Connect_ = M.Connect
+_GetLinkInfo_ = M.GetLinkInfo
 
 -- Export the module.
 return M
