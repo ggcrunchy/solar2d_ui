@@ -114,10 +114,11 @@ end
 
 --- DOCME
 function M.DragParentTouch_Child (key, opts)
-	local clamp, find, on_move, ref
+	local clamp, find, on_began, on_ended, on_post_move, on_pre_move, ref
 
 	if opts then
-		clamp, find, on_move, ref = opts.clamp, opts.find, opts.on_move, opts.ref
+		clamp, find, ref = opts.clamp, opts.find, opts.ref
+		on_began, on_ended, on_post_move, on_pre_move = opts.on_began, opts.on_ended, opts.on_post_move, opts.on_pre_move
 	end
 
 	clamp = ClampMethods[clamp] or ClampIn
@@ -126,7 +127,7 @@ function M.DragParentTouch_Child (key, opts)
 		local parent = GetParent(object, find)
 
 		if ref == "object" then
-			local sibling = GetParent(object, find)[key]
+			local sibling = parent[key]
 
 			object.m_x0 = sibling.contentWidth / 2 - sibling.x
 			object.m_y0 = sibling.contentHeight / 2 - sibling.y
@@ -136,16 +137,28 @@ function M.DragParentTouch_Child (key, opts)
 
 		object.m_dragx = parent.x - event.x
 		object.m_dragy = parent.y - event.y
+
+		if on_began then
+			on_began(parent, parent[key])
+		end
 	end, function(event, object)
 		local parent = GetParent(object, find)
 		local sibling, x0, y0 = parent[key], object.m_x0, object.m_y0
 
+		if on_pre_move then
+			on_pre_move(parent, sibling)
+		end
+
 		parent.x = clamp(object.m_dragx + event.x, x0, x0 + display.contentWidth - sibling.contentWidth)
 		parent.y = clamp(object.m_dragy + event.y, y0, y0 + display.contentHeight - sibling.contentHeight)
 
-		if on_move then
-			on_move(parent, sibling)
+		if on_post_move then
+			on_post_move(parent, sibling)
 		end
+	end, on_ended and function(event, object)
+		local parent = GetParent(object, find)
+
+		on_ended(parent, parent[key])
 	end)
 end
 
@@ -179,13 +192,13 @@ end
 
 --- DOCME
 function M.DragViewTouch (view, opts)
-	local on_move, xclamp, yclamp, x0, y0
+	local on_post_move, on_pre_move, xclamp, yclamp, x0, y0
 
 	if opts then
 		x0, y0 = ResolveCoordinate(opts.x0, view.x), ResolveCoordinate(opts.y0, view.y)
 		xclamp = ClampMethods[opts.xclamp]
 		yclamp = ClampMethods[opts.yclamp]
-		on_move = opts.on_move
+		on_post_move, on_pre_move = opts.on_post_move, opts.on_pre_move
 	end
 
 	x0, y0 = x0 or 0, y0 or 0
@@ -198,11 +211,15 @@ function M.DragViewTouch (view, opts)
 	end, function(event, object)
 		local ex, ey = event.x, event.y
 
+		if on_pre_move then
+			on_pre_move(view)
+		end
+
 		view.x, object.m_dragx = xclamp(view.x - (ex - object.m_dragx), x0), ex
 		view.y, object.m_dragy = yclamp(view.y - (ey - object.m_dragy), y0), ey
 
-		if on_move then
-			on_move(view)
+		if on_post_move then
+			on_post_move(view)
 		end
 	end)
 end
