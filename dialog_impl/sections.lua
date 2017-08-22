@@ -28,6 +28,7 @@
 -- Standard library imports --
 local abs = math.abs
 local assert = assert
+local pairs = pairs
 
 -- Corona globals --
 local transition = transition
@@ -111,6 +112,28 @@ local FadeOutParams = {
 	end
 }
 
+-- --
+local DoImmediately
+
+--
+local function To (object, params)
+	if DoImmediately then
+		local delta = params.delta
+
+		for k, v in pairs(params) do
+			if k ~= "time" and k ~= "delay" and k ~= "onComplete" then
+				object[k] = delta and (object[k] + v) or v
+			end
+
+			if params.onComplete then
+				params.onComplete(object)
+			end
+		end
+	else
+		transition.to(object, params)
+	end
+end
+
 -- Hides an element, which may be a spacer
 local function Hide (item)
 	if item.m_collapsed ~= nil then
@@ -118,7 +141,7 @@ local function Hide (item)
 	else
 		item.alpha = 1
 
-		transition.to(item, FadeOutParams)
+		To(item, FadeOutParams)
 	end
 end
 
@@ -136,7 +159,7 @@ local function Move (item, field, delta)
 
 	MoveParams.time, MoveParams[field] = 120, delta
 
-	transition.to(item, MoveParams)
+	To(item, MoveParams)
 
 	MoveParams[field] = nil
 end
@@ -297,7 +320,7 @@ local function Show (item)
 	else
 		item.alpha, item.isVisible = .3, true
 
-		transition.to(item, FadeInParams)
+		To(item, FadeInParams)
 	end
 end
 
@@ -376,8 +399,14 @@ end
 -- @param name
 -- @bool use_false
 function M:SetStateFromValue_Watch (handle, name, use_false)
+	--
+	DoImmediately = true
+
 	self:SetStateFromValue(handle, name, use_false)
 
+	DoImmediately = false
+
+	--
 	local list = self.m_watch_sections
 
 	if not list then
@@ -395,6 +424,7 @@ function M:SetStateFromValue_Watch (handle, name, use_false)
 		end)
 	end
 
+	--
 	list[#list + 1] = handle
 	list[#list + 1] = name
 	list[#list + 1] = use_false or false
