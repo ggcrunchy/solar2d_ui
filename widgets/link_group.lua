@@ -133,6 +133,8 @@ local function InLink (link, x, y)
 		radius = (w and h) and (w + h) / 4 or 25
 	end
 
+	radius = radius + 5 -- accept slightly outside inputs
+
 	return (x - lx)^2 + (y - ly)^2 < radius^2
 end
 
