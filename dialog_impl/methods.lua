@@ -139,9 +139,5 @@ function M:RemoveSelf ()
 	self:removeSelf()
 end
 
-function M:Begin ()
-	self:addEventListener("finalize", AuxRemove)
-end
-
 -- Export the module.
 return M

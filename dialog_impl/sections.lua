@@ -393,7 +393,6 @@ function M:SetStateFromValue (handle, name, use_false)
 	end
 end
 
-
 --- DOCME
 -- @tparam SectionHandle handle
 -- @param name
