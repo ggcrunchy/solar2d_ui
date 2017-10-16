@@ -149,7 +149,15 @@ function M.OptionsHGrid (group, x, y, w, h, text, opts)
 	local skin = skins.GetSkin(opts and opts.skin)
 
 	--
-	local ggroup = display.newGroup()
+	local ggroup, tformat = display.newGroup()
+
+	if opts and opts.types then
+		tformat, text = { form = text }, ""
+
+		for _, str in ipairs(opts.types) do
+			tformat[#tformat + 1] = str
+		end
+	end
 
 	--
 	w, h = layout_dsl.EvalDims(w, h)
@@ -189,6 +197,16 @@ function M.OptionsHGrid (group, x, y, w, h, text, opts)
 	--
 	local parts, trans = {}, {}
 
+	--
+	local function SetIndex (index)
+		if tformat and #parts > 0  then
+			string.text = tformat.form:format(tformat[index])
+		end
+
+		sprite_index = index
+	end
+
+	--
 	function trans.onComplete (other)
 		--
 		for i = #trans, 1, -1 do
@@ -238,7 +256,7 @@ function M.OptionsHGrid (group, x, y, w, h, text, opts)
 			if adiff > dw / 2 then
 				to_left, delta, advance = not to_left, dw - adiff, true
 
-				sprite_index = Rotate(to_left)
+				SetIndex(Rotate(to_left))
 			end
 
 			if delta > 0 then
@@ -292,6 +310,10 @@ function M.OptionsHGrid (group, x, y, w, h, text, opts)
 			CancelTransitions(trans)
 
 			sprite_index = nil
+
+			if tformat then
+				string.text = ""
+			end
 		end
 	end
 
@@ -305,8 +327,7 @@ function M.OptionsHGrid (group, x, y, w, h, text, opts)
 	-- @uint current
 	function ggroup:SetCurrent (current)
 		CancelTransitions(trans)
-
-		sprite_index = current
+		SetIndex(current)
 
 		if #parts > 0 then
 			sheet.SetSpriteSetImageFrame(parts[1], Rotate(true))
@@ -338,7 +359,7 @@ skins.AddToDefaultSkin("optiongrid", {
 	linecolor = "blue",
 	linewidth = 2,
 	textcolor = "white",
-	textsize = "5%",
+	textsize = "3%",
 	scrollsep = 0
 })
 
