@@ -99,6 +99,13 @@ end
 local InterpParams = {}
 
 --
+local function SetFrame (object, frame)
+	if not object.m_is_image then
+		sheet.SetSpriteSetImageFrame(object, frame)
+	end
+end
+
+--
 local function Roll (transitions, parts, oindex, dw, advance)
 	local other, with_trans, add = parts[4], type(transitions) == "table", 0
 
@@ -107,7 +114,7 @@ local function Roll (transitions, parts, oindex, dw, advance)
 	else
 		other.x, advance = X(dw < 0 and 4 or 0, abs(dw)), true
 
-		sheet.SetSpriteSetImageFrame(other, oindex)
+		SetFrame(other, oindex)
 	end
 
 	if advance then
@@ -195,11 +202,8 @@ function M.OptionsHGrid (group, x, y, w, h, text, opts)
 	end
 
 	--
-	local parts, trans = {}, {}
-
-	--
 	local function SetIndex (index)
-		if tformat and #parts > 0  then
+		if tformat then
 			string.text = tformat.form:format(tformat[index])
 		end
 
@@ -207,6 +211,8 @@ function M.OptionsHGrid (group, x, y, w, h, text, opts)
 	end
 
 	--
+	local parts, trans = {}, {}
+
 	function trans.onComplete (other)
 		--
 		for i = #trans, 1, -1 do
@@ -292,8 +298,16 @@ function M.OptionsHGrid (group, x, y, w, h, text, opts)
 
 		--
 		if images and count > 0 then
+			local is_single_image = type(images) == "string"
+
 			for i = 1, 4 do
-				parts[i] = sheet.NewImage(pgroup, images, 0, 0, dw, dh)
+				if is_single_image then
+					parts[i] = display.newImageRect(pgroup, images, dw, dh)
+
+					parts[i].m_is_image = is_single_image
+				else
+					parts[i] = sheet.NewImage(pgroup, images, 0, 0, dw, dh)
+				end
 			end
 
 			--
@@ -330,9 +344,9 @@ function M.OptionsHGrid (group, x, y, w, h, text, opts)
 		SetIndex(current)
 
 		if #parts > 0 then
-			sheet.SetSpriteSetImageFrame(parts[1], Rotate(true))
-			sheet.SetSpriteSetImageFrame(parts[2], sprite_index)
-			sheet.SetSpriteSetImageFrame(parts[3], Rotate(false))
+			SetFrame(parts[1], Rotate(true))
+			SetFrame(parts[2], sprite_index)
+			SetFrame(parts[3], Rotate(false))
 
 			for i, part in ipairs(parts) do
 				part.x = X(i, dw)
