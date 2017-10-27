@@ -248,12 +248,12 @@ function M.Listbox (group, options)
 	end
 
 	--
-	local AddGroup
+	local TextRectHeight, TextSize, AddGroup = options and options.text_rect_height or "8.3%", options and options.text_size or "5%"
 
 	local function Append (str)
-		local h = layout.ResolveY("8.3%")
+		local h = layout.ResolveY(TextRectHeight)
 		local rect = display.newRect(0, 0, Listbox.width, h)
-		local text = display.newText(get_text(str), 0, 0, native.systemFont, layout.ResolveY("5%"))
+		local text = display.newText(get_text(str), 0, 0, native.systemFont, layout.ResolveY(TextSize))
 
 		Listbox:insert(rect)
 		Listbox:insert(text)
