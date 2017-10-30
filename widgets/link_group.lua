@@ -89,15 +89,19 @@ local LineOpts = {
 
 --- DOCME
 function M.Connect (object1, object2, touch, lgroup, ngroup)
-	local node = Circle(3, 16, 1, 0, 0, .5)
+	local node
 
-	ngroup:insert(node)
+	if touch then
+		node = Circle(3, 16, 1, 0, 0, .5)
 
-	node:addEventListener("touch", touch)
-	node:setStrokeColor(0, .75)
+		ngroup:insert(node)
+
+		node:addEventListener("touch", touch)
+		node:setStrokeColor(0, .75)
+	end
+
 -- ^^ SKIN?
-	LineOpts.into = lgroup
-	LineOpts.node = node
+	LineOpts.into, LineOpts.node = lgroup, node
 
 	lines.LineBetween(object1, object2, LineOpts)
 
