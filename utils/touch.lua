@@ -155,7 +155,7 @@ function M.DragParentTouch_Child (key, opts)
 		if on_post_move then
 			on_post_move(parent, sibling)
 		end
-	end, on_ended and function(event, object)
+	end, on_ended and function(_, object)
 		local parent = GetParent(object, find)
 
 		on_ended(parent, parent[key])
@@ -222,6 +222,30 @@ function M.DragViewTouch (view, opts)
 			on_post_move(view)
 		end
 	end)
+end
+
+-- --
+local FakeTouch
+
+local function AuxSpoof (target, phase)
+	FakeTouch = FakeTouch or { id = "ignore_me", name = "touch" }
+
+	FakeTouch.target, FakeTouch.phase = target, phase
+
+	if phase == "began" then
+		FakeTouch.x, FakeTouch.y = target:localToContent(0, 0)
+	end
+
+	target:dispatchEvent(FakeTouch)
+
+	FakeTouch.target = nil
+end
+
+--- DOCME
+function M.Spoof (target)
+	AuxSpoof(target, "began")
+	AuxSpoof(target, "moved")
+	AuxSpoof(target, "ended")
 end
 
 -- Is the target touched, or at least considered so?
