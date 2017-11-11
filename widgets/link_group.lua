@@ -78,14 +78,12 @@ local function Circle (width, radius, ...)
 	return circle
 end
 
--- Options for established lines --
-local LineOpts = {
-	color = { 1, 1, 1, 1 },
+local function IsNodeIntact (_, _, node)
+	return not node.m_broken
+end
 
-	keep = function(_, _, node)
-		return not node.m_broken
-	end
-}
+-- Options for established lines --
+local LineOpts = { color = { 1, 1, 1, 1 } }
 
 --- DOCME
 function M.Connect (object1, object2, touch, lgroup, ngroup)
@@ -98,6 +96,10 @@ function M.Connect (object1, object2, touch, lgroup, ngroup)
 
 		node:addEventListener("touch", touch)
 		node:setStrokeColor(0, .75)
+
+		LineOpts.keep = IsNodeIntact
+	else
+		LineOpts.keep = nil
 	end
 
 -- ^^ SKIN?

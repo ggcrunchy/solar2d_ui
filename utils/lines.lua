@@ -197,7 +197,7 @@ function M.LineBetween (p1, p2, options)
 	Lines[#Lines + 1] = {
 		p1 = p1, p2 = p2, group = group,
 		keep = keep or NoKeep, node = node,
-		color = color or "white", width = width or 4
+		color = color or "white", width = width or 2
 	}
 end
 
