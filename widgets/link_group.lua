@@ -44,6 +44,7 @@ local display = display
 local _Break_
 local _Connect_
 local _GetLinkInfo_
+local _SetLinkInfo_
 
 --- DOCME
 function M.Break (node)
@@ -78,16 +79,21 @@ local function Circle (width, radius, ...)
 	return circle
 end
 
-local function IsNodeIntact (_, _, node)
-	return not node.m_broken
-end
-
 -- Options for established lines --
-local LineOpts = { color = { 1, 1, 1, 1 } }
+local LineOpts = {
+	color = { 1, 1, 1, 1 },
+
+	keep = function(_, _, node)
+		return not node.m_broken
+	end
+}
+
+-- Options for soft link lines --
+local SoftLineOpts = { color = { .4, .4, .4, 1 } }
 
 --- DOCME
 function M.Connect (object1, object2, touch, lgroup, ngroup)
-	local node
+	local opts, node
 
 	if touch then
 		node = Circle(3, 16, 1, 0, 0, .5)
@@ -97,17 +103,17 @@ function M.Connect (object1, object2, touch, lgroup, ngroup)
 		node:addEventListener("touch", touch)
 		node:setStrokeColor(0, .75)
 
-		LineOpts.keep = IsNodeIntact
+		opts = LineOpts
 	else
-		LineOpts.keep = nil
+		opts = SoftLineOpts
 	end
 
 -- ^^ SKIN?
-	LineOpts.into, LineOpts.node = lgroup, node
+	opts.into, opts.node = lgroup, node
 
-	lines.LineBetween(object1, object2, LineOpts)
+	lines.LineBetween(object1, object2, opts)
 
-	LineOpts.into, LineOpts.node = nil
+	opts.into, opts.node = nil
 
 	return node
 end
@@ -348,8 +354,7 @@ function LinkGroup:AddLink (owner_id, is_target, object)
 	Group[object] = self
 
 	--
-	object.m_is_target = not not is_target
-	object.m_owner_id = owner_id
+	_SetLinkInfo_(object, owner_id, is_target)
 
 	Highlight(object, false)
 
@@ -469,10 +474,17 @@ function M.LinkGroup (group, on_connect, on_touch, options)
 	return lgroup
 end
 
+--- DOCME
+function M.SetLinkInfo (object, owner_id, is_target)
+	object.m_is_target = not not is_target
+	object.m_owner_id = owner_id
+end
+
 -- Cache module members.
 _Break_ = M.Break
 _Connect_ = M.Connect
 _GetLinkInfo_ = M.GetLinkInfo
+_SetLinkInfo_ = M.SetLinkInfo
 
 -- Export the module.
 return M

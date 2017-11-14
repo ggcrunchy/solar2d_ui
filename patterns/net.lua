@@ -148,7 +148,7 @@ local function DefTouch () return true end
 -- @ptable[opt] opts
 -- @treturn DisplayObject blocker
 function M.Blocker (group, opts)
-	local blocker = Rect(group, DefTouch)
+	local blocker = Rect(group, opts and opts.on_touch or DefTouch)
 
 	SetColor(blocker, 0, opts)
 

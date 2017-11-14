@@ -76,7 +76,7 @@ local function DoTimeouts (button)
 				for _ = 1, nlapses do
 					button.m_doing_timeouts = true
 
-					button:m_func()
+					button.m_func(button.parent)
 				end
 
 				button.m_since = since + nlapses * timeout
@@ -315,6 +315,11 @@ skins.AddToDefaultSkin("button", {
 	textcolor = "white",
 	textsize = "6.875%",
 	type = "rounded_rect"
+})
+
+skins.RegisterSkin("small_text_button", {
+	textsize = "3%",
+	_prefix_ = "button"
 })
 
 -- Add some button-specific skins.
