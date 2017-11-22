@@ -121,7 +121,7 @@ local function To (object, params)
 		local delta = params.delta
 
 		for k, v in pairs(params) do
-			if k ~= "time" and k ~= "delay" and k ~= "onComplete" then
+			if k ~= "time" and k ~= "delay" and k ~= "delta" and k ~= "onComplete" then
 				object[k] = delta and (object[k] + v) or v
 			end
 

@@ -401,7 +401,7 @@ function M.Listbox (group, options)
 
 	--- DOCME
 	function Listbox:GetString (index)
-		index = GetIndex(index)
+		index = GetIndex(index, AddGroup)
 
 		return index and AddGroup[index + 1]
 	end
@@ -411,6 +411,21 @@ function M.Listbox (group, options)
 		index = GetIndex(index, AddGroup)
 
 		return index and get_text(AddGroup[index].m_data)
+	end
+
+	--- DOCME
+	function Listbox:Select (index)
+		index = GetIndex(index, AddGroup)
+
+		if index then
+			Event.phase, Event.target = "began", AddGroup[index]
+
+			Select(Event)
+
+			Event.phase = "ended"
+
+			Select(Event)
+		end
 	end
 
 	--- DOCME
