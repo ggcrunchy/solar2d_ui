@@ -384,9 +384,17 @@ end
 --- DOCME
 -- @tparam SectionHandle handle
 -- @param name
--- @bool use_false
-function M:SetStateFromValue (handle, name, use_false)
-	if not self:GetValue(name) ~= not use_false then
+-- @tparam function? predicate
+function M:SetStateFromValue (handle, name, predicate)
+	local value = self:GetValue(name)
+
+	if predicate == "use_false" then
+		value = not value
+	elseif predicate then
+		value = predicate(value)
+	end
+
+	if value then
 		self:Expand(handle)
 	else
 		self:Collapse(handle)
@@ -396,12 +404,12 @@ end
 --- DOCME
 -- @tparam SectionHandle handle
 -- @param name
--- @bool use_false
-function M:SetStateFromValue_Watch (handle, name, use_false)
+-- @tparam function? predicate
+function M:SetStateFromValue_Watch (handle, name, predicate)
 	--
 	DoImmediately = true
 
-	self:SetStateFromValue(handle, name, use_false)
+	self:SetStateFromValue(handle, name, predicate)
 
 	DoImmediately = false
 
@@ -426,7 +434,7 @@ function M:SetStateFromValue_Watch (handle, name, use_false)
 	--
 	list[#list + 1] = handle
 	list[#list + 1] = name
-	list[#list + 1] = use_false or false
+	list[#list + 1] = predicate or false
 end
 
 -- Export the module.
