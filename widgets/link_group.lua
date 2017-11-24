@@ -35,6 +35,7 @@ local sort = table.sort
 
 -- Modules --
 local lines = require("corona_ui.utils.lines")
+local table_funcs = require("tektite_core.table.funcs")
 local touch = require("corona_ui.utils.touch")
 
 -- Corona globals --
@@ -219,7 +220,7 @@ local function HideNonTargets (lg, link, how)
 end
 
 -- --
-local Group = setmetatable({}, { __mode = "kv" }) -- todo: sparse array?
+local Group = table_funcs.Weak("kv")
 
 -- Options for a temporary line --
 local LineOptsMaybe = { color = { 1, .25, .25, .75 } }
