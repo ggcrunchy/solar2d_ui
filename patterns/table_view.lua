@@ -400,6 +400,11 @@ function M.Listbox (group, options)
 	end
 
 	--- DOCME
+	function Listbox:GetSelectionData ()
+		return selection and selection.m_data
+	end
+
+	--- DOCME
 	function Listbox:GetString (index)
 		index = GetIndex(index, AddGroup)
 
