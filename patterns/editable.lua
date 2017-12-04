@@ -108,6 +108,14 @@ end
 -- Event packet --
 local Event = {}
 
+local function ChangeText (old, new, str)
+	Event.old_text, Event.new_text, Event.name, Event.target = old, new, "text_change", str.parent
+
+	str.parent:dispatchEvent(Event)
+
+	Event.target = nil
+end
+
 --
 local function SetText (str, text, align, w)
 	local old = str.text or ""
@@ -122,11 +130,7 @@ local function SetText (str, text, align, w)
 
 	-- Alert listeners.
 	if old ~= text then
-		Event.old_text, Event.new_text, Event.name, Event.target = old, text, "text_change", str.parent
-
-		str.parent:dispatchEvent(Event)
-
-		Event.target = nil
+		ChangeText(old, text, str)
 	end
 end
 
@@ -225,8 +229,6 @@ local KeyFadeOutParams = {
 
 --
 local function CloseKeysAndText (by_key)
-	local caret, keys = Editable:GetCaret(), Editable:GetKeyboard()
-
 	--
 	Event.name, Event.target, Event.closed_by_key = "closing", Editable, by_key ~= nil
 
@@ -236,17 +238,27 @@ local function CloseKeysAndText (by_key)
 
 	--
 	scenes.SetListenFunc(OldListenFunc)
-	transition.cancel(caret)
 	transition.to(Editable.m_net, FadeAwayParams)
 
-	caret.isVisible = false
+	if Editable.m_stub then
+		local caret = Editable:GetCaret()
+
+		transition.cancel(caret)
+
+		caret.isVisible = false
+
+		net.RestoreAfterHoist(Editable, Editable.m_stub)
+	else
+		Editable.m_textfield:removeSelf()
+	end
 
 	--
-	net.RestoreAfterHoist(Editable, Editable.m_stub)
 
-	Editable, OldListenFunc, Editable.m_net, Editable.m_stub = nil
+	Editable, OldListenFunc, Editable.m_net, Editable.m_stub, Editable.m_textfield = nil
 
 	--
+	local keys = Editable:GetKeyboard()
+
 	if keys then
 		transition.to(keys, KeyFadeOutParams)
 	end
@@ -320,25 +332,76 @@ local XSep, YSep = layout_dsl.EvalDims(".625%", "1.04%")
 -- --
 local PlaceKeys = { "below", "above", "bottom_center", "top_center", dx = XSep, dy = YSep }
 
+-- --
+local BlockerOpts = {
+	gray = .4, alpha = .3,
+
+	on_touch = function()
+		CloseKeysAndText(false)
+	end
+}
+
+local function Submit ()
+	local str = Editable:GetString()
+
+	ChangeText(str.text, Editable.m_textfield.text, str)
+	CloseKeysAndText(true)
+end
+
+local function UserInput (event)
+	if event.phase == "submitted" then
+		Submit() -- TODO: On Android, defer?
+	end
+end
+
 --
 local function EnterInputMode (editable)
-	Editable, OldListenFunc = editable, scenes.SetListenFunc(Listen)
+	Editable, OldListenFunc = editable
 
 	--
-	editable.m_stub, editable.m_net = net.HoistOntoStage(editable, CloseKeysAndText, editable.m_blocking)
+	local caret, listen = editable:GetCaret()
+
+	if caret then
+		listen, editable.m_stub, editable.m_net = Listen, net.HoistOntoStage(editable, CloseKeysAndText, editable.m_blocking)
+	else
+		local bounds = Editable.contentBounds
+		local xmin, ymin, xmax, ymax = bounds.xMin, bounds.yMin, bounds.xMax, bounds.yMax
+
+		editable.m_net = net.Blocker(display.getCurrentStage(), BlockerOpts)
+		editable.m_textfield = native.newTextField((xmin + xmax) / 2, (ymin + ymax) / 2, xmax - xmin, ymax - ymin)
+
+		editable.m_textfield:addEventListener("userInput", UserInput)
+
+		if editable.m_get_text then
+			editable.m_textfield.text = editable.m_get_text(editable) or ""
+		else
+			editable.m_textfield.text = editable:GetString().text
+		end
+
+		if editable.m_input_type then
+			editable.m_textfield.inputType = editable.m_input_type
+		end
+	end
+
+	OldListenFunc = scenes.SetListenFunc(listen)
 
 	--
-	local caret, keys = editable:GetCaret(), editable:GetKeyboard()
+	local keys = editable:GetKeyboard()
 
 	if keys then
 		keys:toFront()
 	end
 
 	--
-	caret.alpha, caret.isVisible, Editable.m_net.alpha = .6, true, .01
+	Editable.m_net.alpha = .01
 
-	transition.to(caret, CaretParams)
 	transition.to(Editable.m_net, FadeInParams)
+
+	if caret then
+		transition.to(caret, CaretParams)
+
+		caret.alpha, caret.isVisible = .6, true
+	end
 
 	if keys then
 		layout_strategies.PutAtFirstHit(keys, editable, PlaceKeys, true)
@@ -378,56 +441,51 @@ local function AuxEditable (group, x, y, opts)
 
 	--
 	local text, font, size = opts and opts.text or "", opts and opts.font or native.systemFontBold, layout.ResolveY(opts and opts.size or "4.2%")
-	local str, info = cursor.NewText(Editable, text, 0, 0, font, size)
-	local ow, oh = layout_dsl.EvalDims(opts and opts.width or 0, opts and opts.height or 0)
-	local w, h, align = max(str.width, ow, layout.ResolveX("10%")), max(str.height, oh, layout.ResolveY("5.2%")), opts and opts.align
-
-	SetText(str, str.text, align, w)
 
 	--
 	Editable.m_blocking = not not (opts and opts.blocking)
 
 	--
-	local caret = display.newRect(Editable, 0, 0, XSep, str.height)
+	local style, caret, str, info = opts and opts.style
 
-	layout.PutRightOf(caret, str)
+	if style == "text_only" or style == "keys_and_text" then
+		caret = display.newRect(Editable, 0, 0, XSep, str.height)
 
-	caret.isVisible = false
+		layout.PutRightOf(caret, str)
+
+		caret.isVisible, str, info = false, cursor.NewText(Editable, text, 0, 0, font, size)
+	else
+		str = display.newText(Editable, text, 0, 0, font, size)
+
+		Editable.m_get_text = opts and opts.get_editable_text
+	end
+
+	local align, ow, oh = opts and opts.align, layout_dsl.EvalDims(opts and opts.width or 0, opts and opts.height or 0)
+	local w, h = max(str.width, ow, layout.ResolveX("10%")), max(str.height, oh, layout.ResolveY("5.2%"))
+
+	SetText(str, str.text, align, w)
+
+	if info then
+		info.m_align, info.m_pos, info.m_width = align, #text, w
+	end
 
 	--
-	info.m_align, info.m_pos, info.m_width = align, #text, w
-
-	--
-	local style, keys, mode = opts and opts.style, opts and opts.mode
-	local platform = system.getInfo("platform")
-	local on_desktop = platform == "macos" or platform == "win32" or system.getInfo("environment") == "simulator"
+	local mode, keys = opts and opts.mode
+--	local platform = system.getInfo("platform")
+--	local on_desktop = platform == "macos" or platform == "win32" or system.getInfo("environment") == "simulator"
 
 	if style == "text_only" then
 		info.m_filter = Filter[mode]
-	elseif style == "keys_and_text" or on_desktop then
+	elseif style == "keys_and_text"--[[ or on_desktop]] then
 		keys = keyboard.Keyboard(display.getCurrentStage(), mode and { type = mode })
 
 		info.m_filter, keys.isVisible = Filter[mode], false
 	else
-		-- native textbox... not sure about filtering
-		--[[
-		-- Create text field
-			defaultField = native.newTextField( 150, 150, 180, 30 )
-
-			defaultField:addEventListener("userInput", function(event)
-				if event.phase == "ended" then
-					-- ???
-				elseif event.phase == "submitted" then
-					if pred() == true then
-						--
-					else
-						--
-					end
-				end
-			end)
-			...
-			native.setKeyboardFocus()
-		]]
+		if mode == "nums" then
+			Editable.m_input_type = "decimal"
+		elseif mode == "ints" then
+			-- TODO! (all of this needs a lot of testing)
+		end
 	end
 
 	--
@@ -467,28 +525,31 @@ local function AuxEditable (group, x, y, opts)
 
 	--- DOCME
 	function Editable:EnterInputMode ()
-		if false then -- textinput...
-			--
-		elseif not Editable then
+		if not Editable then
 			EnterInputMode(self)
 		end
 	end
 
 	--- DOCME
 	function Editable:SetText (text)
-		local filter, chars = info.m_filter or Any
+		local filter = info and info.m_filter
 
-		for char in gmatch(text, ".") do
-			chars = chars or {}
+		if filter then
+			local chars
 
-			chars[#chars + 1] = filter(char)
+			for char in gmatch(text, ".") do
+				chars = chars or {}
+				chars[#chars + 1] = filter(char)
+			end
+
+			text = chars and concat(chars, "") or ""
 		end
 
-		SetText(str, chars and concat(chars, "") or "", align, w)
+		SetText(str, text, align, w)
 	end
 
 	--
-	if keys --[[ or textinput ]] then
+	if keys or caret == nil then
 		Editable:addEventListener("finalize", function(event)
 			display.remove(keys)
 			display.remove(event.target.m_net)
