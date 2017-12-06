@@ -109,11 +109,13 @@ end
 local Event = {}
 
 local function ChangeText (old, new, str)
-	Event.old_text, Event.new_text, Event.name, Event.target = old, new, "text_change", str.parent
+	if old ~= new then
+		Event.old_text, Event.new_text, Event.name, Event.target = old, new, "text_change", str.parent
 
-	str.parent:dispatchEvent(Event)
+		str.parent:dispatchEvent(Event)
 
-	Event.target = nil
+		Event.target = nil
+	end
 end
 
 --
@@ -128,10 +130,7 @@ local function SetText (str, text, align, w)
 		layout.RightAlignWith(str, w, "-.25%")
 	end
 
-	-- Alert listeners.
-	if old ~= text then
-		ChangeText(old, text, str)
-	end
+	ChangeText(old, text, str)
 end
 
 --
@@ -253,11 +252,9 @@ local function CloseKeysAndText (by_key)
 	end
 
 	--
+	local keys = Editable:GetKeyboard()
 
 	Editable, OldListenFunc, Editable.m_net, Editable.m_stub, Editable.m_textfield = nil
-
-	--
-	local keys = Editable:GetKeyboard()
 
 	if keys then
 		transition.to(keys, KeyFadeOutParams)
@@ -336,15 +333,22 @@ local PlaceKeys = { "below", "above", "bottom_center", "top_center", dx = XSep, 
 local BlockerOpts = {
 	gray = .4, alpha = .3,
 
-	on_touch = function()
-		CloseKeysAndText(false)
+	on_touch = function(event)
+		if event.phase == "ended" or event.phase == "cancelled" then
+			CloseKeysAndText(false)
+		end
+
+		return true
 	end
 }
 
 local function Submit ()
 	local str = Editable:GetString()
+	local old, new = str.text, Editable.m_textfield.text
 
-	ChangeText(str.text, Editable.m_textfield.text, str)
+	str.text = new
+
+	ChangeText(old, new, str)
 	CloseKeysAndText(true)
 end
 
@@ -414,17 +418,22 @@ end
 
 --
 local function Touch (event)
-	if event.phase == "began" then
+	local phase, editable = event.phase, event.target.parent
+	local using_textfield = editable:GetCaret() == nil
+
+	if phase == "began" then
 		if Editable then
-			local str = event.target.parent:GetString()
+			local str = editable:GetString()
 			local pos = cursor.GetPosition_GlobalXY(str, event.x, event.y)
 
 			UpdateCaret(cursor.GetProxy(str), str, pos)
 
 			-- TODO: detect drags
-		else
-			EnterInputMode(event.target.parent)
+		elseif not using_textfield then
+			EnterInputMode(editable)
 		end
+	elseif using_textfield and (phase == "ended" or phase == "cancelled") then
+		EnterInputMode(editable)
 	end
 
 	return true
@@ -471,20 +480,17 @@ local function AuxEditable (group, x, y, opts)
 
 	--
 	local mode, keys = opts and opts.mode
---	local platform = system.getInfo("platform")
---	local on_desktop = platform == "macos" or platform == "win32" or system.getInfo("environment") == "simulator"
 
 	if style == "text_only" then
 		info.m_filter = Filter[mode]
-	elseif style == "keys_and_text"--[[ or on_desktop]] then
+	elseif style == "keys_and_text" then
 		keys = keyboard.Keyboard(display.getCurrentStage(), mode and { type = mode })
 
 		info.m_filter, keys.isVisible = Filter[mode], false
 	else
-		if mode == "nums" then
-			Editable.m_input_type = "decimal"
-		elseif mode == "ints" then
-			-- TODO! (all of this needs a lot of testing)
+		if mode == "nums" or mode == "decimal" then
+			Editable.m_input_type = mode == "nums" and "number" or "decimal"
+			-- TODO! needs a bit of testing
 		end
 	end
 
@@ -504,6 +510,13 @@ local function AuxEditable (group, x, y, opts)
 	group:insert(Editable)
 
 	--- DOCME
+	function Editable:EnterInputMode ()
+		if not Editable then
+			EnterInputMode(self)
+		end
+	end
+
+	--- DOCME
 	function Editable:GetCaret ()
 		return caret
 	end
@@ -521,13 +534,6 @@ local function AuxEditable (group, x, y, opts)
 	--- DOCME
 	function Editable:GetString ()
 		return str
-	end
-
-	--- DOCME
-	function Editable:EnterInputMode ()
-		if not Editable then
-			EnterInputMode(self)
-		end
 	end
 
 	--- DOCME
