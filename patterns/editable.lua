@@ -45,7 +45,6 @@ local scenes = require("corona_utils.scenes")
 local display = display
 local easing = easing
 local native = native
-local system = system
 local timer = timer
 local transition = transition
 
@@ -120,9 +119,13 @@ end
 
 --
 local function SetText (str, text, align, w)
-	local old = str.text or ""
+	local old, set_text = str.text or "", str.m_set_text
 
-	str.text = text
+	if set_text then
+		set_text(str.parent, text)
+	else
+		str.text = text
+	end
 
 	if align == "left" then
 		layout.LeftAlignWith(str, ".25%")
@@ -342,13 +345,17 @@ local BlockerOpts = {
 	end
 }
 
+local function GetText ()
+	if Editable.m_get_text then
+		return Editable:m_get_text() or ""
+	else
+		return Editable:GetString().text
+	end
+end
+
 local function Submit ()
-	local str = Editable:GetString()
-	local old, new = str.text, Editable.m_textfield.text
+	Editable:SetText(Editable.m_textfield.text)
 
-	str.text = new
-
-	ChangeText(old, new, str)
 	CloseKeysAndText(true)
 end
 
@@ -374,13 +381,9 @@ local function EnterInputMode (editable)
 		editable.m_net = net.Blocker(display.getCurrentStage(), BlockerOpts)
 		editable.m_textfield = native.newTextField((xmin + xmax) / 2, (ymin + ymax) / 2, xmax - xmin, ymax - ymin)
 
-		editable.m_textfield:addEventListener("userInput", UserInput)
+		editable.m_textfield.text = GetText()
 
-		if editable.m_get_text then
-			editable.m_textfield.text = editable.m_get_text(editable) or ""
-		else
-			editable.m_textfield.text = editable:GetString().text
-		end
+		editable.m_textfield:addEventListener("userInput", UserInput)
 
 		if editable.m_input_type then
 			editable.m_textfield.inputType = editable.m_input_type
@@ -473,6 +476,8 @@ local function AuxEditable (group, x, y, opts)
 	local w, h = max(str.width, ow, layout.ResolveX("10%")), max(str.height, oh, layout.ResolveY("5.2%"))
 
 	SetText(str, str.text, align, w)
+
+	str.m_set_text = opts and opts.set_editable_text
 
 	if info then
 		info.m_align, info.m_pos, info.m_width = align, #text, w
