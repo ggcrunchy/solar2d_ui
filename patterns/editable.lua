@@ -24,7 +24,9 @@
 --
 
 -- Standard library imports --
+local char = string.char
 local concat = table.concat
+local floor = math.floor
 local gmatch = string.gmatch
 local lower = string.lower
 local max = math.max
@@ -40,6 +42,7 @@ local net = require("corona_ui.patterns.net")
 local layout_dsl = require("corona_ui.utils.layout_dsl")
 local layout_strategies = require("corona_ui.utils.layout_strategies")
 local scenes = require("corona_utils.scenes")
+local table_funcs = require("tektite_core.table.funcs")
 
 -- Corona globals --
 local display = display
@@ -50,6 +53,38 @@ local transition = transition
 
 -- Exports --
 local M = {}
+
+--
+--
+--
+
+local WidthTest, ScaleToAverageWidth, Widest, WidestChar = display.newText("", 0, 0, native.systemFontBold, 20), 0, 0, ""
+
+WidthTest.isVisible = false
+
+timer.performWithDelay(50, function(event)
+	local base = (event.count - 1) * 32
+
+	for i = base, base + 31 do
+		local wc = char(i)
+
+		WidthTest.text = wc .. wc
+
+		local w = WidthTest.width
+
+		if w > Widest then
+			Widest, WidestChar = w, wc
+		end
+
+		ScaleToAverageWidth = ScaleToAverageWidth + w
+	end
+
+	if base + 32 == 256 then
+		WidthTest:removeSelf()
+
+		ScaleToAverageWidth, WidthTest = ScaleToAverageWidth / (Widest * 256)
+	end
+end, 8)
 
 --
 local function Char (name, is_shift_down)
@@ -117,14 +152,27 @@ local function ChangeText (old, new, str)
 	end
 end
 
+local function SetStringText (editable, str, text)
+	local nchars = editable.m_nchars
+
+	if #text > nchars then
+		str.text, editable.m_text = text:sub(1, nchars - 3) .. "...", text
+	else
+		str.text, editable.m_text = text
+	end
+end
+
 --
 local function SetText (str, text, align, w)
-	local old, set_text = str.text or "", str.m_set_text
+	local editable = str.parent
+	local old, set_text = editable.m_text or str.text or "", str.m_set_text
 
 	if set_text then
-		set_text(str.parent, text)
+		editable.m_text = nil
+
+		set_text(editable, text)
 	else
-		str.text = text
+		SetStringText(editable, str, text)
 	end
 
 	if align == "left" then
@@ -349,7 +397,7 @@ local function GetText ()
 	if Editable.m_get_text then
 		return Editable:m_get_text() or ""
 	else
-		return Editable:GetString().text
+		return Editable:GetText()
 	end
 end
 
@@ -445,6 +493,9 @@ end
 -- TODO: Handle taps in text case? (then need to pinpoint position...)
 -- Needs to handle all three alignments, too
 
+-- --
+local CharWidthForFont = table_funcs.Weak("k")
+
 --
 local function AuxEditable (group, x, y, opts)
 	local Editable = display.newGroup()
@@ -465,17 +516,36 @@ local function AuxEditable (group, x, y, opts)
 
 		layout.PutRightOf(caret, str)
 
-		caret.isVisible, str, info = false, cursor.NewText(Editable, text, 0, 0, font, size)
+		caret.isVisible, str, info = false, cursor.NewText(Editable, "", 0, 0, font, size)
 	else
-		str = display.newText(Editable, text, 0, 0, font, size)
+		str = display.newText(Editable, "", 0, 0, font, size)
 
 		Editable.m_get_text = opts and opts.get_editable_text
 	end
 
 	local align, ow, oh = opts and opts.align, layout_dsl.EvalDims(opts and opts.width or 0, opts and opts.height or 0)
-	local w, h = max(str.width, ow, layout.ResolveX("10%")), max(str.height, oh, layout.ResolveY("5.2%"))
 
-	SetText(str, str.text, align, w)
+	if opts and opts.adjust_to_size then
+		str.text = text
+		str.text, ow, oh = "", max(ow, str.width), max(ow, str.height)
+
+		local max_adjust = layout.ResolveX(opts.max_adjust_width)
+
+		if ow > max_adjust then
+			ow = max_adjust
+		end
+	end
+
+	local w, h = max(ow, layout.ResolveX("10%")), max(oh, layout.ResolveY("5.2%"))
+
+	if not CharWidthForFont[font] then
+		str.text = WidestChar
+		str.text, CharWidthForFont[font] = "", str.width * ScaleToAverageWidth
+	end
+
+	Editable.m_nchars = max(floor(w / CharWidthForFont[font]), 4)
+
+	SetText(str, text, align, w)
 
 	str.m_set_text = opts and opts.set_editable_text
 
@@ -539,6 +609,16 @@ local function AuxEditable (group, x, y, opts)
 	--- DOCME
 	function Editable:GetString ()
 		return str
+	end
+
+	--- DOCME
+	function Editable:GetText ()
+		return self.m_text or str.text
+	end
+
+	--- DOCME
+	function Editable:SetStringText (text)
+		SetStringText(self, str, text)
 	end
 
 	--- DOCME

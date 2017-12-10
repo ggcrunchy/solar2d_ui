@@ -145,7 +145,7 @@ function M.WriteEntry_MightExist (name, opts, arg)
 					local editable = editable_patterns.Editable_XY(group, "center", "center", eopts)
 
 					editable:addEventListener("closing", function()
-						name = editable:GetString().text
+						name = editable:GetText()
 
 						-- If the user-provided name was available, perform the write.
 						if not exists(name, arg) then
