@@ -32,6 +32,7 @@ local lower = string.lower
 local max = math.max
 local sub = string.sub
 local tonumber = tonumber
+local tostring = tostring
 local upper = string.upper
 
 -- Modules --
@@ -395,7 +396,7 @@ local BlockerOpts = {
 
 local function GetText ()
 	if Editable.m_get_text then
-		return Editable:m_get_text() or ""
+		return tostring(Editable:m_get_text() or "")
 	else
 		return Editable:GetText()
 	end
@@ -503,7 +504,7 @@ local function AuxEditable (group, x, y, opts)
 	Editable.anchorChildren = true
 
 	--
-	local text, font, size = opts and opts.text or "", opts and opts.font or native.systemFontBold, layout.ResolveY(opts and opts.size or "4.2%")
+	local text, font, size = tostring(opts and opts.text or ""), opts and opts.font or native.systemFontBold, layout.ResolveY(opts and opts.size or "4.2%")
 
 	--
 	Editable.m_blocking = not not (opts and opts.blocking)
@@ -618,11 +619,13 @@ local function AuxEditable (group, x, y, opts)
 
 	--- DOCME
 	function Editable:SetStringText (text)
-		SetStringText(self, str, text)
+		SetStringText(self, str, tostring(text))
 	end
 
 	--- DOCME
 	function Editable:SetText (text)
+		text = tostring(text)
+
 		local filter = info and info.m_filter
 
 		if filter then
