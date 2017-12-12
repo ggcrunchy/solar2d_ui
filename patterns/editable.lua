@@ -386,8 +386,14 @@ local BlockerOpts = {
 	gray = .4, alpha = .3,
 
 	on_touch = function(event)
-		if event.phase == "ended" or event.phase == "cancelled" then
+		local net = event.target
+
+		if net.m_fading then -- ignore quick touches during fadeaway
+			return false
+		elseif event.phase == "ended" or event.phase == "cancelled" then
 			CloseKeysAndText(false)
+
+			net.m_fading = true
 		end
 
 		return true
