@@ -166,13 +166,18 @@ end
 
 --- WIP
 -- @param name
--- @tparam table|userdata color
+-- @tparam table|userdata|Name color
 -- @see GetColor
 function M.RegisterColor (name, color)
 	assert(name ~= nil and not Colors[name], "Color already defined")
-	assert(type(color) == "table" or type(color) == "userdata", "Invalid color")
 
-	Colors[name] = color
+	if Colors[color] then
+		Colors[name] = Colors[color]
+	else
+		assert(type(color) == "table" or type(color) == "userdata", "Invalid color")
+
+		Colors[name] = color
+	end
 end
 
 -- Methods to unpack a number into one to four components; complements PackNumberMethods --
