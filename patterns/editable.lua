@@ -443,6 +443,8 @@ local function EnterInputMode (editable)
 		if editable.m_input_type then
 			editable.m_textfield.inputType = editable.m_input_type
 		end
+
+		native.setKeyboardFocus(editable.m_textfield)
 	end
 
 	OldListenFunc = scenes.SetListenFunc(listen)
