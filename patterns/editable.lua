@@ -163,12 +163,16 @@ local function SetStringText (editable, str, text)
 	end
 end
 
+local function AuxGetText (editable, str)
+	return editable.m_text or str.text
+end
+
 --
 local function SetText (str, text, align, w)
 	local editable = str.parent
-	local old, set_text = editable.m_text or str.text or "", str.m_set_text
+	local old, set_text = AuxGetText(editable, str), str.m_set_text
 
-	if set_text then
+	if set_text and not str.m_use_raw then
 		editable.m_text = nil
 
 		set_text(editable, text)
@@ -182,7 +186,7 @@ local function SetText (str, text, align, w)
 		layout.RightAlignWith(str, w, "-.25%")
 	end
 
-	ChangeText(old, text, str)
+	ChangeText(old, AuxGetText(editable, str), str)
 end
 
 --
@@ -622,7 +626,7 @@ local function AuxEditable (group, x, y, opts)
 
 	--- DOCME
 	function Editable:GetText ()
-		return self.m_text or str.text
+		return AuxGetText(self, str)
 	end
 
 	--- DOCME
@@ -648,6 +652,17 @@ local function AuxEditable (group, x, y, opts)
 		end
 
 		SetText(str, text, align, w)
+	end
+
+	--- DOCME
+	function Editable:UseRawText (use_raw)
+		local became_raw = not str.m_use_raw and use_raw
+
+		str.m_use_raw = not not use_raw
+
+		if became_raw then
+			SetText(str, self:GetText(), info.m_align, info.m_width)
+		end
 	end
 
 	--
