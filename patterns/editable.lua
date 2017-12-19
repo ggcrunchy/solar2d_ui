@@ -661,7 +661,7 @@ local function AuxEditable (group, x, y, opts)
 		str.m_use_raw = not not use_raw
 
 		if became_raw then
-			SetText(str, self:GetText(), info.m_align, info.m_width)
+			SetText(str, self:GetText(), info and info.m_align, info and info.m_width)
 		end
 	end
 
