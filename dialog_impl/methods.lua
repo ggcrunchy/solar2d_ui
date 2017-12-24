@@ -41,9 +41,23 @@ local function OnTextChange (event)
 	utils.UpdateObject(str, event.new_text, str:GetChildOfParent())
 end
 
+--
+local function AddStaticText (dialog, text)
+	local str = display.newText(dialog:ItemGroup(), text, 0, 0, native.systemFontBold, layout.ResolveY("4.6%"))
+
+	dialog:Update(str)
+
+	return str
+end
+
 --- DOCMEMORE
 -- Common logic to add another widget to the dialog
 function M:CommonAdd (object, options, static_text)
+	-- Add any text before the object in the line.
+	if options and options.before then
+		AddStaticText(self, options.before)
+	end
+
 	-- Reflow around the object, if it exists.
 	if object then
 		self:Update(object)
@@ -56,17 +70,14 @@ function M:CommonAdd (object, options, static_text)
 		-- make the text into editable strings. This will add one or two more objects to
 		-- the dialog, so reflow after each of these as well.
 		if options.text then
-			local igroup = self:ItemGroup()
-
 			if static_text then
-				text = display.newText(igroup, options.text, 0, 0, native.systemFontBold, layout.ResolveY("4.6%"))
+				text = AddStaticText(self, options.text)
 			else
-				text = editable_patterns.Editable(igroup, options)
+				text = editable_patterns.Editable(self:ItemGroup(), options)
 
 				text:addEventListener("text_change", OnTextChange)
+				self:Update(text)
 			end
-
-			self:Update(text)
 		end
 
 		-- If no object was supplied, the text will be the object instead. Associate a
@@ -94,9 +105,9 @@ function M:Find (name)
 	local igroup, namespace, item = self:ItemGroup(), utils.GetNamespace(self)
 
 	for i = 1, igroup.numChildren do
-		item = igroup[i]
+		if utils.GetProperty(igroup[i], "name", namespace) == name then
+			item = igroup[i]
 
-		if utils.GetProperty(item, "name", namespace) == name then
 			break
 		end
 	end
