@@ -70,7 +70,7 @@ local function SetText (event)
 	local old, new = htext.m_text, event.text
 
 	if old ~= new then
-		htext.text = event.visual_text or new
+		htext.m_text, htext.text = new, event.visual_text or new
 		OnItemChangeEvent.name = "item_change"
 		OnItemChangeEvent.target = menu
 		OnItemChangeEvent.old, OnItemChangeEvent.text = old, new
@@ -382,12 +382,25 @@ function M.Menu (params)
 	end
 
 	--- DOCME
+	function menu:GetHeadingCenterY ()
+		local heading = Heading(self, 1)
+		local _, y = self.parent:contentToLocal(heading:localToContent(0, 0))
+
+		return y
+	end
+
+	--- DOCME
+	function menu:GetHeadingHeight ()
+		return Heading(self, 1).height
+	end
+
+	--- DOCME
 	function menu:GetSelection (index)
 		assert(not self.m_broken, "Menu not whole")
 		assert(index == nil or type(index) == "number", "Invalid index")
-		assert(menu[index or 1], "Index out of bounds")
+		assert(self[index or 1], "Index out of bounds")
 
-		return HeadingText(index).m_text
+		return HeadingText(self, index).m_text
 	end
 
 	--- DOCME

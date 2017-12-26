@@ -306,6 +306,11 @@ function M.Listbox (group, options)
 	end
 
 	--- DOCME
+	function Listbox:Count ()
+		return .5 * (AddGroup and AddGroup.numChildren or 0)
+	end
+
+	--- DOCME
 	function Listbox:ClearSelection ()
 		if selection then
 			selection:setFillColor(1)
