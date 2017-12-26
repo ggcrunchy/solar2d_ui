@@ -204,10 +204,15 @@ local function ResizeBack (dialog)
 			horizontalScrollDisabled = not fullw,
 			verticalScrollDisabled = not fullh
 		}
-		local igroup = dialog:ItemGroup()
+		local igroup, ugroup = dialog:ItemGroup(), dialog:UpperGroup("peek")
 		local parent = igroup.parent
 
 		scroll_view:insert(igroup)
+
+		if ugroup then
+			scroll_view:insert(ugroup)
+		end
+
 		dialog:insert(scroll_view)
 
 		-- Remove any previous scroll view.

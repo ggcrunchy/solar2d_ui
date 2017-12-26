@@ -97,19 +97,25 @@ function M:CommonAdd (object, options, static_text)
 	end
 end
 
+--
+local function AuxFind (group, namespace, name)
+	for i = 1, group.numChildren do
+		if utils.GetProperty(group[i], "name", namespace) == name then
+			return group[i]
+		end
+	end
+end
+
 --- Searches by name for an object in the dialog.
 -- @param name Object name, as passed through **name** in the object's _options_. If
 -- the name was **true**, the final name will be the value of **value\_name**.
 -- @treturn DisplayObject Object, or **nil** if not found.
 function M:Find (name)
-	local igroup, namespace, item = self:ItemGroup(), utils.GetNamespace(self)
+	local igroup, ugroup, namespace = self:ItemGroup(), self:UpperGroup("peek"), utils.GetNamespace(self)
+	local item = AuxFind(igroup, namespace, name)
 
-	for i = 1, igroup.numChildren do
-		if utils.GetProperty(igroup[i], "name", namespace) == name then
-			item = igroup[i]
-
-			break
-		end
+	if not item and ugroup then
+		item = AuxFind(ugroup, namespace, name)
 	end
 
 	return item
@@ -123,6 +129,15 @@ end
 -- --
 local BeforeRemoveEvent = { name = "before_remove" }
 
+--
+local function RemoveWidgets (group, namespace)
+	for i = group.numChildren, 1, -1 do
+		if utils.GetProperty(group[i], "type", namespace) == "widget" then
+			group[i]:removeSelf()
+		end
+	end
+end
+
 --- Removes the dialog. This does some additional cleanup beyond what is done by
 -- `display.remove` and `object:removeSelf`.
 function M:RemoveSelf ()
@@ -135,12 +150,12 @@ function M:RemoveSelf ()
 
 	BeforeRemoveEvent.target = nil
 
-	local igroup, namespace = self:ItemGroup(), utils.GetNamespace(self)
+	local igroup, ugroup, namespace = self:ItemGroup(), self:UpperGroup("peek"), utils.GetNamespace(self)
 
-	for i = igroup.numChildren, 1, -1 do
-		if utils.GetProperty(igroup[i], "type", namespace) == "widget" then
-			igroup[i]:removeSelf()
-		end
+	RemoveWidgets(igroup, namespace)
+
+	if ugroup then
+		RemoveWidgets(ugroup, namespace)
 	end
 
 	if igroup.parent ~= self then
@@ -148,6 +163,20 @@ function M:RemoveSelf ()
 	end
 
 	self:removeSelf()
+end
+
+--- DOCME
+function M:UpperGroup (how)
+	local upper, items = self.m_upper
+
+	if not self.m_upper and how ~= "peek" then
+		items, upper = self:ItemGroup(), display.newGroup()
+		self.m_upper = upper
+
+		items.parent:insert(upper) -- account for moves into scroll view
+	end
+
+	return upper
 end
 
 -- Export the module.
