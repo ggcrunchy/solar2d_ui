@@ -35,7 +35,7 @@ local sort = table.sort
 
 -- Modules --
 local lines = require("corona_ui.utils.lines")
-local table_funcs = require("tektite_core.table.funcs")
+local meta = require("tektite_core.table.meta")
 local touch = require("corona_ui.utils.touch")
 
 -- Corona globals --
@@ -220,7 +220,7 @@ local function HideNonTargets (lg, link, how)
 end
 
 -- --
-local Group = table_funcs.Weak("kv")
+local Group = meta.Weak("kv")
 
 -- Options for a temporary line --
 local LineOptsMaybe = { color = { 1, .25, .25, .75 } }
@@ -253,7 +253,7 @@ local LinkTouch = touch.TouchHelperFunc(function(event, link)
 
 			local wi = 1
 
-			for i, item in ipairs(items) do
+			for _, item in ipairs(items) do
 				if candidates[item] then
 					items[wi], wi = item, wi + 1
 				end
@@ -284,7 +284,7 @@ end, function(event, link)
 
 		UpdateOver(lg, link, event.x, event.y)
 	end
-end, function(event, link)
+end, function(_, link)
 	local lg = Group[link]
 	local temp = lg.m_temp
 
@@ -467,10 +467,7 @@ function M.LinkGroup (group, on_connect, on_touch, options)
 	lgroup:insert(lgroup.m_lines)
 	lgroup:insert(lgroup.m_nodes)
 
-	--
-	for k, v in pairs(LinkGroup) do
-		lgroup[k] = v
-	end
+	meta.Augment(lgroup, LinkGroup)
 
 	return lgroup
 end

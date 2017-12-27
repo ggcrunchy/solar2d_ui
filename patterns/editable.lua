@@ -42,8 +42,8 @@ local layout = require("corona_ui.utils.layout")
 local net = require("corona_ui.patterns.net")
 local layout_dsl = require("corona_ui.utils.layout_dsl")
 local layout_strategies = require("corona_ui.utils.layout_strategies")
+local meta = require("tektite_core.table.meta")
 local scenes = require("corona_utils.scenes")
-local table_funcs = require("tektite_core.table.funcs")
 
 -- Corona globals --
 local display = display
@@ -268,7 +268,7 @@ end
 local OldListenFunc
 
 -- --
-local Editable
+local Current
 
 -- --
 local FadeAwayParams = { alpha = 0, onComplete = display.remove }
@@ -285,32 +285,32 @@ local KeyFadeOutParams = {
 --
 local function CloseKeysAndText (by_key)
 	--
-	Event.name, Event.target, Event.closed_by_key = "closing", Editable, by_key ~= nil
+	Event.name, Event.target, Event.closed_by_key = "closing", Current, by_key ~= nil
 
-	Editable:dispatchEvent(Event)
+	Current:dispatchEvent(Event)
 
 	Event.target = nil
 
 	--
 	scenes.SetListenFunc(OldListenFunc)
-	transition.to(Editable.m_net, FadeAwayParams)
+	transition.to(Current.m_net, FadeAwayParams)
 
-	if Editable.m_stub then
-		local caret = Editable:GetCaret()
+	if Current.m_stub then
+		local caret = Current:GetCaret()
 
 		transition.cancel(caret)
 
 		caret.isVisible = false
 
-		net.RestoreAfterHoist(Editable, Editable.m_stub)
+		net.RestoreAfterHoist(Current, Current.m_stub)
 	else
-		Editable.m_textfield:removeSelf()
+		Current.m_textfield:removeSelf()
 	end
 
 	--
-	local keys = Editable:GetKeyboard()
+	local keys = Current:GetKeyboard()
 
-	Editable, OldListenFunc, Editable.m_net, Editable.m_stub, Editable.m_textfield = nil
+	Current, OldListenFunc, Current.m_net, Current.m_stub, Current.m_textfield = nil
 
 	if keys then
 		transition.to(keys, KeyFadeOutParams)
@@ -327,8 +327,8 @@ local function HandleKey (event)
 
 	--
 	elseif name ~= "enter" then
-		for i = 1, Editable.numChildren do
-			local item = Editable[i]
+		for i = 1, Current.numChildren do
+			local item = Current[i]
 
 			if item.m_pos then
 				--
@@ -405,15 +405,15 @@ local BlockerOpts = {
 }
 
 local function GetText ()
-	if Editable.m_get_text then
-		return tostring(Editable:m_get_text() or "")
+	if Current.m_get_text then
+		return tostring(Current:m_get_text() or "")
 	else
-		return Editable:GetText()
+		return Current:GetText()
 	end
 end
 
 local function Submit ()
-	Editable:SetText(Editable.m_textfield.text)
+	Current:SetText(Current.m_textfield.text)
 
 	CloseKeysAndText(true)
 end
@@ -426,7 +426,7 @@ end
 
 --
 local function EnterInputMode (editable)
-	Editable, OldListenFunc = editable
+	Current, OldListenFunc = editable
 
 	--
 	local caret, listen = editable:GetCaret()
@@ -434,7 +434,7 @@ local function EnterInputMode (editable)
 	if caret then
 		listen, editable.m_stub, editable.m_net = Listen, net.HoistOntoStage(editable, CloseKeysAndText, editable.m_blocking)
 	else
-		local bounds = Editable.contentBounds
+		local bounds = editable.contentBounds
 		local xmin, ymin, xmax, ymax = bounds.xMin, bounds.yMin, bounds.xMax, bounds.yMax
 
 		editable.m_net = net.Blocker(display.getCurrentStage(), BlockerOpts)
@@ -461,9 +461,9 @@ local function EnterInputMode (editable)
 	end
 
 	--
-	Editable.m_net.alpha = .01
+	editable.m_net.alpha = .01
 
-	transition.to(Editable.m_net, FadeInParams)
+	transition.to(editable.m_net, FadeInParams)
 
 	if caret then
 		transition.to(caret, CaretParams)
@@ -486,7 +486,7 @@ local function Touch (event)
 	local using_textfield = editable:GetCaret() == nil
 
 	if phase == "began" then
-		if Editable then
+		if Current then
 			local str = editable:GetString()
 			local pos = cursor.GetPosition_GlobalXY(str, event.x, event.y)
 
@@ -507,33 +507,114 @@ end
 -- Needs to handle all three alignments, too
 
 -- --
-local CharWidthForFont = table_funcs.Weak("k")
+local CharWidthForFont = meta.Weak("k")
+
+local function Finalize (event)
+	local editable = event.target
+
+	display.remove(editable.m_keys)
+	display.remove(editable.m_net)
+	display.remove(editable.m_stub)
+end
+
+-- --
+local Editable = {}
+
+--- DOCME
+function Editable:EnterInputMode ()
+	if not Current then
+		EnterInputMode(self)
+	end
+end
+
+--- DOCME
+function Editable:GetCaret ()
+	return self.m_caret
+end
+
+--- DOCME
+function Editable:GetChildOfParent ()
+	return self.m_stub or self
+end
+
+--- DOCME
+function Editable:GetKeyboard ()
+	return self.m_keys
+end
+
+--- DOCME
+function Editable:GetString ()
+	return self.m_str
+end
+
+--- DOCME
+function Editable:GetText ()
+	return AuxGetText(self, self.m_str)
+end
+
+--- DOCME
+function Editable:SetStringText (text)
+	SetStringText(self, self.m_str, tostring(text))
+end
+
+--- DOCME
+function Editable:SetText (text)
+	text = tostring(text)
+
+	local info = self.m_info
+	local filter = info and info.m_filter
+
+	if filter then
+		local chars
+
+		for char in gmatch(text, ".") do
+			chars = chars or {}
+			chars[#chars + 1] = filter(char)
+		end
+
+		text = chars and concat(chars, "") or ""
+	end
+
+	SetText(self.m_str, text, self.m_align, self.m_w)
+end
+
+--- DOCME
+function Editable:UseRawText (use_raw)
+	local info, str = self.m_info, self.m_str
+	local became_raw = not str.m_use_raw and use_raw
+
+	str.m_use_raw = not not use_raw
+
+	if became_raw then
+		SetText(str, self:GetText(), info and info.m_align, info and info.m_width)
+	end
+end
 
 --
 local function AuxEditable (group, x, y, opts)
-	local Editable = display.newGroup()
+	local editable = display.newGroup()
 
-	Editable.anchorChildren = true
+	editable.anchorChildren = true
 
 	--
 	local text, font, size = tostring(opts and opts.text or ""), opts and opts.font or native.systemFontBold, layout.ResolveY(opts and opts.size or "4.2%")
 
 	--
-	Editable.m_blocking = not not (opts and opts.blocking)
+	editable.m_blocking = not not (opts and opts.blocking)
 
 	--
 	local style, caret, str, info = opts and opts.style
 
 	if style == "text_only" or style == "keys_and_text" then
-		caret = display.newRect(Editable, 0, 0, XSep, str.height)
+		caret = display.newRect(editable, 0, 0, XSep, str.height)
 
 		layout.PutRightOf(caret, str)
 
-		caret.isVisible, str, info = false, cursor.NewText(Editable, "", 0, 0, font, size)
+		caret.isVisible, str, info = false, cursor.NewText(editable, "", 0, 0, font, size)
 	else
-		str = display.newText(Editable, "", 0, 0, font, size)
+		str = display.newText(editable, "", 0, 0, font, size)
 
-		Editable.m_get_text = opts and opts.get_editable_text
+		editable.m_get_text = opts and opts.get_editable_text
 	end
 
 	local align, ow, oh = opts and opts.align, layout_dsl.EvalDims(opts and opts.width or 0, opts and opts.height or 0)
@@ -556,14 +637,14 @@ local function AuxEditable (group, x, y, opts)
 		str.text, CharWidthForFont[font] = "", str.width * ScaleToAverageWidth
 	end
 
-	Editable.m_nchars = max(floor(w / CharWidthForFont[font]), 4)
+	editable.m_nchars = max(floor(w / CharWidthForFont[font]), 4)
 
 	SetText(str, text, align, w)
 
 	str.m_set_text = opts and opts.set_editable_text
 
 	if info then
-		info.m_align, info.m_pos, info.m_width = align, #text, w
+		editable.m_info, info.m_align, info.m_pos, info.m_width = info, align, #text, w
 	end
 
 	--
@@ -577,13 +658,13 @@ local function AuxEditable (group, x, y, opts)
 		info.m_filter, keys.isVisible = Filter[mode], false
 	else
 		if mode == "nums" or mode == "decimal" then
-			Editable.m_input_type = mode == "nums" and "number" or "decimal"
+			editable.m_input_type = mode == "nums" and "number" or "decimal"
 			-- TODO! needs a bit of testing
 		end
 	end
 
 	--
-	local body = display.newRoundedRect(Editable, 0, 0, w + XSep, h + YSep, layout.ResolveX("1.5%"))
+	local body = display.newRoundedRect(editable, 0, 0, w + XSep, h + YSep, layout.ResolveX("1.5%"))
 
 	body:addEventListener("touch", Touch)
 	body:setFillColor(0, 0, .9, .6)
@@ -593,88 +674,22 @@ local function AuxEditable (group, x, y, opts)
 	body.strokeWidth = 2
 
 	--
-	layout_dsl.PutObjectAt(Editable, x, y)
+	layout_dsl.PutObjectAt(editable, x, y)
 
-	group:insert(Editable)
-
-	--- DOCME
-	function Editable:EnterInputMode ()
-		if not Editable then
-			EnterInputMode(self)
-		end
-	end
-
-	--- DOCME
-	function Editable:GetCaret ()
-		return caret
-	end
-
-	--- DOCME
-	function Editable:GetChildOfParent ()
-		return self.m_stub or self
-	end
-
-	--- DOCME
-	function Editable:GetKeyboard ()
-		return keys
-	end
-
-	--- DOCME
-	function Editable:GetString ()
-		return str
-	end
-
-	--- DOCME
-	function Editable:GetText ()
-		return AuxGetText(self, str)
-	end
-
-	--- DOCME
-	function Editable:SetStringText (text)
-		SetStringText(self, str, tostring(text))
-	end
-
-	--- DOCME
-	function Editable:SetText (text)
-		text = tostring(text)
-
-		local filter = info and info.m_filter
-
-		if filter then
-			local chars
-
-			for char in gmatch(text, ".") do
-				chars = chars or {}
-				chars[#chars + 1] = filter(char)
-			end
-
-			text = chars and concat(chars, "") or ""
-		end
-
-		SetText(str, text, align, w)
-	end
-
-	--- DOCME
-	function Editable:UseRawText (use_raw)
-		local became_raw = not str.m_use_raw and use_raw
-
-		str.m_use_raw = not not use_raw
-
-		if became_raw then
-			SetText(str, self:GetText(), info and info.m_align, info and info.m_width)
-		end
-	end
+	group:insert(editable)
 
 	--
+	editable.m_align, editable.m_caret, editable.m_str, editable.m_w = align, caret, str, w
+
 	if keys or caret == nil then
-		Editable:addEventListener("finalize", function(event)
-			display.remove(keys)
-			display.remove(event.target.m_net)
-			display.remove(event.target.m_stub)
-		end)
+		editable.m_keys = keys
+
+		editable:addEventListener("finalize", Finalize)
 	end
 
-	return Editable
+	meta.Augment(editable, Editable)
+
+	return editable
 end
 
 --- DOCME

@@ -34,6 +34,7 @@ local type = type
 local array_index = require("tektite_core.array.index")
 local layout = require("corona_ui.utils.layout")
 local layout_dsl = require("corona_ui.utils.layout_dsl")
+local meta = require("tektite_core.table.meta")
 local table_funcs = require("tektite_core.table.funcs")
 
 -- Corona globals --
@@ -291,6 +292,119 @@ local function DefGetText (text) return text end
 
 local SizeWithDropdown
 
+local Menu = {}
+
+--- DOCME
+function Menu:addEventListener (name, listener)
+	self.m_dispatcher = self.m_dispatcher or system.newEventDispatcher()
+
+	self.m_dispatcher:addEventListener(name, listener)
+end
+
+--- DOCME
+function Menu:dispatchEvent (event)
+	assert(not self.m_broken, "Menu not whole")
+
+	if self.m_dispatcher then
+		self.m_dispatcher:dispatchEvent(event)
+	end
+end
+
+--- DOCME
+function Menu:GetHeadingCenterY ()
+	local heading = Heading(self, 1)
+	local _, y = self.parent:contentToLocal(heading:localToContent(0, 0))
+
+	return y
+end
+
+--- DOCME
+function Menu:GetHeadingHeight ()
+	return Heading(self, 1).height
+end
+
+--- DOCME
+function Menu:GetSelection (index)
+	assert(not self.m_broken, "Menu not whole")
+	assert(index == nil or type(index) == "number", "Invalid index")
+	assert(self[index or 1], "Index out of bounds")
+
+	return HeadingText(self, index).m_text
+end
+
+--- DOCME
+function Menu:RelocateDropdowns (into)
+	assert(not self.m_broken, "Menu not whole")
+	assert(not self.m_relocated, "Dropdowns already relocated")
+
+	for i = 1, self.numChildren do
+		local cgroup = self[i]
+
+		if cgroup.numChildren == SizeWithDropdown then -- see note in StashDropdowns()
+			local bgroup = cgroup[SizeWithDropdown]
+			local x, y = bgroup:localToContent(0, 0)
+
+			into:insert(bgroup)
+
+			bgroup.x, bgroup.y = into:contentToLocal(x, y)
+		end
+	end
+
+	self.m_relocated = true
+end
+
+--- DOCME
+function Menu:removeEventListener (name, listener)
+	if self.m_dispatcher then
+		self.m_dispatcher:removeEventListener(name, listener)
+	end
+end
+
+--- DOCME
+function Menu:RestoreDropdowns (stash)
+	assert(self.m_broken, "Menu already whole")
+
+	local headings_only = stash.m_headings_only
+
+	for i = self.numChildren, 1, -1 do
+		if not (headings_only and headings_only[i]) then
+			self[i]:insert(stash[stash.numChildren])
+		end
+	end
+
+	self.m_broken = false
+end
+
+--- DOCME
+function Menu:Select (name)
+	assert(not self.m_broken, "Menu not whole")
+
+	SendEvent(self, name)
+end
+
+--- DOCME
+function Menu:StashDropdowns ()
+	assert(not self.m_broken, "Already stashed")
+	assert(not self.m_relocated, "Dropdowns have been relocated")
+
+	local stash, headings_only = display.newGroup()
+
+	for i = 1, self.numChildren do
+		local cgroup = self[i]
+
+		if cgroup.numChildren == SizeWithDropdown then -- n.b. might still be nil, then trivially not a dropdown
+			stash:insert(cgroup[SizeWithDropdown])
+		else
+			headings_only = headings_only or {}
+			headings_only[i] = true
+		end
+	end
+
+	self.m_broken, stash.isVisible, stash.m_headings_only = true, false, headings_only
+
+	return stash
+end
+
 --- DOCME
 function M.Menu (params)
 	local menu = display.newGroup()
@@ -365,116 +479,7 @@ function M.Menu (params)
 		layout.CenterAtY(menu, params.y)
 	end
 
-	--- DOCME
-	function menu:addEventListener (name, listener)
-		self.m_dispatcher = self.m_dispatcher or system.newEventDispatcher()
-
-		self.m_dispatcher:addEventListener(name, listener)
-	end
-
-	--- DOCME
-	function menu:dispatchEvent (event)
-		assert(not self.m_broken, "Menu not whole")
-
-		if self.m_dispatcher then
-			self.m_dispatcher:dispatchEvent(event)
-		end
-	end
-
-	--- DOCME
-	function menu:GetHeadingCenterY ()
-		local heading = Heading(self, 1)
-		local _, y = self.parent:contentToLocal(heading:localToContent(0, 0))
-
-		return y
-	end
-
-	--- DOCME
-	function menu:GetHeadingHeight ()
-		return Heading(self, 1).height
-	end
-
-	--- DOCME
-	function menu:GetSelection (index)
-		assert(not self.m_broken, "Menu not whole")
-		assert(index == nil or type(index) == "number", "Invalid index")
-		assert(self[index or 1], "Index out of bounds")
-
-		return HeadingText(self, index).m_text
-	end
-
-	--- DOCME
-	function menu:RelocateDropdowns (into)
-		assert(not menu.m_broken, "Menu not whole")
-		assert(not menu.m_relocated, "Dropdowns already relocated")
-
-		for i = 1, menu.numChildren do
-			local cgroup = menu[i]
-
-			if cgroup.numChildren == SizeWithDropdown then -- see note in StashDropdowns()
-				local bgroup = cgroup[SizeWithDropdown]
-				local x, y = bgroup:localToContent(0, 0)
-
-				into:insert(bgroup)
-
-				bgroup.x, bgroup.y = into:contentToLocal(x, y)
-			end
-		end
-
-		menu.m_relocated = true
-	end
-
-	--- DOCME
-	function menu:removeEventListener (name, listener)
-		if self.m_dispatcher then
-			self.m_dispatcher:removeEventListener(name, listener)
-		end
-	end
-
-	--- DOCME
-	function menu:RestoreDropdowns (stash)
-		assert(menu.m_broken, "Menu already whole")
-
-		local headings_only = stash.m_headings_only
-
-		for i = menu.numChildren, 1, -1 do
-			if not (headings_only and headings_only[i]) then
-				menu[i]:insert(stash[stash.numChildren])
-			end
-		end
-
-		menu.m_broken = false
-	end
-
-	--- DOCME
-	function menu:Select (name)
-		assert(not menu.m_broken, "Menu not whole")
-
-		SendEvent(self, name)
-	end
-
-	--- DOCME
-	function menu:StashDropdowns ()
-		assert(not menu.m_broken, "Already stashed")
-		assert(not menu.m_relocated, "Dropdowns have been relocated")
-
-		local stash, headings_only = display.newGroup()
-
-		for i = 1, menu.numChildren do
-			local cgroup = menu[i]
-
-			if cgroup.numChildren == SizeWithDropdown then -- n.b. might still be nil, then trivially not a dropdown
-				stash:insert(cgroup[SizeWithDropdown])
-			else
-				headings_only = headings_only or {}
-				headings_only[i] = true
-			end
-		end
-
-		menu.m_broken, stash.isVisible, stash.m_headings_only = true, false, headings_only
-
-		return stash
-	end
+	meta.Augment(menu, Menu)
 
 	return menu
 end

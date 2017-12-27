@@ -29,6 +29,7 @@
 local colors = require("corona_ui.utils.color")
 local layout = require("corona_ui.utils.layout")
 local layout_dsl = require("corona_ui.utils.layout_dsl")
+local meta = require("tektite_core.table.meta")
 local skins = require("corona_ui.utils.skin")
 local var_preds = require("tektite_core.var.predicates")
 
@@ -66,6 +67,28 @@ local function CheckTouch (event)
 	return true
 end
 
+-- --
+local Checkbox = {}
+
+--- Sets the checkbox state to checked or unchecked.
+--
+-- The follow-up logic is performed even if the check state does not change.
+-- @bool check If true, check; otherwise, uncheck.
+function Checkbox:Check (check)
+	Check(self, self.m_image, not not check)
+end
+
+--- Predicate.
+-- @treturn boolean The checkbox is checked?
+function Checkbox:IsChecked ()
+	return self.m_image.isVisible
+end
+
+--- Toggles the checkbox state, checked &rarr; unchecked (or vice versa).
+function Checkbox:ToggleCheck ()
+	Toggle(self)
+end
+
 --- DOCME
 function M.Checkbox (group, w, h, opts)
 	return _Checkbox_XY_(group, 0, 0, w, h, opts)
@@ -95,16 +118,16 @@ function M.Checkbox_XY (group, x, y, w, h, opts)
 	skin = skins.GetSkin(skin)
 
 	-- Build a new group. Add follow-up logic, if available.
-	local Checkbox = display.newGroup()
+	local checkbox = display.newGroup()
 
-	Checkbox.anchorChildren = true
+	checkbox.anchorChildren = true
 
-	Checkbox.m_func = func
+	checkbox.m_func = func
 
 	-- Add the box itself.
 	w, h = layout_dsl.EvalDims(w, h)
 
-	local rect = display.newRoundedRect(Checkbox, 0, 0, w, h, layout.ResolveX(skin.checkbox_radius))
+	local rect = display.newRoundedRect(checkbox, 0, 0, w, h, layout.ResolveX(skin.checkbox_radius))
 
 	rect:addEventListener("touch", CheckTouch)
 	rect:setFillColor(colors.GetColor(skin.checkbox_backcolor))
@@ -113,36 +136,19 @@ function M.Checkbox_XY (group, x, y, w, h, opts)
 	rect.strokeWidth = skin.checkbox_borderwidth
 
 	-- Add the check image.
-	local image = display.newImageRect(Checkbox, skin.checkbox_image, w, h)
+	checkbox.m_image = display.newImageRect(checkbox, skin.checkbox_image, w, h)
 
-	image.isVisible = false
+	checkbox.m_image.isVisible = false
 
 	-- Add the group to the parent at the requested position, with any formatting.
-	layout_dsl.PutObjectAt(Checkbox, x, y)
+	layout_dsl.PutObjectAt(checkbox, x, y)
 
-	group:insert(Checkbox)
-
-	--- Sets the checkbox state to checked or unchecked.
-	--
-	-- The follow-up logic is performed even if the check state does not change.
-	-- @bool check If true, check; otherwise, uncheck.
-	function Checkbox:Check (check)
-		Check(Checkbox, image, not not check)
-	end
-
-	--- Predicate.
-	-- @treturn boolean The checkbox is checked?
-	function Checkbox:IsChecked ()
-		return image.isVisible
-	end
-
-	--- Toggles the checkbox state, checked &rarr; unchecked (or vice versa).
-	function Checkbox:ToggleCheck ()
-		Toggle(Checkbox)
-	end
+	group:insert(checkbox)
 
 	-- Provide the checkbox.
-	return Checkbox
+	meta.Augment(checkbox, Checkbox)
+
+	return checkbox
 end
 
 -- Main checkbox skin --

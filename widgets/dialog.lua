@@ -29,6 +29,7 @@ local pairs = pairs
 -- Method modules --
 local data = require("corona_ui.dialog_impl.data")
 local layout = require("corona_ui.dialog_impl.layout")
+local meta = require("tektite_core.table.meta")
 local methods = require("corona_ui.dialog_impl.methods")
 local net = require("corona_ui.patterns.net")
 local sections = require("corona_ui.dialog_impl.sections")
@@ -48,6 +49,9 @@ for _, mod in ipairs{ data, layout, methods, sections } do
 		Methods[k] = v
 	end
 end
+
+-- --
+local AugmentedMethods = meta.Weak("k")
 
 --- DOCME
 -- @pgroup group Group to which the dialog will be inserted.
@@ -80,18 +84,30 @@ function M.Dialog (group, options)
 	end
 
 	--
-	local augment = options and options.augment
+	local augment, methods = options and options.augment
 
 	if augment then
-		for k, v in pairs(augment) do
-			Dialog[k] = v
+		methods = AugmentedMethods[augment]
+
+		if not methods then
+			methods = {}
+
+			for k, v in pairs(augment) do
+				methods[k] = v
+			end
+
+			for k, v in pairs(Methods) do
+				methods[k] = v
+			end
+
+			AugmentedMethods[augment] = methods
 		end
+	else
+		methods = Methods
 	end
 
 	-- Install methods from implementation modules.
-	for k, v in pairs(Methods) do
-		Dialog[k] = v
-	end
+	meta.Augment(Dialog, methods)
 
 	return Dialog
 end

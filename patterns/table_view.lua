@@ -32,6 +32,7 @@ local rawequal = rawequal
 local file_utils = require("corona_utils.file")
 local layout = require("corona_ui.utils.layout")
 local layout_dsl = require("corona_ui.utils.layout_dsl")
+local meta = require("tektite_core.table.meta")
 
 -- Corona globals --
 local display = display
@@ -169,10 +170,10 @@ end
 local Event = {}
 
 ---
-local function TouchEvent (func, rect, listbox, get_text)
+local function TouchEvent (func, rect, listbox)
 	Event.listbox = listbox
 
-	local group = rect.parent
+	local get_text, group = listbox.m_get_text, rect.parent
 
 	for i = 1, group.numChildren, 2 do
 		if group[i] == rect then
@@ -187,6 +188,274 @@ local function TouchEvent (func, rect, listbox, get_text)
 	Event.listbox, Event.str = nil
 end
 
+local function Select (event)
+	local phase, rect, func = event.phase, event.target
+	local listbox = rect.parent.parent.parent -- rect -> add group -> scroll view -> listbox
+	local selection = listbox.m_selection
+
+	--
+	if phase == "began" then
+		if rect ~= selection then
+			if selection then
+				selection:setFillColor(1)
+			end
+
+			rect:setFillColor(0, 0, 1)
+
+			listbox.m_selection, func = rect, listbox.m_press
+		end
+
+	--
+	elseif phase == "ended" then
+		func = listbox.m_release
+	end
+
+	--
+	if func then
+		TouchEvent(func, rect, listbox)
+	end
+
+	-- Fall through, for scroll view
+end
+
+local function Append (listbox, str)
+	local h = layout.ResolveY(listbox.m_text_rect_height)
+	local rect = display.newRect(0, 0, listbox.width, h)
+	local text = display.newText(listbox.m_get_text(str), 0, 0, native.systemFont, layout.ResolveY(listbox.m_text_size))
+
+	listbox:insert(rect)
+	listbox:insert(text)
+
+	local add_group = listbox.m_add_group or rect.parent
+
+	listbox.m_add_group = add_group
+
+	rect:addEventListener("touch", Select)
+	text:setFillColor(0)
+
+	local count = add_group.numChildren / 2
+
+	rect.x, rect.y = listbox.width / 2, (count - .5) * h
+	text.anchorX, text.x, text.y = 0, layout.ResolveX(".625%"), rect.y
+
+	rect.m_data = str
+
+	return count
+end
+
+-- --
+local Listbox = {}
+
+--- DOCME
+function Listbox:Append (str)
+	return Append(self, str)
+end
+
+--- DOCME
+function Listbox:AppendList (list)
+	for i = 1, #list do
+		Append(self, list[i])
+	end
+end
+
+--- DOCME
+function Listbox:AssignList (list)
+	self:Clear()
+	self:AppendList(list)
+end
+
+--- DOCME
+function Listbox:Clear ()
+	local add_group = self.m_add_group
+
+	self.m_selection = nil
+
+	for i = add_group and add_group.numChildren or 0, 1, -2 do
+		local rect, text = add_group[i - 1], add_group[i]
+
+		rect.m_data = nil
+
+		text:removeSelf()
+		rect:removeSelf()
+	end
+end
+
+--- DOCME
+function Listbox:Count ()
+	local add_group = self.m_add_group
+
+	return .5 * (add_group and add_group.numChildren or 0)
+end
+
+--- DOCME
+function Listbox:ClearSelection ()
+	local selection = self.m_selection
+
+	if selection then
+		selection:setFillColor(1)
+	end
+
+	self.m_selection = nil
+end
+
+--- DOCME
+function Listbox:Delete (index)
+	local add_group = self.m_add_group
+
+	index = GetIndex(index, add_group)
+
+	if index then
+		local rect, text = add_group[index], add_group[index + 1]
+
+		if rect == self.m_selection then
+			self.m_selection = nil
+		end
+
+		rect.m_data = nil
+
+		text:removeSelf()
+		rect:removeSelf()
+
+		--
+		for i = index, add_group.numChildren do
+			local item = add_group[i]
+
+			item.y = item.y - 40
+		end
+	end
+end
+
+--- DOCME
+function Listbox:Find (str)
+	local add_group, get_text = self.m_add_group, self.m_get_text
+
+	for i = 1, (str and add_group) and add_group.numChildren or 0, 2 do
+		if get_text(add_group[i].m_data) == str then
+			return (i + 1) / 2
+		end
+	end
+
+	return nil
+end
+
+--- DOCME
+function Listbox:FindData (data)
+	local add_group = self.m_add_group
+
+	for i = 1, (data and add_group) and add_group.numChildren or 0, 2 do
+		if rawequal(add_group[i].m_data, data) then
+			return (i + 1) / 2
+		end
+	end
+
+	return nil
+end
+
+--- DOCME
+function Listbox:FindSelection ()
+	return self:Find(self:GetSelection())
+end
+
+--- DOCME
+function Listbox:ForEach (func, ...)
+	local add_group, get_text = self.m_add_group, self.m_get_text
+
+	for i = 1, add_group and add_group.numChildren or 0, 2 do
+		local data = add_group[i].m_data
+
+		func(get_text(data), data, ...)
+	end
+end
+
+--- DOCME
+function Listbox:GetCount ()
+	local add_group = self.m_add_group
+
+	return (add_group and add_group.numChildren or 0) / 2
+end
+
+--- DOCME
+function Listbox:GetData (index)
+	local add_group = self.m_add_group
+
+	index = GetIndex(index, add_group)
+
+	return index and add_group[index].m_data
+end
+
+--- DOCME
+function Listbox:GetRect (index)
+	local add_group = self.m_add_group
+
+	index = GetIndex(index, add_group)
+
+	return index and add_group[index]
+end
+
+--- DOCME
+function Listbox:GetSelection ()
+	local selection = self.m_selection
+	
+	return selection and self.m_get_text(selection.m_data)
+end
+
+--- DOCME
+function Listbox:GetSelectionData ()
+	local selection = self.m_selection
+
+	return selection and selection.m_data
+end
+
+--- DOCME
+function Listbox:GetString (index)
+	local add_group = self.m_add_group
+
+	index = GetIndex(index, add_group)
+
+	return index and add_group[index + 1]
+end
+
+--- DOCME
+function Listbox:GetText (index)
+	local add_group = self.m_add_group
+
+	index = GetIndex(index, add_group)
+
+	return index and self.m_get_text(add_group[index].m_data)
+end
+
+--- DOCME
+function Listbox:Select (index)
+	local add_group = self.m_add_group
+
+	index = GetIndex(index, add_group)
+
+	if index then
+		Event.phase, Event.target = "began", add_group[index]
+
+		Select(Event)
+
+		Event.phase = "ended"
+
+		Select(Event)
+	end
+end
+
+--- DOCME
+function Listbox:Update (index, data)
+	local add_group = self.m_add_group
+
+	index = GetIndex(index, add_group)
+
+	if index then
+		if data ~= nil then
+			add_group[index].m_data = data
+		end
+
+		add_group[index + 1].text = self.m_get_text(add_group[index].m_data)
+	end
+end
+
 --- Creates a listbox, built on top of `widget.newTableView`.
 -- @pgroup group Group to which listbox will be inserted.
 -- @ptable options bool hide If true, the listbox starts out hidden.
@@ -196,265 +465,37 @@ function M.Listbox (group, options)
 	local w, h = layout_dsl.EvalDims("37.5%", "31.25%")
 	local lopts, x, y = layout_dsl.ProcessWidgetParams(options, { width = w, height = h })
 
-	-- On Render --
-	local get_text = Identity
-
-	if options and options.get_text then
-		local getter = options.get_text
-
-		function get_text (item)
-			return getter(item) or item
-		end
-	end
-
 	--
 	lopts.horizontalScrollDisabled = true
 
-	local Listbox = widget.newScrollView(lopts)
+	local listbox = widget.newScrollView(lopts)
 
-	layout_dsl.PutObjectAt(Listbox, x, y)
+	layout_dsl.PutObjectAt(listbox, x, y)
 
-	group:insert(Listbox)
+	group:insert(listbox)
 
-	--
-	local press, release, selection = options and options.press, options and options.release
+	-- On Render --
+	if options and options.get_text then
+		local getter = options.get_text
 
-	local function Select (event)
-		local phase, rect, func = event.phase, event.target
-
-		--
-		if phase == "began" then
-			if rect ~= selection then
-				if selection then
-					selection:setFillColor(1)
-				end
-
-				rect:setFillColor(0, 0, 1)
-
-				selection, func = rect, press
-			end
-
-		--
-		elseif phase == "ended" then
-			func = release
+		function listbox.m_get_text (item)
+			return getter(item) or item
 		end
-
-		--
-		if func then
-			TouchEvent(func, rect, Listbox, get_text)
-		end
-
-		-- Fall through, for scroll view
+	else
+		listbox.m_get_text = Identity
 	end
 
 	--
-	local TextRectHeight, TextSize, AddGroup = options and options.text_rect_height or "8.3%", options and options.text_size or "5%"
+	listbox.m_press = options and options.press
+	listbox.m_release = options and options.release
+	listbox.m_text_rect_height = options and options.text_rect_height or "8.3%"
+	listbox.m_text_size = options and options.text_size or "5%"
 
-	local function Append (str)
-		local h = layout.ResolveY(TextRectHeight)
-		local rect = display.newRect(0, 0, Listbox.width, h)
-		local text = display.newText(get_text(str), 0, 0, native.systemFont, layout.ResolveY(TextSize))
+	listbox.isVisible = not (options and options.hide)
 
-		Listbox:insert(rect)
-		Listbox:insert(text)
+	meta.Augment(listbox, Listbox)
 
-		AddGroup = AddGroup or rect.parent
-
-		rect:addEventListener("touch", Select)
-		text:setFillColor(0)
-
-		local count = AddGroup.numChildren / 2
-
-		rect.x, rect.y = Listbox.width / 2, (count - .5) * h
-		text.anchorX, text.x, text.y = 0, layout.ResolveX(".625%"), rect.y
-
-		rect.m_data = str
-
-		return count
-	end
-
-	--- DOCME
-	function Listbox:Append (str)
-		return Append(str)
-	end
-
-	--- DOCME
-	function Listbox:AppendList (list)
-		for i = 1, #list do
-			Append(list[i])
-		end
-	end
-
-	--- DOCME
-	function Listbox:AssignList (list)
-		self:Clear()
-		self:AppendList(list)
-	end
-
-	--- DOCME
-	function Listbox:Clear ()
-		selection = nil
-
-		for i = AddGroup and AddGroup.numChildren or 0, 1, -2 do
-			local rect, text = AddGroup[i - 1], AddGroup[i]
-
-			rect.m_data = nil
-
-			text:removeSelf()
-			rect:removeSelf()
-		end
-	end
-
-	--- DOCME
-	function Listbox:Count ()
-		return .5 * (AddGroup and AddGroup.numChildren or 0)
-	end
-
-	--- DOCME
-	function Listbox:ClearSelection ()
-		if selection then
-			selection:setFillColor(1)
-		end
-
-		selection = nil
-	end
-
-	--- DOCME
-	function Listbox:Delete (index)
-		index = GetIndex(index, AddGroup)
-
-		if index then
-			local rect, text = AddGroup[index], AddGroup[index + 1]
-
-			if rect == selection then
-				selection = nil
-			end
-
-			rect.m_data = nil
-
-			text:removeSelf()
-			rect:removeSelf()
-
-			--
-			for i = index, AddGroup.numChildren do
-				local item = AddGroup[i]
-
-				item.y = item.y - 40
-			end
-		end
-	end
-
-	--- DOCME
-	function Listbox:Find (str)
-		for i = 1, (str and AddGroup) and AddGroup.numChildren or 0, 2 do
-			if get_text(AddGroup[i].m_data) == str then
-				return (i + 1) / 2
-			end
-		end
-
-		return nil
-	end
-
-	--- DOCME
-	function Listbox:FindData (data)
-		for i = 1, (data and AddGroup) and AddGroup.numChildren or 0, 2 do
-			if rawequal(AddGroup[i].m_data, data) then
-				return (i + 1) / 2
-			end
-		end
-
-		return nil
-	end
-
-	--- DOCME
-	function Listbox:FindSelection ()
-		return self:Find(self:GetSelection())
-	end
-
-	--- DOCME
-	function Listbox:ForEach (func, ...)
-		for i = 1, AddGroup and AddGroup.numChildren or 0, 2 do
-			local data = AddGroup[i].m_data
-
-			func(get_text(data), data, ...)
-		end
-	end
-
-	--- DOCME
-	function Listbox:GetCount ()
-		return (AddGroup and AddGroup.numChildren or 0) / 2
-	end
-
-	--- DOCME
-	function Listbox:GetData (index)
-		index = GetIndex(index, AddGroup)
-
-		return index and AddGroup[index].m_data
-	end
-
-	--- DOCME
-	function Listbox:GetRect (index)
-		index = GetIndex(index, AddGroup)
-
-		return index and AddGroup[index]
-	end
-
-	--- DOCME
-	function Listbox:GetSelection ()
-		return selection and get_text(selection.m_data)
-	end
-
-	--- DOCME
-	function Listbox:GetSelectionData ()
-		return selection and selection.m_data
-	end
-
-	--- DOCME
-	function Listbox:GetString (index)
-		index = GetIndex(index, AddGroup)
-
-		return index and AddGroup[index + 1]
-	end
-
-	--- DOCME
-	function Listbox:GetText (index)
-		index = GetIndex(index, AddGroup)
-
-		return index and get_text(AddGroup[index].m_data)
-	end
-
-	--- DOCME
-	function Listbox:Select (index)
-		index = GetIndex(index, AddGroup)
-
-		if index then
-			Event.phase, Event.target = "began", AddGroup[index]
-
-			Select(Event)
-
-			Event.phase = "ended"
-
-			Select(Event)
-		end
-	end
-
-	--- DOCME
-	function Listbox:Update (index, data)
-		index = GetIndex(index, AddGroup)
-
-		if index then
-			if data ~= nil then
-				AddGroup[index].m_data = data
-			end
-
-			AddGroup[index + 1].text = get_text(AddGroup[index].m_data)
-		end
-	end
-
-	--
-	Listbox.isVisible = not (options and options.hide)
-
-	return Listbox
+	return listbox
 end
 
 -- Cache module references.

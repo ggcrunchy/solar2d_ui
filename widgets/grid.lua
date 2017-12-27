@@ -35,6 +35,7 @@ local array_index = require("tektite_core.array.index")
 local bresenham = require("iterator_ops.grid.bresenham")
 local colors = require("corona_ui.utils.color")
 local layout_dsl = require("corona_ui.utils.layout_dsl")
+local meta = require("tektite_core.table.meta")
 local range = require("tektite_core.number.range")
 local skins = require("corona_ui.utils.skin")
 local stencil = require("iterator_ops.grid.stencil")
@@ -167,6 +168,149 @@ end
 -- --
 local DefStencil = stencil.NewStencil{ 0, 0 }
 
+-- --
+local Grid = {}
+
+--- Getter.
+-- @treturn DisplayGroup Canvas group, to be populated and translated by the user.
+function Grid:GetCanvas ()
+	return self.m_canvas
+end
+
+--- Getter.
+-- @treturn uint Number of columns...
+-- @treturn uint ...and rows.
+function Grid:GetCellDims ()
+	return GetCellDims(self.m_back)
+end
+
+--- Getter.
+-- @treturn uint Column offset.
+-- @see SetColOffset
+function Grid:GetColOffset ()
+	return self.m_back.m_coffset
+end
+
+--- Getter.
+-- @treturn uint Row offset.
+-- @see SetRowOffset
+function Grid:GetRowOffset ()
+	return self.m_back.m_roffset
+end
+
+--- Assigns cell-relative centering, which determine how **x** and **y** are calculated in a
+-- **"cell"** listener (analagous to Corona's anchor points).
+--
+-- Values are clamped to [0, 1].
+-- @number x Horizontal centering: 0 = left side of cell, 1 = right side...
+-- @number y ...and vertical: 0 = top of cell, 1 = bottom.
+function Grid:SetCentering (x, y)
+	local back = self.m_back
+
+	back.m_cx = 1 - range.ClampIn(x, 0, 1)
+	back.m_cy = 1 - range.ClampIn(y, 0, 1)
+end
+
+--- Setter.
+--
+-- **N.B.** The offset only affects the grid for touch purposes. The user is responsible
+-- for translating the canvas.
+-- TODO: Add some support for this?
+-- @uint[opt=0] coffset Column offset.
+-- @see GetColOffset
+function Grid:SetColOffset (coffset)
+	self.m_back.m_coffset = coffset or 0
+end
+
+--- Setter.
+-- @param context Context to assign to grid, or **nil** to clear it.
+-- @see Grid:TouchCell, Grid:TouchXY
+function Grid:SetContext (context)
+	self.m_context = context
+end
+
+--- Setter.
+--
+-- **N.B.** The offset only affects the grid for touch purposes. The user is responsible
+-- for translating the canvas.
+-- @uint[opt=0] roffset Row offset.
+-- @see GetRowOffset
+function Grid:SetRowOffset (roffset)
+	self.m_back.m_roffset = roffset or 0
+end
+
+--- DOCME
+-- @tparam ?|array|Stencil|nil arr X
+function Grid:SetStencil (arr)
+	self.m_back.m_stencil = arr and stencil.NewStencil(arr) or DefStencil
+end
+
+--- Setter.
+-- @bool show Show a background behind the cells?
+function Grid:ShowBack (show)
+	self.m_back.isVisible = show
+end
+
+--- Setter.
+-- @bool show Show lines between the cells?
+function Grid:ShowLines (show)
+	self.m_lines.isVisible = show
+end
+
+--- Manually performs a touch (or drag) on the grid.
+--
+-- This will trigger the grid's current touch behavior. Any in-progress touch state is
+-- preserved during this call, e.g. it may be called from a **"cell"** listener.
+--
+-- A **"cell"** listener is dispatched as per normal touch, with the grid as **target**; the
+-- **context** key will also contain whatever was last assigned by @{Grid:SetContext}.
+--
+-- **N.B.** Columns and rows are absolute, i.e. the offsets assigned by @{Grid:SetColOffset}
+-- and @{Grid:SetRowOffset} are not taken into account.
+-- @uint col Initial touch column...
+-- @uint row ...and row.
+-- @uint cto Final column... (If absent, _col_.)
+-- @uint rto ...and row. (Ditto for _row_.)
+function Grid:TouchCell (col, row, cto, rto)
+	local back = self.m_back
+	local scol, srow, x, y = self.m_col, self.m_row, back:localToContent(-.5 * back.width, -.5 * back.height)
+	local dc, dr, dw, dh = back.m_coffset + .5, back.m_roffset + .5, GetCellDims(back)
+	local event = BeginTouch(back, x + (col - dc) * dw, y + (row - dr) * dh)
+
+	cto, rto = cto or col, rto or row
+
+	if col ~= cto or row ~= rto then
+		MoveTouch(event, x + (cto - dc) * dw, y + (rto - dr) * dh)
+	end
+
+	EndTouch(event)
+
+	self.m_col, self.m_row = scol, srow
+end
+
+--- Variant of @{Grid:TouchCell} that uses content x- and y-coordinates.
+--
+-- Since this is meant to simulate a touch, the offsets assigned by @{Grid:SetColOffset} and
+-- @{Grid:SetRowOffset} are respected. Also, _xto_ and _yto_ are clamped to the grid.
+-- @number x Initial touch x-coordinate.
+-- @number y ...and y-coordinate.
+-- @number[opt=x] xto Final x...
+-- @number[opt=y] yto ...and y.
+function Grid:TouchXY (x, y, xto, yto)
+	local scol, srow = self.m_col, self.m_row
+	local event = BeginTouch(self.m_back, x, y)
+
+	xto, yto = xto or x, yto or y
+
+	if x ~= xto or y ~= yto then
+		MoveTouch(event, xto, yto)
+	end
+
+	EndTouch(event)
+
+	self.m_col, self.m_row = scol, srow
+end
+
 --- Creates a new two-dimensional grid, with background and lines enabled.
 --
 -- A **"cell"** event is exposed via the **addEventListener** and **removeEventListener**
@@ -190,9 +334,9 @@ function M.Grid_XY (group, x, y, w, h, cols, rows, opts)
 	local skin = skins.GetSkin(opts and opts.skin)
 
 	--
-	local Grid = display.newGroup()
+	local grid = display.newGroup()
 
-	group:insert(Grid)
+	group:insert(grid)
 
 	-- Begin with a container which will hold the background and canvas.
 	w, h = layout_dsl.EvalDims(w, h)
@@ -203,7 +347,7 @@ function M.Grid_XY (group, x, y, w, h, cols, rows, opts)
 
 	local cgroup = display.newContainer(w, h)
 
-	Grid:insert(cgroup, true)
+	grid:insert(cgroup, true)
 
 -- TODO: Does the background get anything out of being contained?
 	-- Put a background and canvas into the container and line everything up.
@@ -231,7 +375,7 @@ function M.Grid_XY (group, x, y, w, h, cols, rows, opts)
 	-- Add lines above the container.
 	local lines, xf, yf = display.newGroup(), w - 1, h - 1
 
-	Grid:insert(lines)
+	grid:insert(lines)
 -- TODO: The boundary lines fatten the group up slightly (perhaps if stroke alignment is ever added...)
 	-- Add vertical lines...
 	local xoff, dw = 0, w / cols
@@ -259,150 +403,18 @@ function M.Grid_XY (group, x, y, w, h, cols, rows, opts)
 
 	AddGridLine(lines, skin, 0, yf, xf, yf)
 
-	--- Getter.
-	-- @treturn DisplayGroup Canvas group, to be populated and translated by the user.
-	function Grid:GetCanvas ()
-		return canvas
-	end
-
-	--- Getter.
-	-- @treturn uint Number of columns...
-	-- @treturn uint ...and rows.
-	function Grid:GetCellDims ()
-		return GetCellDims(back)
-	end
-
-	--- Getter.
-	-- @treturn uint Column offset.
-	-- @see SetColOffset
-	function Grid:GetColOffset ()
-		return back.m_coffset
-	end
-
-	--- Getter.
-	-- @treturn uint Row offset.
-	-- @see SetRowOffset
-	function Grid:GetRowOffset ()
-		return back.m_roffset
-	end
-
-	--- Assigns cell-relative centering, which determine how **x** and **y** are calculated in a
-	-- **"cell"** listener (analagous to Corona's anchor points).
 	--
-	-- Values are clamped to [0, 1].
-	-- @number x Horizontal centering: 0 = left side of cell, 1 = right side...
-	-- @number y ...and vertical: 0 = top of cell, 1 = bottom.
-	function Grid:SetCentering (x, y)
-		back.m_cx = 1 - range.ClampIn(x, 0, 1)
-		back.m_cy = 1 - range.ClampIn(y, 0, 1)
-	end
+	grid.m_back, grid.m_canvas, grid.m_lines = back, canvas, lines
 
-	--- Setter.
-	--
-	-- **N.B.** The offset only affects the grid for touch purposes. The user is responsible
-	-- for translating the canvas.
--- TODO: Add some support for this?
-	-- @uint[opt=0] coffset Column offset.
-	-- @see GetColOffset
-	function Grid:SetColOffset (coffset)
-		back.m_coffset = coffset or 0
-	end
-
-	--- Setter.
-	-- @param context Context to assign to grid, or **nil** to clear it.
-	-- @see Grid:TouchCell, Grid:TouchXY
-	function Grid:SetContext (context)
-		self.m_context = context
-	end
-
-	--- Setter.
-	--
-	-- **N.B.** The offset only affects the grid for touch purposes. The user is responsible
-	-- for translating the canvas.
-	-- @uint[opt=0] roffset Row offset.
-	-- @see GetRowOffset
-	function Grid:SetRowOffset (roffset)
-		back.m_roffset = roffset or 0
-	end
-
-	--- DOCME
-	-- @tparam ?|array|Stencil|nil arr X
-	function Grid:SetStencil (arr)
-		back.m_stencil = arr and stencil.NewStencil(arr) or DefStencil
-	end
-
-	--- Setter.
-	-- @bool show Show a background behind the cells?
-	function Grid:ShowBack (show)
-		back.isVisible = show
-	end
-
-	--- Setter.
-	-- @bool show Show lines between the cells?
-	function Grid:ShowLines (show)
-		lines.isVisible = show
-	end
-
-	--- Manually performs a touch (or drag) on the grid.
-	--
-	-- This will trigger the grid's current touch behavior. Any in-progress touch state is
-	-- preserved during this call, e.g. it may be called from a **"cell"** listener.
-	--
-	-- A **"cell"** listener is dispatched as per normal touch, with the grid as **target**; the
-	-- **context** key will also contain whatever was last assigned by @{Grid:SetContext}.
-	--
-	-- **N.B.** Columns and rows are absolute, i.e. the offsets assigned by @{Grid:SetColOffset}
-	-- and @{Grid:SetRowOffset} are not taken into account.
-	-- @uint col Initial touch column...
-	-- @uint row ...and row.
-	-- @uint cto Final column... (If absent, _col_.)
-	-- @uint rto ...and row. (Ditto for _row_.)
-	function Grid:TouchCell (col, row, cto, rto)
-		local scol, srow, x, y = self.m_col, self.m_row, back:localToContent(-.5 * back.width, -.5 * back.height)
-		local dc, dr, dw, dh = back.m_coffset + .5, back.m_roffset + .5, GetCellDims(back)
-		local event = BeginTouch(back, x + (col - dc) * dw, y + (row - dr) * dh)
-
-		cto, rto = cto or col, rto or row
-
-		if col ~= cto or row ~= rto then
-			MoveTouch(event, x + (cto - dc) * dw, y + (rto - dr) * dh)
-		end
-
-		EndTouch(event)
-
-		self.m_col, self.m_row = scol, srow
-	end
-
-	--- Variant of @{Grid:TouchCell} that uses content x- and y-coordinates.
-	--
-	-- Since this is meant to simulate a touch, the offsets assigned by @{Grid:SetColOffset} and
-	-- @{Grid:SetRowOffset} are respected. Also, _xto_ and _yto_ are clamped to the grid.
-	-- @number x Initial touch x-coordinate.
-	-- @number y ...and y-coordinate.
-	-- @number[opt=x] xto Final x...
-	-- @number[opt=y] yto ...and y.
-	function Grid:TouchXY (x, y, xto, yto)
-		local scol, srow = self.m_col, self.m_row
-		local event = BeginTouch(back, x, y)
-
-		xto, yto = xto or x, yto or y
-
-		if x ~= xto or y ~= yto then
-			MoveTouch(event, xto, yto)
-		end
-
-		EndTouch(event)
-
-		self.m_col, self.m_row = scol, srow
-	end
+	meta.Augment(grid, Grid)
 
 	-- Apply a default stencil and move the grid into position.
-	Grid:SetStencil(nil)
+	grid:SetStencil(nil)
 
-	layout_dsl.PutObjectAt(Grid, x, y)
+	layout_dsl.PutObjectAt(grid, x, y)
 
 	-- Provide the grid.
-	return Grid
+	return grid
 end
 
 -- Main grid skin --

@@ -34,6 +34,7 @@ local colors = require("corona_ui.utils.color")
 local geom2d_preds = require("tektite_core.geom2d.predicates")
 local layout = require("corona_ui.utils.layout")
 local layout_dsl = require("corona_ui.utils.layout_dsl")
+local meta = require("tektite_core.table.meta")
 local skins = require("corona_ui.utils.skin")
 
 -- Corona globals --
@@ -213,6 +214,37 @@ function M.Button (group, w, h, func, opts)
 	return _Button_XY_(group, 0, 0, w, h, func, opts)
 end
 
+-- --
+local Button = {}
+
+--- Getter.
+-- @treturn string Button text.
+function Button:GetText ()
+	return self.m_string.text
+end
+
+--- Setter.
+-- @string text
+function Button:SetText (text)
+	self.m_string.text = text
+end
+
+--- Setter.
+-- @function Button:SetTimeout
+-- @tparam ?|number|nil timeout A value &gt; 0. When the button is held, its function is
+-- called each time this duration passes. If absent, any such timeout is removed.
+function Button:SetTimeout (timeout)
+	local button = self.m_button
+
+	if timeout then
+		button.m_since, button.m_timeout = system.getTimer(), timeout
+	else
+		ClearTimer(button)
+
+		button.m_timeout = nil
+	end
+end
+
 --- Creates a new button.
 -- @pgroup group Group to which button will be inserted.
 -- @tparam number|dsl_coordinate x Position in _group_.
@@ -236,17 +268,17 @@ function M.Button_XY (group, x, y, w, h, func, opts)
 	skin = skins.GetSkin(skin)
 
 	-- Build a new group. The button and string will be relative to this group.
-	local Button = display.newGroup()
+	local bgroup = display.newGroup()
 
-	Button.anchorChildren = true
+	bgroup.anchorChildren = true
 
 	-- Add the button and (partially centered) text, in that order, to the group.
 	w, h = layout_dsl.EvalDims(w, h)
 
-	local button = Factories[skin.button_type](Button, skin, w, h)
+	local button = Factories[skin.button_type](bgroup, skin, w, h)
 	local str_cont = display.newContainer(w, h)
 
-	Button:insert(str_cont)
+	bgroup:insert(str_cont)
 
 	local string = display.newText(str_cont, text or "", 0, 0, skin.button_font, layout.ResolveY(skin.button_textsize))
 
@@ -258,9 +290,9 @@ function M.Button_XY (group, x, y, w, h, func, opts)
 	button.yScale = skin.button_yscale or 1
 
 	-- Add the group to the parent at the requested position, with any formatting.
-	layout_dsl.PutObjectAt(Button, x, y)
+	layout_dsl.PutObjectAt(bgroup, x, y)
 
-	group:insert(Button)
+	group:insert(bgroup)
 
 	-- Install common button logic.
 	button:addEventListener("touch", OnTouch)
@@ -270,37 +302,16 @@ function M.Button_XY (group, x, y, w, h, func, opts)
 	button.m_func = func
 	button.m_skin = skin
 
-	--- Getter.
-	-- @treturn string Button text.
-	function Button:GetText ()
-		return string.text
-	end
+	--
+	bgroup.m_button, bgroup.m_string = button, string
 
-	--- Setter.
-	-- @string text
-	function Button:SetText (text)
-		string.text = text
-	end
-
-	--- Setter.
-	-- @function Button:SetTimeout
-	-- @tparam ?|number|nil timeout A value &gt; 0. When the button is held, its function is
-	-- called each time this duration passes. If absent, any such timeout is removed.
-	function Button:SetTimeout (timeout)
-		if timeout then
-			button.m_since, button.m_timeout = system.getTimer(), timeout
-		else
-			ClearTimer(button)
-
-			button.m_timeout = nil
-		end
-	end
+	meta.Augment(bgroup, Button)
 
 	-- Assign any timeout.
-	Button:SetTimeout(skin.button_timeout)
+	bgroup:SetTimeout(skin.button_timeout)
 
 	-- Provide the button.
-	return Button
+	return bgroup
 end
 
 -- Main button skin --
