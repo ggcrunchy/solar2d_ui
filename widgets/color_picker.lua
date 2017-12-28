@@ -138,8 +138,8 @@ local function PutBarNode (node, bar, t, use_rgb)
 		local R, G, B
 
 		-- Typically, the bar color can be computed from the provided t. However, if a color
-		-- is being assigned by SetColor(), this result may diverge slightly, in which case
-		-- it is more correct (only "more", as it may still add slight visual inconsistency)
+		-- is being assigned by SetColor(), this result might diverge slightly, in which case
+		-- it is more correct (only "more", as it can still add slight visual inconsistency)
 		-- to retain the original color.
 		if use_rgb then
 			R, G, B = unpack(RGB)
@@ -238,7 +238,7 @@ function M.ColorPicker_XY (group, x, y, w, h, opts)
 
 	--
 	w, h = layout_dsl.EvalDims(w, h)
-
+--[[
 	local back = display.newRoundedRect(picker, 0, 0, w, h, 15)
 
 	back:setFillColor(.375)
@@ -247,7 +247,7 @@ function M.ColorPicker_XY (group, x, y, w, h, opts)
 	back.anchorX, back.x = 0, 0
 	back.anchorY, back.y = 0, 0
 	back.strokeWidth = 2
-
+]]
 	-- Add the colors rect. This will be assigned a gradient whenever the color bar changes.
 	local colors = display.newRect(picker, 0, 0, 200, 150)
 

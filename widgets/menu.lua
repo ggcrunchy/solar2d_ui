@@ -57,31 +57,123 @@ local function Heading (menu, index)
 	return menu[index][1]
 end
 
-local function HeadingText (menu, index)
-	local heading = Heading(menu, 1)
+local function DataFromHeading (heading)
+	local tindex, iindex = heading.m_text_index, heading.m_image_index
+	local data_index = tindex or iindex -- see 'into' in PopulateEntry()
 
-	return heading.parent[heading.m_text_index]
+	return heading.parent[data_index], heading, tindex, iindex
 end
 
-local OnItemChangeEvent = {}
+local function HeadingData (menu, index)
+	return DataFromHeading(Heading(menu, index))
+end
 
-local function SetText (event)
+local ImageFill, OnItemChangeEvent = { type = "image" }, {}
+
+local function PlaceImage (image, object, pos, str, margin)
+	if pos == "left" then
+		layout.LeftAlignWith(image, object, margin)
+	elseif pos == "right" then
+		layout.RightAlignWith(image, object, -margin)
+	elseif str then
+		layout.PutLeftOf(image, str, -margin)
+	else
+		image.x = object.x
+	end
+
+	image.y = object.y
+end
+
+local function UpdateText (str, event)
+	local new_text = event.text
+
+	if new_text then
+		str.text = event.visual_text or new_text
+	end
+
+	str.isVisible = new_text ~= nil
+end
+
+local function UpdateImage (image, event, heading, str)
+	local filename = event.filename
+
+	if filename then
+		image.fill, ImageFill.filename, ImageFill.baseDir = ImageFill, event.filename, event.baseDir
+
+		PlaceImage(image, heading, event.pos, str, image.m_margin)
+	end
+
+	image.isVisible = filename ~= nil
+end
+
+local function SetHeading (event)
 	local menu = event.target
-	local htext = HeadingText(menu, 1)
-	local old, new = htext.m_text, event.text
+	local data, heading, tindex, iindex = HeadingData(menu, event.column)
+	local old_text, old_id, new_text, new_id = data.m_text, data.m_id, event.text, event.id
 
-	if old ~= new then
-		htext.m_text, htext.text = new, event.visual_text or new
+	if old_text ~= new_text or old_id ~= new_id then
+		data.m_text, data.m_id, data.m_filename, data.m_dir = new_text, new_id, event.filename, event.baseDir
+
+		if tindex then
+			UpdateText(data, event)
+		end
+
+		if iindex then
+			UpdateImage(data.parent[iindex], event, heading, tindex and data)
+		end
+
 		OnItemChangeEvent.name = "item_change"
 		OnItemChangeEvent.target = menu
-		OnItemChangeEvent.old, OnItemChangeEvent.text = old, new
+		OnItemChangeEvent.old_text, OnItemChangeEvent.text = old_text, new_text
+		OnItemChangeEvent.old_id, OnItemChangeEvent.id = old_id, new_id
 
 		menu:dispatchEvent(OnItemChangeEvent)
 	end
 end
 
-local function TextData (bar, index)
-	return bar.parent[index + bar.m_offset].m_text
+local function FindData (bar, index)
+	local bgroup, cur = bar.parent, 1
+
+	for i = bar.m_offset + 1, bgroup.numChildren do
+		local item = bgroup[i]
+
+		if item.m_text or item.m_id then
+			if cur == index then
+				return item
+			else
+				cur = cur + 1
+			end
+		end
+	end
+
+	assert(false, "Data not found") -- should never get here if implementation is correct
+end
+
+local MenuItemEvent = {}
+
+local function SendMenuItemEvent (menu, packet, column)
+	MenuItemEvent.name, MenuItemEvent.target = "menu_item", menu
+	MenuItemEvent.id, MenuItemEvent.text, MenuItemEvent.visual_text = packet.m_id
+	MenuItemEvent.filename, MenuItemEvent.baseDir = packet.m_filename, packet.m_dir
+	MenuItemEvent.column, MenuItemEvent.pos = column, packet.m_pos
+
+	local text = packet.m_text
+
+	if text then
+		MenuItemEvent.text = text
+
+		if menu.m_get_text then
+			local vtext = menu.m_get_text(text)
+
+			if vtext ~= text then
+				MenuItemEvent.visual_text = text
+			end
+		end
+	end
+
+	menu:dispatchEvent(MenuItemEvent)
+
+	MenuItemEvent.target = nil
 end
 
 --- DOCME
@@ -92,43 +184,69 @@ function M.Dropdown (params)
 	assert(#column > 0, "Table entries required")
 
 	params = table_funcs.Copy(params)
-	params.columns = { "", column }
+	params.columns, params.is_dropdown = { "", column }, true
 
 	local dropdown = _Menu_(params)
 
-	dropdown:addEventListener("menu_item", SetText)
+	local choice = params.choice
 
-	local choice = params.choice or TextData(Heading(dropdown, 1).m_dropdown.m_bar, 1)
+	if choice then
+		dropdown:Select(choice)
+	else
+		local packet = FindData(Heading(dropdown, 1).m_dropdown.m_bar, 1)
 
-	dropdown:Select(choice)
+		SendMenuItemEvent(dropdown, packet, 1)
+	end
 
 	return dropdown
+end
+
+local function Type (column)
+	local ctype = type(column)
+
+	assert(ctype == "table" or ctype == "string", "Bad column type")
+
+	if ctype == "string" then
+		return "entry"
+	elseif #column == 0 then
+		assert(column.text == nil or type(column.text) == "string", "Non-string text")
+		assert(column.filename == nil or type(column.filename) == "string", "Non-string filename")
+		assert(column.id == nil or type(column.id) == "number", "Non-number ID")
+		assert(column.text or column.filename, "Entry has neither text nor an image")
+		assert(column.text or column.id, "Entry has neither text nor an ID")
+
+		local pos = column.position
+
+		if pos then
+			assert(pos == nil or pos == "left" or pos == "right", "Invalid image position")
+		end
+
+		return "entry"
+	else
+		return "column"
+	end
 end
 
 local function CheckColumns (columns)
 	assert(columns, "Missing columns")
 
-	local n, prev_type = 0
+	local prev_type
 
 	for _, column in ipairs(columns) do
-		local ctype = type(column)
+		local ctype = Type(column)
 
-		assert(ctype == "table" or ctype == "string", "Bad column type")
-
-		if ctype == "table" then
-			assert(prev_type == "string", "Column tables must follow string heading")
+		if ctype == "column" then
+			assert(prev_type == "entry", "Columns must follow heading entry")
 
 			for _, v in ipairs(column) do
-				assert(type(v) == "string", "Non-string column entry")
+				assert(Type(v) == "entry", "Invalid column entry")
 			end
-		else
-			n = n + 1
 		end
 
 		prev_type = ctype
 	end
 
-	return columns, n
+	return columns
 end
 
 local FadeParams = {
@@ -166,24 +284,6 @@ local function InHeading (heading, x, y)
 	end
 end
 
-local MenuEvent = {}
-
-local function SendEvent (menu, text)
-	MenuEvent.name, MenuEvent.target, MenuEvent.text, MenuEvent.visual_text = "menu_item", menu, text
-
-	if menu.m_get_text then
-		local vtext = menu.m_get_text(text)
-
-		if vtext ~= text then
-			MenuEvent.visual_text = text
-		end
-	end
-
-	menu:dispatchEvent(MenuEvent)
-
-	MenuEvent.target = nil
-end
-
 local function ReleaseHeading (heading)
 	heading:setFillColor(.6)
 end
@@ -194,7 +294,7 @@ local function Close (dropdown, new)
 	dropdown.m_can_touch, dropdown.m_fading = false
 
 	Fade(dropdown.parent, 0)
-	ReleaseHeading(dropdown.m_heading)
+	ReleaseHeading(dropdown.m_bar.m_heading)
 
 	display.getCurrentStage():setFocus(new)
 end
@@ -227,7 +327,7 @@ local function DropdownTouch (event)
 		local bounds, x, y = dropdown.contentBounds, event.x, event.y
 		local xinside = x >= bounds.xMin and x <= bounds.xMax
 		local yinside = y >= bounds.yMin and y <= bounds.yMax
-		local heading, _, topy = dropdown.m_heading, dropdown:contentToLocal(0, y)
+		local heading, _, topy = bar.m_heading, dropdown:contentToLocal(0, y)
 		local index = array_index.FitToSlot(topy, -dropdown.height / 2, bar.height)
 
 		if yinside then
@@ -250,7 +350,9 @@ local function DropdownTouch (event)
 		end
 	elseif end_phase then
 		if bar.m_index then
-			SendEvent(MenuFromHeading(dropdown.m_heading), TextData(bar, bar.m_index))
+			local heading = bar.m_heading
+
+			SendMenuItemEvent(MenuFromHeading(heading), FindData(bar, bar.m_index), heading.m_column)
 
 			bar.m_index = nil
 		end
@@ -281,16 +383,12 @@ local function HeadingTouch (event)
 		display.getCurrentStage():setFocus(nil)
 
 		if InHeading(heading, event.x, event.y) == "this" then
-			SendEvent(MenuFromHeading(heading), heading.parent[heading.m_text_index].m_text)
+			SendMenuItemEvent(MenuFromHeading(heading), DataFromHeading(heading), heading.m_column)
 		end
 	end
 
 	return true
 end
-
-local function DefGetText (text) return text end
-
-local SizeWithDropdown
 
 local Menu = {}
 
@@ -327,9 +425,14 @@ end
 function Menu:GetSelection (index)
 	assert(not self.m_broken, "Menu not whole")
 	assert(index == nil or type(index) == "number", "Invalid index")
-	assert(self[index or 1], "Index out of bounds")
 
-	return HeadingText(self, index).m_text
+	index = index or 1
+
+	assert(self[index], "Index out of bounds")
+
+	local data = HeadingData(self, index)
+
+	return data.m_text, data.m_id, data.m_filename, data.m_dir
 end
 
 --- DOCME
@@ -340,8 +443,8 @@ function Menu:RelocateDropdowns (into)
 	for i = 1, self.numChildren do
 		local cgroup = self[i]
 
-		if cgroup.numChildren == SizeWithDropdown then -- see note in StashDropdowns()
-			local bgroup = cgroup[SizeWithDropdown]
+		if cgroup.m_has_dropdown then
+			local bgroup = cgroup[cgroup.numChildren]
 			local x, y = bgroup:localToContent(0, 0)
 
 			into:insert(bgroup)
@@ -375,11 +478,45 @@ function Menu:RestoreDropdowns (stash)
 	self.m_broken = false
 end
 
+-- --
+local SelectPacket = {}
+
+local function FindSelection (menu, name_or_id)
+	for i = 1, menu.numChildren do
+		local bar = Heading(menu, i).m_dropdown.m_bar
+		local bgroup = bar.parent
+
+		for j = bar.m_offset + 1, bgroup.numChildren do
+			local item = bgroup[j]
+
+			if item.m_id == name_or_id or item.m_text == name_or_id then
+				return item, i
+			end
+		end
+	end
+end
+
 --- DOCME
-function Menu:Select (name)
+function Menu:Select (name_or_id)
 	assert(not self.m_broken, "Menu not whole")
 
-	SendEvent(self, name)
+	local ni_type = type(name_or_id)
+
+	assert(ni_type == "string" or ni_type == "number", "Expected string name or number ID")
+
+	local packet, column = FindSelection(self, name_or_id)
+
+	if not packet then
+		packet = SelectPacket
+
+		if ni_type == "string" then
+			packet.m_text, packet.m_id = name_or_id
+		else
+			packet.m_id, packet.m_text = name_or_id
+		end
+	end
+
+	SendMenuItemEvent(self, packet, column or 1)
 end
 
 --- DOCME
@@ -392,8 +529,8 @@ function Menu:StashDropdowns ()
 	for i = 1, self.numChildren do
 		local cgroup = self[i]
 
-		if cgroup.numChildren == SizeWithDropdown then -- n.b. might still be nil, then trivially not a dropdown
-			stash:insert(cgroup[SizeWithDropdown])
+		if cgroup.m_has_dropdown then
+			stash:insert(cgroup[cgroup.numChildren])
 		else
 			headings_only = headings_only or {}
 			headings_only[i] = true
@@ -405,6 +542,86 @@ function Menu:StashDropdowns ()
 	return stash
 end
 
+local function DefGetText (text) return text end
+
+local function EnsureText (object, font, size, is_dropdown, is_heading)
+	local heading = is_heading and object or object.m_heading
+	local cgroup = heading.parent
+
+	-- If we just added the heading, we already have our text. Otherwise, if this is the
+	-- first text entry in a dropdown, the heading must be ready to represent it, so get
+	-- a text object ready to go. This is irrelevant for non-dropdowns.
+	if is_dropdown and not (is_heading or heading.m_text_index) then
+		display.newText(cgroup, "", heading.x, heading.y, font, size).isVisible = false
+	end
+
+	-- Make the heading aware of any text.
+	if is_dropdown or is_heading then
+		heading.m_text_index = heading.m_text_index or cgroup.numChildren
+	end
+end
+
+local function EnsureImage (object, iw, ih, margin, is_dropdown, is_heading)
+	local heading = is_heading and object or object.m_heading
+	local cgroup, image = heading.parent
+
+	-- If this is a dropdown, the heading must be ready to represent the image, so get a rect
+	-- ready to go, to be assigned a bitmap fill. This might be the heading itself, in which
+	-- case it should already be visible. This is irrelevant for non-dropdowns that use image
+	-- display objects instead.
+	if is_dropdown and not heading.m_image_index then
+		image = display.newRect(cgroup, 0, 0, iw, ih)
+		image.m_margin, image.isVisible = margin, is_heading
+	end
+
+	-- Make the heading aware of any image.
+	if is_dropdown or is_heading then
+		heading.m_image_index = heading.m_image_index or cgroup.numChildren
+	end
+
+	return image
+end
+
+local function PopulateEntry (column, group, object, get_text, font, size, iw, ih, margin, is_dropdown, is_heading)
+	local into, str, filename, dir, id, text, pos
+
+	if type(column) == "string" then
+		text = column
+	else
+		text, filename, dir, id, pos = column.text, column.filename, column.baseDir, column.id, column.position
+	end
+
+	if text then
+		str = display.newText(group, get_text(text), object.x, object.y, font, size)
+		str.m_text, into = text, str
+
+		EnsureText(object, font, size, is_dropdown, is_heading)
+	end
+
+	if filename then
+		local image = EnsureImage(object, iw, ih, margin, is_dropdown, is_heading)
+
+		if image and is_heading then
+			image.fill, ImageFill.filename, ImageFill.baseDir = ImageFill, filename, dir
+		else
+			if image then -- not heading, so object is bar
+				PlaceImage(image, object.m_heading, pos, str, margin)
+			end
+
+			if dir then
+				image = display.newImageRect(group, filename, dir, iw, ih)
+			else
+				image = display.newImageRect(group, filename, iw, ih)
+			end
+		end
+
+		PlaceImage(image, object, pos, str, margin)
+
+		into = into or image -- consolidate all data in one object
+		into.m_filename, into.m_dir, into.m_id, into.m_pos = filename, dir, id, pos
+	end
+end
+
 --- DOCME
 function M.Menu (params)
 	local menu = display.newGroup()
@@ -413,57 +630,59 @@ function M.Menu (params)
 		params.group:insert(menu)
 	end
 
-	local columns, n = CheckColumns(params.columns)
+	local columns = CheckColumns(params.columns)
 	local column_width, heading_height = layout_dsl.EvalDims(params.column_width or 100, params.heading_height or 30)
 	local _, bar_height = layout_dsl.EvalDims(nil, params.bar_height or heading_height)
+	local iw, ih = layout_dsl.EvalDims(params.image_width or 24, params.image_height or 24)
 	local font, size = params.font or native.systemFont, params.size or 16
-	local x, y, cgroup, heading = .5 * column_width, .5 * heading_height
-	local get_text = params.get_text or DefGetText
+	local x, y, margin, cgroup, heading = .5 * column_width, .5 * heading_height, layout.ResolveX(params.margin or 5)
+	local ci, get_text, is_dropdown = 1, params.get_text or DefGetText, params.is_dropdown
 
 	menu.m_get_text = get_text
 
 	for _, column in ipairs(columns) do
-		if type(column) == "string" then
+		if type(column) == "string" or #column == 0 then
 			cgroup = display.newGroup()
 			heading = display.newRect(cgroup, x, y, column_width, heading_height)
+			heading.m_column = ci
 
 			ReleaseHeading(heading) -- set fill color
-
-			local text = display.newText(cgroup, get_text(column), heading.x, heading.y, font, size)
+			PopulateEntry(column, cgroup, heading, get_text, font, size, iw, ih, margin, is_dropdown, true)
 
 			heading:addEventListener("touch", HeadingTouch)
 			menu:insert(cgroup)
 
-			heading.m_text_index, text.m_text, x = cgroup.numChildren, column, x + column_width
-		elseif #column > 0 then
+			ci, x = ci + 1, x + column_width
+		else
 			local bgroup = display.newGroup()
 
-			cgroup:insert(bgroup)
+			cgroup.m_has_dropdown = true
 
-			SizeWithDropdown = SizeWithDropdown or cgroup.numChildren
-
-			local back = display.newRect(bgroup, heading.x, 0, column_width, #column * bar_height)
+			local dropdown = display.newRect(bgroup, heading.x, 0, column_width, #column * bar_height)
 			local bar = display.newRect(bgroup, heading.x, 0, column_width, bar_height)
 			local prev = heading
 
-			layout.PutBelow(back, heading)
+			heading.m_dropdown, dropdown.m_bar, bar.m_heading = dropdown, bar, heading
+
+			layout.PutBelow(dropdown, heading)
 
 			bar.m_offset = bgroup.numChildren
 
 			for _, entry in ipairs(column) do
 				layout.PutBelow(bar, prev)
 
-				local text = display.newText(bgroup, get_text(entry), bar.x, bar.y, font, size)
+				PopulateEntry(entry, bgroup, bar, get_text, font, size, iw, ih, margin, is_dropdown)
 
-				prev, text.m_text = layout.Below(bar), entry
+				prev = layout.Below(bar)
 			end
 
-			back:addEventListener("touch", DropdownTouch)
-			back:setFillColor(0, 0, .3)
+			cgroup:insert(bgroup) -- add here to ensure as last element
+
+			dropdown:addEventListener("touch", DropdownTouch)
+			dropdown:setFillColor(0, 0, .3)
 			bar:setFillColor(0, .7, 0)
 
 			bgroup.alpha, bar.isVisible = 0, false
-			heading.m_dropdown, back.m_bar, back.m_heading = back, bar, heading
 		end
 	end
 
@@ -480,6 +699,10 @@ function M.Menu (params)
 	end
 
 	meta.Augment(menu, Menu)
+
+	if is_dropdown then
+		menu:addEventListener("menu_item", SetHeading)
+	end
 
 	return menu
 end
