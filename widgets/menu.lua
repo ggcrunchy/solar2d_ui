@@ -109,10 +109,11 @@ end
 local function SetHeading (event)
 	local menu = event.target
 	local data, heading, tindex, iindex = HeadingData(menu, event.column)
-	local old_text, old_id, new_text, new_id = data.m_text, data.m_id, event.text, event.id
+	local old_text, old_id, old_filename, old_dir, old_pos = data.m_text, data.m_id, data.m_filename, data.m_dir, data.m_pos
+	local new_text, new_id, new_filename, new_dir, new_pos = event.text, event.id, event.filename, event.baseDir, event.pos
 
-	if old_text ~= new_text or old_id ~= new_id then
-		data.m_text, data.m_id, data.m_filename, data.m_dir = new_text, new_id, event.filename, event.baseDir
+	if old_text ~= new_text or old_id ~= new_id or old_filename ~= new_filename or old_dir ~= new_dir or old_pos ~= new_pos then
+		data.m_text, data.m_id, data.m_filename, data.m_dir, data.m_pos = new_text, new_id, event.filename, event.baseDir, event.pos
 
 		if tindex then
 			UpdateText(data, event)
@@ -137,7 +138,7 @@ local function FindData (bar, index)
 	for i = bar.m_offset + 1, bgroup.numChildren do
 		local item = bgroup[i]
 
-		if item.m_text or item.m_id then
+		if item.m_text or item.m_filename then
 			if cur == index then
 				return item
 			else
@@ -213,7 +214,6 @@ local function Type (column)
 		assert(column.filename == nil or type(column.filename) == "string", "Non-string filename")
 		assert(column.id == nil or type(column.id) == "number", "Non-number ID")
 		assert(column.text or column.filename, "Entry has neither text nor an image")
-		assert(column.text or column.id, "Entry has neither text nor an ID")
 
 		local pos = column.position
 
@@ -432,7 +432,7 @@ function Menu:GetSelection (index)
 
 	local data = HeadingData(self, index)
 
-	return data.m_text, data.m_id, data.m_filename, data.m_dir
+	return data.m_text, data.m_id, data.m_filename, data.m_dir, data.m_pos
 end
 
 --- DOCME
