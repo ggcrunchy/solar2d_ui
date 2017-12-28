@@ -213,6 +213,7 @@ local function Type (column)
 		assert(column.filename == nil or type(column.filename) == "string", "Non-string filename")
 		assert(column.id == nil or type(column.id) == "number", "Non-number ID")
 		assert(column.text or column.filename, "Entry has neither text nor an image")
+		assert(column.text or column.id, "Entry has neither text nor an ID")
 
 		local pos = column.position
 
