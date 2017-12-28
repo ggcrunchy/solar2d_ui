@@ -28,6 +28,7 @@
 -- Standard library imports --
 local assert = assert
 local ipairs = ipairs
+local pairs = pairs
 local type = type
 
 -- Modules --
@@ -94,16 +95,53 @@ local function UpdateText (str, event)
 	str.isVisible = new_text ~= nil
 end
 
-local function UpdateImage (image, event, heading, str)
+local function SetImage (image, event, sheets)
 	local filename = event.filename
 
 	if filename then
-		image.fill, ImageFill.filename, ImageFill.baseDir = ImageFill, event.filename, event.baseDir
+		ImageFill.filename, ImageFill.baseDir, ImageFill.sheet, ImageFill.frame = filename, event.baseDir
+	else
+		ImageFill.sheet, ImageFill.frame, ImageFill.filename, ImageFill.baseDir = sheets[event.sheet or 1], event.frame
+	end
 
-		PlaceImage(image, heading, event.pos, str, image.m_margin)
+	image.fill = ImageFill
+end
+
+local function UpdateImage (image, event, heading, sheets, str)
+	local filename = event.filename
+
+	if filename then
+		SetImage(image, event, sheets)
+		PlaceImage(image, heading, event.position, str, image.m_margin)
 	end
 
 	image.isVisible = filename ~= nil
+end
+
+local Names = { "text", "id", "filename", "baseDir", "position", "sheet", "frame" }
+
+for i, name in ipairs(Names) do
+	local suffix, def = name
+
+	if name == "baseDir" then
+		suffix, def = "dir", system.ResourceDirectory
+	elseif name == "position" then
+		suffix = "pos"
+	elseif name == "sheet" then
+		def = 1
+	end
+
+	Names[name], Names[i] = { "m_" .. suffix, "old_" .. name, def }
+end
+
+local function HasChanged (data, event)
+	for name, info in pairs(Names) do
+		local def = info[3]
+
+		if (data[info[1]] or def) ~= (event[name] or def) then
+			return true
+		end
+	end
 end
 
 local function SetHeading (event)
@@ -112,21 +150,23 @@ local function SetHeading (event)
 	local old_text, old_id, old_filename, old_dir, old_pos = data.m_text, data.m_id, data.m_filename, data.m_dir, data.m_pos
 	local new_text, new_id, new_filename, new_dir, new_pos = event.text, event.id, event.filename, event.baseDir, event.pos
 
-	if old_text ~= new_text or old_id ~= new_id or old_filename ~= new_filename or old_dir ~= new_dir or old_pos ~= new_pos then
-		data.m_text, data.m_id, data.m_filename, data.m_dir, data.m_pos = new_text, new_id, event.filename, event.baseDir, event.pos
+	if HasChanged(data, event) then
+		for name, info in pairs(Names) do
+			local new_key, old_key, new = info[1], info[2], event[name]
+
+			data[new_key], OnItemChangeEvent[old_key], OnItemChangeEvent[name] = new, data[new_key], new
+		end
 
 		if tindex then
 			UpdateText(data, event)
 		end
 
 		if iindex then
-			UpdateImage(data.parent[iindex], event, heading, tindex and data)
+			UpdateImage(data.parent[iindex], event, heading, menu.m_sheets, tindex and data)
 		end
 
 		OnItemChangeEvent.name = "item_change"
 		OnItemChangeEvent.target = menu
-		OnItemChangeEvent.old_text, OnItemChangeEvent.text = old_text, new_text
-		OnItemChangeEvent.old_id, OnItemChangeEvent.id = old_id, new_id
 
 		menu:dispatchEvent(OnItemChangeEvent)
 	end
@@ -138,7 +178,7 @@ local function FindData (bar, index)
 	for i = bar.m_offset + 1, bgroup.numChildren do
 		local item = bgroup[i]
 
-		if item.m_text or item.m_filename then
+		if item.m_text or item.m_filename or item.m_frame then
 			if cur == index then
 				return item
 			else
@@ -156,7 +196,7 @@ local function SendMenuItemEvent (menu, packet, column)
 	MenuItemEvent.name, MenuItemEvent.target = "menu_item", menu
 	MenuItemEvent.id, MenuItemEvent.text, MenuItemEvent.visual_text = packet.m_id
 	MenuItemEvent.filename, MenuItemEvent.baseDir = packet.m_filename, packet.m_dir
-	MenuItemEvent.column, MenuItemEvent.pos = column, packet.m_pos
+	MenuItemEvent.column, MenuItemEvent.position = column, packet.m_pos
 
 	local text = packet.m_text
 
@@ -213,13 +253,12 @@ local function Type (column)
 		assert(column.text == nil or type(column.text) == "string", "Non-string text")
 		assert(column.filename == nil or type(column.filename) == "string", "Non-string filename")
 		assert(column.id == nil or type(column.id) == "number", "Non-number ID")
-		assert(column.text or column.filename, "Entry has neither text nor an image")
-
-		local pos = column.position
-
-		if pos then
-			assert(pos == nil or pos == "left" or pos == "right", "Invalid image position")
-		end
+		assert(column.frame == nil or type(column.frame) == "number", "Non-number frame")
+		assert(column.sheet == nil or type(column.sheet) == "number", "Non-number sheet index")
+		assert(column.text or column.filename or column.frame, "Entry has neither text nor an image or frame")
+		assert(column.sheet == nil or column.frame, "Sheet index only valid with frame")
+		assert(column.frame == nil or column.filename, "Frames and filenames are mutually exclusive")
+		assert(column.position == nil or column.position == "left" or column.position == "right", "Invalid image position")
 
 		return "entry"
 	else
@@ -422,17 +461,24 @@ function Menu:GetHeadingHeight ()
 end
 
 --- DOCME
-function Menu:GetSelection (index)
+function Menu:GetSelection (index, out)
 	assert(not self.m_broken, "Menu not whole")
 	assert(index == nil or type(index) == "number", "Invalid index")
+	assert(out == nil or type(out) == "table", "Non-table output")
 
-	index = index or 1
+	index, out = index or 1, out or {}
 
 	assert(self[index], "Index out of bounds")
 
 	local data = HeadingData(self, index)
 
-	return data.m_text, data.m_id, data.m_filename, data.m_dir, data.m_pos
+	out = out or {}
+
+	for name, info in pairs(Names) do
+		out[name] = data[info[1]]
+	end
+
+	return out
 end
 
 --- DOCME
@@ -583,12 +629,12 @@ local function EnsureImage (object, iw, ih, margin, is_dropdown, is_heading)
 end
 
 local function PopulateEntry (column, group, object, get_text, font, size, iw, ih, margin, is_dropdown, is_heading)
-	local into, str, filename, dir, id, text, pos
+	local text, into, str, filename, frame
 
 	if type(column) == "string" then
 		text = column
 	else
-		text, filename, dir, id, pos = column.text, column.filename, column.baseDir, column.id, column.position
+		text, filename, frame = column.text, column.filename, column.frame
 	end
 
 	if text then
@@ -598,17 +644,21 @@ local function PopulateEntry (column, group, object, get_text, font, size, iw, i
 		EnsureText(object, font, size, is_dropdown, is_heading)
 	end
 
-	if filename then
-		local image = EnsureImage(object, iw, ih, margin, is_dropdown, is_heading)
+	if filename or frame then
+		local image, pos = EnsureImage(object, iw, ih, margin, is_dropdown, is_heading), column.position
 
 		if image and is_heading then
-			image.fill, ImageFill.filename, ImageFill.baseDir = ImageFill, filename, dir
+			SetImage(image, column, MenuFromHeading(object).m_sheets)
 		else
+			local dir = column.baseDir
+
 			if image then -- not heading, so object is bar
 				PlaceImage(image, object.m_heading, pos, str, margin)
 			end
 
-			if dir then
+			if frame then
+				image = display.newImageRect(group, column.sheet or 1, frame, iw, ih)
+			elseif dir then
 				image = display.newImageRect(group, filename, dir, iw, ih)
 			else
 				image = display.newImageRect(group, filename, iw, ih)
@@ -618,7 +668,12 @@ local function PopulateEntry (column, group, object, get_text, font, size, iw, i
 		PlaceImage(image, object, pos, str, margin)
 
 		into = into or image -- consolidate all data in one object
-		into.m_filename, into.m_dir, into.m_id, into.m_pos = filename, dir, id, pos
+
+		for name, info in pairs(Names) do
+			if name ~= "text" then
+				into[info[1]] = column[name]
+			end
+		end
 	end
 end
 
@@ -639,6 +694,9 @@ function M.Menu (params)
 	local ci, get_text, is_dropdown = 1, params.get_text or DefGetText, params.is_dropdown
 
 	menu.m_get_text = get_text
+	menu.m_sheets = params.sheets
+
+	assert(menu.m_sheets == nil or type(menu.m_sheets) == "table", "Invalid image sheets")
 
 	for _, column in ipairs(columns) do
 		if type(column) == "string" or #column == 0 then
