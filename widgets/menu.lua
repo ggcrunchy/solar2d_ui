@@ -147,8 +147,6 @@ end
 local function SetHeading (event)
 	local menu = event.target
 	local data, heading, tindex, iindex = HeadingData(menu, event.column)
-	local old_text, old_id, old_filename, old_dir, old_pos = data.m_text, data.m_id, data.m_filename, data.m_dir, data.m_pos
-	local new_text, new_id, new_filename, new_dir, new_pos = event.text, event.id, event.filename, event.baseDir, event.pos
 
 	if HasChanged(data, event) then
 		for name, info in pairs(Names) do
@@ -461,10 +459,20 @@ function Menu:GetHeadingHeight ()
 end
 
 --- DOCME
-function Menu:GetSelection (index, out)
+function Menu:GetSelection (params)
 	assert(not self.m_broken, "Menu not whole")
-	assert(index == nil or type(index) == "number", "Invalid index")
-	assert(out == nil or type(out) == "table", "Non-table output")
+
+	local params_type, out, index = type(params)
+
+	if params_type == "number" then
+		index = params
+	elseif params_type == "string" then
+		out = true -- stifle automatic table
+	elseif params_type == "table" then
+		out, index = params, params.index
+	elseif params then
+		assert(false, "Invalid selection")
+	end
 
 	index, out = index or 1, out or {}
 
@@ -472,7 +480,11 @@ function Menu:GetSelection (index, out)
 
 	local data = HeadingData(self, index)
 
-	out = out or {}
+	if out == true then -- see above
+		local info = Names[params]
+
+		return info and data[info[1]]
+	end
 
 	for name, info in pairs(Names) do
 		out[name] = data[info[1]]
