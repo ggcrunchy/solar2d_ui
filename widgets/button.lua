@@ -31,11 +31,11 @@ local type = type
 
 -- Modules --
 local colors = require("corona_ui.utils.color")
-local geom2d_preds = require("tektite_core.geom2d.predicates")
 local layout = require("corona_ui.utils.layout")
 local layout_dsl = require("corona_ui.utils.layout_dsl")
 local meta = require("tektite_core.table.meta")
 local skins = require("corona_ui.utils.skin")
+local touch = require("corona_ui.utils.touch")
 
 -- Corona globals --
 local display = display
@@ -66,7 +66,7 @@ end
 local function DoTimeouts (button)
 	button.m_since = system.getTimer()
 	button.m_update = timer.performWithDelay(20, function(event)
-		if display.isValid(button) and button.m_is_touched then
+		if display.isValid(button) and touch.IsTouched(button) then
 			if button.m_inside then
 				local since, timeout = button.m_since, button.m_timeout
 
@@ -94,61 +94,9 @@ local function DoTimeouts (button)
 	end, 0)
 end
 
--- Helper to set stage focus
-local function SetFocus (target)
-	display.getCurrentStage():setFocus(target)
-end
-
--- Touch listener
-local function OnTouch (event)
-	local button = event.target
+--
+local function Draw (button, mode)
 	local skin = button.m_skin
-	local mode = "button_held"
-
-	-- On(began): make the button the main focus and set some flags
-	if event.phase == "began" then
-		SetFocus(button)
-
-		button.m_doing_timeouts = false
-		button.m_inside = true
-		button.m_is_touched = true
-
-		-- If a timer is available, reset it and start watching for timeouts.
-		if button.m_timeout then
-			DoTimeouts(button)
-		end
-
-	-- Guard against moves onto the button during touches.
-	elseif not button.m_is_touched then
-		return true
-	else
-		-- Check whether the touch is inside the button.
-		local bx, by = button:localToContent(0, 0)
-
-		button.m_inside = geom2d_preds.PointInBox(event.x, event.y, bx - button.width / 2, by - button.height / 2, button.contentWidth, button.contentHeight)
-
-		-- On(ended) / On(cancelled): release focus and restore appearance
-		-- If the button was doing timeouts, do nothing. Otherwise, if it was dropped
-		-- while the touch is inside, do the button logic.
-		if event.phase == "ended" or event.phase == "cancelled" then
-			ClearTimer(button)
-			SetFocus(nil)
-
-			if not button.m_doing_timeouts and event.phase == "ended" and button.m_inside then
-				button.m_func(button.parent)
-			end
-
-			button.m_is_touched = false
-
-			mode = "button_normal"
-
-		-- Otherwise, if the touch strayed outside, make the appearance reflect that.
-		elseif not button.m_inside then
-			mode = "button_touch"
-		end
-	end
-
-	-- Set the button's appearance in a type-appropriate manner.
 	local choice = skin[mode]
 
 	if skin.button_type == "image" or skin.button_type == "rounded_rect" then
@@ -156,9 +104,32 @@ local function OnTouch (event)
 	elseif skin.button_type == "sprite" then
 		button:setFrame(choice)
 	end
-
-	return true
 end
+
+-- Touch listener
+local OnTouch = touch.TouchHelperFunc(function(_, button)
+	button.m_doing_timeouts, button.m_inside = false, true
+
+	if button.m_timeout then
+		DoTimeouts(button)
+	end
+
+	Draw(button, "button_held")
+end, function(event, button)
+	button.m_inside = touch.Inside(event, button)
+
+	Draw(button, button.m_inside and "button_held" or "button_touch")
+end, function(event, button)
+	ClearTimer(button)
+
+	if not button.m_doing_timeouts and event.phase == "ended" and button.m_inside then
+		button.m_func(button.parent)
+	end
+
+	button.m_inside = false
+
+	Draw(button, "button_normal")
+end)
 
 -- Factory functions for button types --
 local Factories = {}
@@ -174,7 +145,8 @@ end
 
 -- Rounded rect button
 function Factories.rounded_rect (bgroup, skin, w, h)
-	local button = display.newRoundedRect(bgroup, 0, 0, w, h, layout.ResolveX(skin.button_corner))
+	local which = h < 20 and "button_short_corner" or "button_corner"
+	local button = display.newRoundedRect(bgroup, 0, 0, w, h, layout.ResolveX(skin[which]))
 
 	button.strokeWidth = skin.button_borderwidth
 
@@ -322,6 +294,7 @@ skins.AddToDefaultSkin("button", {
 	held = "red",
 	touch = "green",
 	corner = "1.5%",
+	short_corner = ".75%",
 	font = "PeacerfulDay",
 	textcolor = "white",
 	textsize = "6.875%",

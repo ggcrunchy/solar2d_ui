@@ -285,7 +285,7 @@ local KeyFadeOutParams = {
 --
 local function CloseKeysAndText (by_key)
 	--
-	Event.name, Event.target, Event.closed_by_key = "closing", Current, by_key ~= nil
+	Event.name, Event.target, Event.closed_by_key = "closing", Current, not not by_key
 
 	Current:dispatchEvent(Event)
 

@@ -144,29 +144,39 @@ function M.WriteEntry_MightExist (name, opts, arg)
 				timers.Defer(function()
 					local editable = editable_patterns.Editable_XY(group, "center", "center", eopts)
 
-					editable:addEventListener("closing", function()
-						name = editable:GetText()
+					editable:addEventListener("closing", function(event)
+						local defer_cleanup
 
-						-- If the user-provided name was available, perform the write.
-						if not exists(name, arg) then
-							writer(name, arg)
-						else
-							timers.DeferIf(function()
-								-- If the user-provided name already exists, request permission before overwriting.
-								alert = native.showAlert(Message("The %s is already in use!", what), "Overwrite?", { "OK", "Cancel" }, function(event)
-									alert = nil
+						if event.closed_by_key then
+							name = editable:GetText()
 
-									if event.action == "clicked" and event.index == 1 then
-										writer(name, arg)
-									end
-								end)
+							-- If the user-provided name was available, perform the write.
+							if not exists(name, arg) then
+								writer(name, arg)
+							else
+								defer_cleanup = true
 
-								editable:removeSelf()
-							end, editable)
+								timers.DeferIf(function()
+									-- If the user-provided name already exists, request permission before overwriting.
+									alert = native.showAlert(Message("The %s is already in use!", what), "Overwrite?", { "OK", "Cancel" }, function(event)
+										alert = nil
+
+										if event.action == "clicked" and event.index == 1 then
+											writer(name, arg)
+										end
+									end)
+
+									editable:removeSelf()
+								end, editable)
+							end
 						end
 
 						-- Hide the string until the deferred cleanup.
-						editable.isVisible = false
+						if defer_cleanup then
+							editable.isVisible = false
+						else
+							editable:removeSelf()
+						end
 					end)
 					editable:EnterInputMode()
 				end)

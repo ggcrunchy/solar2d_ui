@@ -37,6 +37,7 @@ local ClampIn = range.ClampIn
 local display = display
 
 -- Cached module references --
+local _IsTouched_
 local _TouchHelperFunc_
 
 -- Exports --
@@ -93,10 +94,10 @@ end
 -- @todo May start in "broken" state, i.e. in violation of the clamping
 -- DOCMEMORE!
 function M.DragParentTouch (opts)
-	local clamp, find, ref_key, offset_by_object, xoff, yoff, on_began, on_ended, on_post_move, on_pre_move
+	local clamp, find, ref_key, offset_by_object, to_front, xoff, yoff, on_began, on_ended, on_post_move, on_pre_move
 
 	if opts then
-		clamp = opts.no_clamp and ClampMethods.id or ClampMethods[opts.clamp]
+		clamp, to_front = opts.no_clamp and ClampMethods.id or ClampMethods[opts.clamp], not not opts.to_front
 		find, offset_by_object, ref_key = opts.find, not not opts.offset_by_object, opts.ref_key
 		xoff, yoff = opts.x_offset, opts.y_offset
 	end
@@ -118,6 +119,10 @@ function M.DragParentTouch (opts)
 
 		if on_began then
 			on_began(parent, ref_object)
+		end
+
+		if to_front then
+			parent:toFront()
 		end
 	end, function(event, object)
 		local parent, ref_object = GetParent(object, find), RefObject(object, ref_key)
@@ -200,6 +205,20 @@ function M.DragViewTouch (view, opts)
 	end)
 end
 
+--- DOCME
+function M.Inside (event, object)
+	object = object or event.target
+
+	local bounds, x, y = object.contentBounds, event.x, event.y
+
+	return x >= bounds.xMin and x <= bounds.xMax and y >= bounds.yMin and y <= bounds.yMax
+end
+
+--- Is the target touched, or at least considered so?
+function M.IsTouched (target, event)
+	return target.m_is_touched or (event and event.id) == "ignore_me"
+end
+
 -- --
 local FakeTouch
 
@@ -222,11 +241,6 @@ function M.Spoof (target)
 	AuxSpoof(target, "began")
 	AuxSpoof(target, "moved")
 	AuxSpoof(target, "ended")
-end
-
--- Is the target touched, or at least considered so?
-local function IsTouched (target, event)
-	return target.m_is_touched or event.id == "ignore_me"
 end
 
 -- Helper to set (multitouch) stage focus
@@ -271,7 +285,7 @@ function M.TouchHelperFunc (began, moved, ended)
 
 			began(event, target)
 		
-		elseif IsTouched(target, event) then
+		elseif _IsTouched_(target, event) then
 			if event.phase == "moved" and moved then
 				moved(event, target)
 
@@ -291,6 +305,7 @@ function M.TouchHelperFunc (began, moved, ended)
 end
 
 -- Cache module members.
+_IsTouched_ = M.IsTouched
 _TouchHelperFunc_ = M.TouchHelperFunc
 
 -- Export the module.

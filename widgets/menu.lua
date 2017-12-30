@@ -807,6 +807,13 @@ function M.Menu (params)
 			heading:addEventListener("touch", HeadingTouch)
 			menu:insert(cgroup)
 
+			if ci > 1 then
+				local lx = (ci - 1) * column_width
+				local sep = display.newLine(cgroup, lx, 0, lx, heading_height)
+
+				sep:setStrokeColor(.3)
+			end
+
 			ci, x = ci + 1, x + column_width
 		else
 			local bgroup = display.newGroup()
