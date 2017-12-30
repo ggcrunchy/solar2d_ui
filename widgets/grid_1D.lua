@@ -54,7 +54,7 @@ local GetColor = colors.GetColor
 local M = {}
 
 --
-local BarTouch = touch.DragParentTouch{ hscale = 2 }
+local BarTouch = touch.DragParentTouch{ ref_key = "m_backdrop" }
 
 --
 local function AddOptionGridLine (group, skin, x1, y1, x2, y2)
@@ -171,10 +171,12 @@ function M.OptionsHGrid (group, x, y, w, h, text, opts)
 
 	local dw, dh = w / 3, h / 2
 	local cx, cy = w / 2, 1.5 * dh
+	local backdrop = display.newRect(ggroup, cx, dh, w, h)
 	local bar = display.newRect(ggroup, cx, dh / 2, w, dh)
-	local backdrop = display.newRect(ggroup, cx, cy, w, dh)
 	local choice = display.newRect(ggroup, cx, cy, dw, dh - 2)
 	local string = display.newText(ggroup, text or "", bar.x, bar.y, skin.optiongrid_font, layout.ResolveY(skin.optiongrid_textsize))
+
+	bar.m_backdrop = backdrop
 
 	bar.strokeWidth = skin.optiongrid_barborderwidth
 	backdrop.strokeWidth = skin.optiongrid_backdropborderwidth

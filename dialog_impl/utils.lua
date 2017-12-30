@@ -49,18 +49,26 @@ local function NoTouch () return true end
 
 --- DOCME
 function M.AddBack (dialog, w, h)
-	display.remove(dialog[1]) -- TODO: Something more robust!
+	local back = dialog.m_back
 
-	local back = display.newRoundedRect(dialog, 0, 0, w, h, layout.ResolveX("1.5%"))
+	if back then
+		local bpath = back.path
 
-	back:addEventListener("touch", NoTouch)
-	back:setFillColor(.5)
-	back:setStrokeColor(.375)
-	back:toBack()
+		bpath.width, bpath.height = w, h
+	else
+		back = display.newRoundedRect(dialog, 0, 0, w, h, layout.ResolveX("1.5%"))
 
-	back.anchorX, back.x = 0, 0
-	back.anchorY, back.y = 0, 0
-	back.strokeWidth = 3
+		back:addEventListener("touch", NoTouch)
+		back:setFillColor(.5)
+		back:setStrokeColor(.375)
+		back:toBack()
+
+		back.anchorX, back.x = 0, 0
+		back.anchorY, back.y = 0, 0
+		back.strokeWidth = 3
+
+		dialog.m_back = back
+	end
 end
 
 --- DOCMEMORE

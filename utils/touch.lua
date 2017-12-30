@@ -72,93 +72,69 @@ local ClampMethods = {
 	end
 }
 
+local function RefObject (object, ref_key)
+	if ref_key then
+		return object[ref_key]
+	else
+		return object
+	end
+end
+
 --- Builds a function (on top of @{TouchHelperFunc}) to be assigned as a **"touch"**
 -- listener, which will drag the target's parent around when moved, subject to clamping at
 -- the screen edges.
 --
 -- The **m\_dragx** and **m\_dragy** fields are intrusively assigned to in the event target.
 -- @ptable[opt] opts
--- FIX number[opt=1] hscale Height scale, &ge; 1. The parent may be taller than the touched
--- object, e.g. in the case of a title bar, which affects vertical clamping. The final
--- metric is: parent height = _hscale_ * object height.
 -- @treturn function Listener function.
 --
--- **CONSIDER**: More automagic than hscale? Varieties of clamping?
+-- **CONSIDER**: Varieties of clamping?
 --
 -- @todo May start in "broken" state, i.e. in violation of the clamping
 -- DOCMEMORE!
 function M.DragParentTouch (opts)
-	local clamp, find, hscale, xoff, yoff
+	local clamp, find, ref_key, offset_by_object, xoff, yoff, on_began, on_ended, on_post_move, on_pre_move
 
 	if opts then
 		clamp = opts.no_clamp and ClampMethods.id or ClampMethods[opts.clamp]
-		find, hscale = opts.find, opts.hscale
+		find, offset_by_object, ref_key = opts.find, not not opts.offset_by_object, opts.ref_key
 		xoff, yoff = opts.x_offset, opts.y_offset
 	end
 
-	clamp, hscale, xoff, yoff = clamp or ClampMethods.clamp_in, hscale or 1, xoff or 0, yoff or 0
+	clamp, xoff, yoff = clamp or ClampMethods.clamp_in, xoff or 0, yoff or 0
 
 	return _TouchHelperFunc_(function(event, object)
-		local parent = GetParent(object, find)
+		local parent, ref_object = GetParent(object, find), RefObject(object, ref_key)
 
 		object.m_dragx = parent.x - event.x
 		object.m_dragy = parent.y - event.y
-	end, function(event, object)
-		local parent = GetParent(object, find)
-		local newx, newy = object.m_dragx + event.x, object.m_dragy + event.y
 
-		parent.x = clamp(newx, xoff, display.contentWidth - object.contentWidth)
-		parent.y = clamp(newy, yoff, display.contentHeight - object.contentHeight * hscale)
-	end)
-end
-
---- DOCME
-function M.DragParentTouch_Child (key, opts)
-	local clamp, find, on_began, on_ended, on_post_move, on_pre_move, ref
-
-	if opts then
-		clamp, find, ref = opts.clamp, opts.find, opts.ref
-		on_began, on_ended, on_post_move, on_pre_move = opts.on_began, opts.on_ended, opts.on_post_move, opts.on_pre_move
-	end
-
-	clamp = ClampMethods[clamp] or ClampIn
-
-	return _TouchHelperFunc_(function(event, object)
-		local parent = GetParent(object, find)
-
-		if ref == "object" then
-			local sibling = parent[key]
-
-			object.m_x0 = sibling.contentWidth / 2 - sibling.x
-			object.m_y0 = sibling.contentHeight / 2 - sibling.y
+		if offset_by_object then
+			object.m_x0 = ref_object.contentWidth / 2 - ref_object.x
+			object.m_y0 = ref_object.contentHeight / 2 - ref_object.y
 		else
-			object.m_x0, object.m_y0 = 0, 0
+			object.m_x0, object.m_y0 = xoff, yoff
 		end
-
-		object.m_dragx = parent.x - event.x
-		object.m_dragy = parent.y - event.y
 
 		if on_began then
-			on_began(parent, parent[key])
+			on_began(parent, ref_object)
 		end
 	end, function(event, object)
-		local parent = GetParent(object, find)
-		local sibling, x0, y0 = parent[key], object.m_x0, object.m_y0
+		local parent, ref_object = GetParent(object, find), RefObject(object, ref_key)
+		local newx, newy, x0, y0 = object.m_dragx + event.x, object.m_dragy + event.y, object.m_x0, object.m_y0
 
 		if on_pre_move then
-			on_pre_move(parent, sibling)
+			on_pre_move(parent, ref_object)
 		end
 
-		parent.x = clamp(object.m_dragx + event.x, x0, x0 + display.contentWidth - sibling.contentWidth)
-		parent.y = clamp(object.m_dragy + event.y, y0, y0 + display.contentHeight - sibling.contentHeight)
+		parent.x = clamp(newx, x0, x0 + display.contentWidth - ref_object.contentWidth)
+		parent.y = clamp(newy, y0, y0 + display.contentHeight - ref_object.contentHeight)
 
 		if on_post_move then
-			on_post_move(parent, sibling)
+			on_post_move(parent, ref_object)
 		end
 	end, on_ended and function(_, object)
-		local parent = GetParent(object, find)
-
-		on_ended(parent, parent[key])
+		on_ended(GetParent(object, find), RefObject(object, ref_key))
 	end)
 end
 

@@ -29,6 +29,7 @@
 local assert = assert
 local ipairs = ipairs
 local pairs = pairs
+local rawequal = rawequal
 local type = type
 
 -- Modules --
@@ -40,6 +41,7 @@ local table_funcs = require("tektite_core.table.funcs")
 
 -- Corona globals --
 local display = display
+local graphics = graphics
 local native = native
 local system = system
 local transition = transition
@@ -95,30 +97,38 @@ local function UpdateText (str, event)
 	str.isVisible = new_text ~= nil
 end
 
-local function SetImage (image, event, sheets)
-	local filename = event.filename
+local function SetImage (image, event, sheets, shader)
+	local filename, sheet = event.filename, sheets[event.sheet or 1]
 
 	if filename then
 		ImageFill.filename, ImageFill.baseDir, ImageFill.sheet, ImageFill.frame = filename, event.baseDir
+	elseif sheet then
+		ImageFill.sheet, ImageFill.frame, ImageFill.filename, ImageFill.baseDir = sheet, event.frame
 	else
-		ImageFill.sheet, ImageFill.frame, ImageFill.filename, ImageFill.baseDir = sheets[event.sheet or 1], event.frame
+		return -- no sheet yet?
 	end
 
 	image.fill = ImageFill
+
+	if type(shader) == "function" then
+		shader(image)
+	else
+		image.fill.effect = shader
+	end
 end
 
-local function UpdateImage (image, event, heading, sheets, str)
-	local filename = event.filename
+local function UpdateImage (image, event, heading, sheets, str, shader)
+	local image_data = event.filename or event.frame
 
-	if filename then
-		SetImage(image, event, sheets)
+	if image_data then
+		SetImage(image, event, sheets, shader)
 		PlaceImage(image, heading, event.position, str, image.m_margin)
 	end
 
-	image.isVisible = filename ~= nil
+	image.isVisible = image_data ~= nil
 end
 
-local Names = { "text", "id", "filename", "baseDir", "position", "sheet", "frame" }
+local Names = { "text", "id", "filename", "baseDir", "position", "sheet", "frame", "index", "shader" }
 
 for i, name in ipairs(Names) do
 	local suffix, def = name
@@ -160,7 +170,7 @@ local function SetHeading (event)
 		end
 
 		if iindex then
-			UpdateImage(data.parent[iindex], event, heading, menu.m_sheets, tindex and data)
+			UpdateImage(data.parent[iindex], event, heading, menu.m_sheets, tindex and data, data.m_shader)
 		end
 
 		OnItemChangeEvent.name = "item_change"
@@ -170,50 +180,8 @@ local function SetHeading (event)
 	end
 end
 
-local function FindData (bar, index)
-	local bgroup, cur = bar.parent, 1
-
-	for i = bar.m_offset + 1, bgroup.numChildren do
-		local item = bgroup[i]
-
-		if item.m_text or item.m_filename or item.m_frame then
-			if cur == index then
-				return item
-			else
-				cur = cur + 1
-			end
-		end
-	end
-
-	assert(false, "Data not found") -- should never get here if implementation is correct
-end
-
-local MenuItemEvent = {}
-
-local function SendMenuItemEvent (menu, packet, column)
-	MenuItemEvent.name, MenuItemEvent.target = "menu_item", menu
-	MenuItemEvent.id, MenuItemEvent.text, MenuItemEvent.visual_text = packet.m_id
-	MenuItemEvent.filename, MenuItemEvent.baseDir = packet.m_filename, packet.m_dir
-	MenuItemEvent.column, MenuItemEvent.position = column, packet.m_pos
-
-	local text = packet.m_text
-
-	if text then
-		MenuItemEvent.text = text
-
-		if menu.m_get_text then
-			local vtext = menu.m_get_text(text)
-
-			if vtext ~= text then
-				MenuItemEvent.visual_text = text
-			end
-		end
-	end
-
-	menu:dispatchEvent(MenuItemEvent)
-
-	MenuItemEvent.target = nil
-end
+-- --
+local Empty = {}
 
 --- DOCME
 function M.Dropdown (params)
@@ -223,19 +191,11 @@ function M.Dropdown (params)
 	assert(#column > 0, "Table entries required")
 
 	params = table_funcs.Copy(params)
-	params.columns, params.is_dropdown = { "", column }, true
+	params.columns, params.is_dropdown = { Empty, column }, true
 
 	local dropdown = _Menu_(params)
 
-	local choice = params.choice
-
-	if choice then
-		dropdown:Select(choice)
-	else
-		local packet = FindData(Heading(dropdown, 1).m_dropdown.m_bar, 1)
-
-		SendMenuItemEvent(dropdown, packet, 1)
-	end
+	dropdown:Select(params.choice, params.how or "first_in_first_column")
 
 	return dropdown
 end
@@ -245,7 +205,7 @@ local function Type (column)
 
 	assert(ctype == "table" or ctype == "string", "Bad column type")
 
-	if ctype == "string" then
+	if ctype == "string" or rawequal(column, Empty) then
 		return "entry"
 	elseif #column == 0 then
 		assert(column.text == nil or type(column.text) == "string", "Non-string text")
@@ -253,10 +213,12 @@ local function Type (column)
 		assert(column.id == nil or type(column.id) == "number", "Non-number ID")
 		assert(column.frame == nil or type(column.frame) == "number", "Non-number frame")
 		assert(column.sheet == nil or type(column.sheet) == "number", "Non-number sheet index")
+		assert(column.shader == nil or type(column.shader) == "function" or type(column.shader) == "string", "Invalid shader")
 		assert(column.text or column.filename or column.frame, "Entry has neither text nor an image or frame")
 		assert(column.sheet == nil or column.frame, "Sheet index only valid with frame")
-		assert(column.frame == nil or column.filename, "Frames and filenames are mutually exclusive")
+		assert(column.frame == nil or column.filename == nil, "Frames and filenames are mutually exclusive")
 		assert(column.position == nil or column.position == "left" or column.position == "right", "Invalid image position")
+		assert(column.shader == nil or column.filename or column.frame, "Shader assumes image or frame")
 
 		return "entry"
 	else
@@ -350,6 +312,56 @@ local function TouchHeading (heading)
 	end
 end
 
+local function FindData (bar, index)
+	local bgroup, cur = bar.parent, 1
+
+	for i = bar.m_offset + 1, bgroup.numChildren do
+		local item = bgroup[i]
+
+		if item.m_text or item.m_filename or item.m_frame then
+			if cur == index then
+				return item
+			else
+				cur = cur + 1
+			end
+		end
+	end
+
+	assert(false, "Data not found") -- should never get here if implementation is correct
+end
+
+local MenuItemEvent = {}
+
+local function SendMenuItemEvent (menu, packet, column, index)
+	MenuItemEvent.name, MenuItemEvent.target = "menu_item", menu
+	MenuItemEvent.text, MenuItemEvent.visual_text = nil
+	MenuItemEvent.column, MenuItemEvent.index = column, index, packet.m_pos
+
+	for name, info in pairs(Names) do
+		if name ~= "text" then
+			MenuItemEvent[name] = packet[info[1]]
+		end
+	end
+
+	local text = packet.m_text
+
+	if text then
+		MenuItemEvent.text = text
+
+		if menu.m_get_text then
+			local vtext = menu.m_get_text(text)
+
+			if vtext ~= text then
+				MenuItemEvent.visual_text = text
+			end
+		end
+	end
+
+	menu:dispatchEvent(MenuItemEvent)
+
+	MenuItemEvent.target = nil
+end
+
 local function DropdownTouch (event)
 	local dropdown, phase = event.target, event.phase
 	local end_phase = phase == "ended" or phase == "cancelled" 
@@ -386,10 +398,12 @@ local function DropdownTouch (event)
 			TouchHeading(how)
 		end
 	elseif end_phase then
-		if bar.m_index then
+		local index = bar.m_index
+
+		if index then
 			local heading = bar.m_heading
 
-			SendMenuItemEvent(MenuFromHeading(heading), FindData(bar, bar.m_index), heading.m_column)
+			SendMenuItemEvent(MenuFromHeading(heading), FindData(bar, index), heading.m_column, index)
 
 			bar.m_index = nil
 		end
@@ -462,23 +476,29 @@ end
 function Menu:GetSelection (params)
 	assert(not self.m_broken, "Menu not whole")
 
-	local params_type, out, index = type(params)
+	local params_type, out, column = type(params)
 
 	if params_type == "number" then
-		index = params
+		column = params
 	elseif params_type == "string" then
 		out = true -- stifle automatic table
 	elseif params_type == "table" then
-		out, index = params, params.index
+		column, out = params.column, params
+
+		if params.get then
+			params, out = params.get, true -- reinterpret as string
+
+			assert(type(params) == "string", "Non-string get")
+		end
 	elseif params then
 		assert(false, "Invalid selection")
 	end
 
-	index, out = index or 1, out or {}
+	column, out = column or 1, out or {}
 
-	assert(self[index], "Index out of bounds")
+	assert(self[column], "Index out of bounds")
 
-	local data = HeadingData(self, index)
+	local data = HeadingData(self, column)
 
 	if out == true then -- see above
 		local info = Names[params]
@@ -540,41 +560,50 @@ end
 local SelectPacket = {}
 
 local function FindSelection (menu, name_or_id)
-	for i = 1, menu.numChildren do
+	for i = 1, name_or_id and menu.numChildren or 0 do -- do check here to simplify multiple returns
 		local bar = Heading(menu, i).m_dropdown.m_bar
-		local bgroup = bar.parent
+		local bgroup, index = bar.parent, 0
 
 		for j = bar.m_offset + 1, bgroup.numChildren do
 			local item = bgroup[j]
+			local text = item.m_text
 
-			if item.m_id == name_or_id or item.m_text == name_or_id then
-				return item, i
+			if text or item.m_filename or item.m_frame then
+				index = index + 1
+
+				if item.m_id == name_or_id or text == name_or_id then
+					return item, i, index
+				end
 			end
 		end
 	end
 end
 
 --- DOCME
-function Menu:Select (name_or_id)
+function Menu:Select (name_or_id, on_absence)
 	assert(not self.m_broken, "Menu not whole")
 
 	local ni_type = type(name_or_id)
 
-	assert(ni_type == "string" or ni_type == "number", "Expected string name or number ID")
+	assert(name_or_id == nil or ni_type == "string" or ni_type == "number", "Expected string name or number ID")
 
-	local packet, column = FindSelection(self, name_or_id)
+	local packet, column, index = FindSelection(self, name_or_id)
 
 	if not packet then
 		packet = SelectPacket
 
-		if ni_type == "string" then
+		if on_absence == "no_op" then
+			return
+		elseif on_absence == "first_in_first_column" then
+			packet, index = FindData(Heading(self, 1).m_dropdown.m_bar, 1), 1
+		elseif ni_type == "string" then
 			packet.m_text, packet.m_id = name_or_id
 		else
 			packet.m_id, packet.m_text = name_or_id
 		end
 	end
 
-	SendMenuItemEvent(self, packet, column or 1)
+	SendMenuItemEvent(self, packet, column or 1, index)
 end
 
 --- DOCME
@@ -598,6 +627,44 @@ function Menu:StashDropdowns ()
 	self.m_broken, stash.isVisible, stash.m_headings_only = true, false, headings_only
 
 	return stash
+end
+
+local SheetInfo = {}
+
+--- DOCME
+function Menu:UpdateSheet (index, sheet)
+	local sheets = self.m_sheets
+
+	assert(sheets, "Menu not using image sheets")
+	assert(sheets[index] ~= nil, "Invalid index")
+
+	sheets[index] = assert(sheet, "Invalid sheet")
+
+	SheetInfo.sheet = index
+
+	for i = 1, self.numChildren do
+		local heading = Heading(self, i)
+		local data = DataFromHeading(heading)
+
+		if data.m_frame and (data.m_sheet or 1) == index then
+			SheetInfo.frame = data.m_frame
+
+			SetImage(heading.parent[heading.m_image_index], SheetInfo, sheets, data.m_shader)
+		end
+
+		local bar = heading.m_dropdown.m_bar
+		local bgroup = bar.parent
+
+		for j = bar.m_offset + 1, bgroup.numChildren do
+			local item = bgroup[j]
+
+			if item.m_frame and (item.m_sheet or 1) == index then
+				SheetInfo.frame = item.m_frame
+
+				SetImage(item.m_rect or item, SheetInfo, sheets, item.m_shader) -- see note in PopulateEntry()
+			end
+		end
+	end
 end
 
 local function DefGetText (text) return text end
@@ -625,8 +692,7 @@ local function EnsureImage (object, iw, ih, margin, is_dropdown, is_heading)
 
 	-- If this is a dropdown, the heading must be ready to represent the image, so get a rect
 	-- ready to go, to be assigned a bitmap fill. This might be the heading itself, in which
-	-- case it should already be visible. This is irrelevant for non-dropdowns that use image
-	-- display objects instead.
+	-- case it should already be visible. This is irrelevant for non-dropdowns.
 	if is_dropdown and not heading.m_image_index then
 		image = display.newRect(cgroup, 0, 0, iw, ih)
 		image.m_margin, image.isVisible = margin, is_heading
@@ -640,13 +706,27 @@ local function EnsureImage (object, iw, ih, margin, is_dropdown, is_heading)
 	return image
 end
 
+local function GetSheets (sheets)
+	if sheets then
+		assert(type(sheets) == "table", "Invalid image sheets")
+
+		for _, sheet in ipairs(sheets) do
+			if sheet == false then
+				return table_funcs.Copy(sheets) -- has provisional sheets, so must be able to change
+			end
+		end
+	end
+
+	return sheets
+end
+
 local function PopulateEntry (column, group, object, get_text, font, size, iw, ih, margin, is_dropdown, is_heading)
-	local text, into, str, filename, frame
+	local text, into, str, filename, frame, shader
 
 	if type(column) == "string" then
 		text = column
 	else
-		text, filename, frame = column.text, column.filename, column.frame
+		text, filename, frame, shader = column.text, column.filename, column.frame, column.shader
 	end
 
 	if text then
@@ -658,18 +738,26 @@ local function PopulateEntry (column, group, object, get_text, font, size, iw, i
 
 	if filename or frame then
 		local image, pos = EnsureImage(object, iw, ih, margin, is_dropdown, is_heading), column.position
+		local heading = is_heading and object or object.m_heading -- when not heading, object is bar
+		local sheets = MenuFromHeading(heading).m_sheets
 
 		if image and is_heading then
-			SetImage(image, column, MenuFromHeading(object).m_sheets)
+			SetImage(image, column, sheets, shader)
 		else
 			local dir = column.baseDir
 
-			if image then -- not heading, so object is bar
-				PlaceImage(image, object.m_heading, pos, str, margin)
+			if image then
+				PlaceImage(image, heading, pos, str, margin)
 			end
 
 			if frame then
-				image = display.newImageRect(group, column.sheet or 1, frame, iw, ih)
+				image = display.newRect(group, 0, 0, iw, ih)
+
+				if str then
+					str.m_rect = image -- means of discovering this when updating sheet
+				end
+
+				SetImage(image, column, sheets, shader)
 			elseif dir then
 				image = display.newImageRect(group, filename, dir, iw, ih)
 			else
@@ -705,10 +793,7 @@ function M.Menu (params)
 	local x, y, margin, cgroup, heading = .5 * column_width, .5 * heading_height, layout.ResolveX(params.margin or 5)
 	local ci, get_text, is_dropdown = 1, params.get_text or DefGetText, params.is_dropdown
 
-	menu.m_get_text = get_text
-	menu.m_sheets = params.sheets
-
-	assert(menu.m_sheets == nil or type(menu.m_sheets) == "table", "Invalid image sheets")
+	menu.m_get_text, menu.m_sheets = get_text, GetSheets(params.sheets)
 
 	for _, column in ipairs(columns) do
 		if type(column) == "string" or #column == 0 then

@@ -34,6 +34,11 @@ local native = native
 -- Exports --
 local M = {}
 
+--- DOCME
+function M:Back ()
+	return self.m_back
+end
+
 --
 local function OnTextChange (event)
 	local str = event.target
