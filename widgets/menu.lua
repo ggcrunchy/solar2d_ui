@@ -98,7 +98,7 @@ local function UpdateText (str, event)
 end
 
 local function SetImage (image, event, sheets, shader)
-	local filename, sheet = event.filename, sheets[event.sheet or 1]
+	local filename, sheet = event.filename, sheets and sheets[event.sheet or 1]
 
 	if filename then
 		ImageFill.filename, ImageFill.baseDir, ImageFill.sheet, ImageFill.frame = filename, event.baseDir
@@ -809,9 +809,9 @@ function M.Menu (params)
 
 			if ci > 1 then
 				local lx = (ci - 1) * column_width
-				local sep = display.newLine(cgroup, lx, 0, lx, heading_height)
+				local sep = display.newRect(cgroup, lx, y, 1, heading_height) -- display.newLine() spills over too much
 
-				sep:setStrokeColor(.3)
+				sep:setFillColor(.3)
 			end
 
 			ci, x = ci + 1, x + column_width
