@@ -24,10 +24,12 @@
 --
 
 -- Standard library imports --
+local assert = assert
 local max = math.max
 local min = math.min
 
 -- Modules --
+local layout = require("corona_ui.utils.layout")
 local range = require("tektite_core.number.range")
 
 -- Imports --
@@ -44,9 +46,9 @@ local _TouchHelperFunc_
 local M = {}
 
 --
-local function GetParent (object, find)
+local function GetParent (object, find, how)
 	if find then
-		return find(object)
+		return find(object, how)
 	else
 		return object.parent
 	end
@@ -94,18 +96,37 @@ end
 -- @todo May start in "broken" state, i.e. in violation of the clamping
 -- DOCMEMORE!
 function M.DragParentTouch (opts)
-	local clamp, find, ref_key, offset_by_object, to_front, xoff, yoff, on_began, on_ended, on_post_move, on_pre_move
+	local clamp, find, hoist, ref_key, offset_by_object, to_front, xoff, yoff 
+	local on_began, on_ended, on_init, on_post_move, on_pre_move
 
 	if opts then
 		clamp, to_front = opts.no_clamp and ClampMethods.id or ClampMethods[opts.clamp], not not opts.to_front
-		find, offset_by_object, ref_key = opts.find, not not opts.offset_by_object, opts.ref_key
+		find, offset_by_object, hoist, ref_key = opts.find, not not opts.offset_by_object, not not opts.hoist, opts.ref_key
 		xoff, yoff = opts.x_offset, opts.y_offset
+		on_began, on_ended, on_init = opts.on_began, opts.on_ended, opts.on_init
+		on_post_move, on_pre_move = opts.on_post_move, opts.on_pre_move
 	end
+
+	assert(not hoist or find, "Hoist must be paired with a find operation")
 
 	clamp, xoff, yoff = clamp or ClampMethods.clamp_in, xoff or 0, yoff or 0
 
 	return _TouchHelperFunc_(function(event, object)
+		if on_init then
+			on_init(object)
+		end
+
 		local parent, ref_object = GetParent(object, find), RefObject(object, ref_key)
+
+		if hoist then
+			local into, x, y = GetParent(object, find, "into"), parent:localToContent(0, 0)
+
+			parent.m_parent, parent.m_unhoisted_x, parent.m_unhoisted_x = parent.parent, parent.x, parent.y
+
+			into:insert(parent)
+
+			parent.x, parent.y = into:contentToLocal(x, y)
+		end
 
 		object.m_dragx = parent.x - event.x
 		object.m_dragy = parent.y - event.y
@@ -139,7 +160,16 @@ function M.DragParentTouch (opts)
 			on_post_move(parent, ref_object)
 		end
 	end, on_ended and function(_, object)
-		on_ended(GetParent(object, find), RefObject(object, ref_key))
+		local parent = GetParent(object, find)
+
+		on_ended(parent, RefObject(object, ref_key))
+
+		if hoist then
+			parent.m_parent:insert(parent)
+
+			parent.x, parent.y = parent.m_unhoisted_x, parent.m_unhoisted_x
+			parent.m_parent, parent.m_unhoisted_x, parent.m_unhoisted_x = nil
+		end
 	end)
 end
 
