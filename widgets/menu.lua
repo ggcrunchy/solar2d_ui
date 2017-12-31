@@ -30,6 +30,7 @@ local assert = assert
 local ipairs = ipairs
 local pairs = pairs
 local rawequal = rawequal
+local remove = table.remove
 local type = type
 
 -- Modules --
@@ -71,7 +72,7 @@ local function HeadingData (menu, index)
 	return DataFromHeading(Heading(menu, index))
 end
 
-local ImageFill, OnItemChangeEvent = { type = "image" }, {}
+local ImageFill, OnItemChangeEvents = { type = "image" }, {}
 
 local function PlaceImage (image, object, pos, str, margin)
 	if pos == "left" then
@@ -154,29 +155,32 @@ local function HasChanged (data, event)
 	end
 end
 
-local function SetHeading (event)
-	local menu = event.target
-	local data, heading, tindex, iindex = HeadingData(menu, event.column)
+local function SetHeading (menu_item_event)
+	local menu = menu_item_event.target
+	local data, heading, tindex, iindex = HeadingData(menu, menu_item_event.column)
 
-	if HasChanged(data, event) then
+	if HasChanged(data, menu_item_event) then
+		local event = remove(OnItemChangeEvents) or {} -- allow recycling but also nesting
+
 		for name, info in pairs(Names) do
-			local new_key, old_key, new = info[1], info[2], event[name]
+			local new_key, old_key, new = info[1], info[2], menu_item_event[name]
 
-			data[new_key], OnItemChangeEvent[old_key], OnItemChangeEvent[name] = new, data[new_key], new
+			data[new_key], event[old_key], event[name] = new, data[new_key], new
 		end
 
 		if tindex then
-			UpdateText(data, event)
+			UpdateText(data, menu_item_event)
 		end
 
 		if iindex then
-			UpdateImage(data.parent[iindex], event, heading, menu.m_sheets, tindex and data, data.m_shader)
+			UpdateImage(data.parent[iindex], menu_item_event, heading, menu.m_sheets, tindex and data, data.m_shader)
 		end
 
-		OnItemChangeEvent.name = "item_change"
-		OnItemChangeEvent.target = menu
+		event.name, event.target = "item_change", menu
 
-		menu:dispatchEvent(OnItemChangeEvent)
+		menu:dispatchEvent(event)
+
+		OnItemChangeEvents[#OnItemChangeEvents + 1], event.target = event
 	end
 end
 
@@ -330,36 +334,38 @@ local function FindData (bar, index)
 	assert(false, "Data not found") -- should never get here if implementation is correct
 end
 
-local MenuItemEvent = {}
+local MenuItemEvents = {}
 
 local function SendMenuItemEvent (menu, packet, column, index)
-	MenuItemEvent.name, MenuItemEvent.target = "menu_item", menu
-	MenuItemEvent.text, MenuItemEvent.visual_text = nil
-	MenuItemEvent.column, MenuItemEvent.index = column, index, packet.m_pos
+	local event = remove(MenuItemEvents) or {} -- see note in SetHeading()
+
+	event.name, event.target = "menu_item", menu
+	event.text, event.visual_text = nil
+	event.column, event.index = column, index, packet.m_pos
 
 	for name, info in pairs(Names) do
 		if name ~= "text" then
-			MenuItemEvent[name] = packet[info[1]]
+			event[name] = packet[info[1]]
 		end
 	end
 
 	local text = packet.m_text
 
 	if text then
-		MenuItemEvent.text = text
+		event.text = text
 
 		if menu.m_get_text then
 			local vtext = menu.m_get_text(text)
 
 			if vtext ~= text then
-				MenuItemEvent.visual_text = text
+				event.visual_text = text
 			end
 		end
 	end
 
-	menu:dispatchEvent(MenuItemEvent)
+	menu:dispatchEvent(event)
 
-	MenuItemEvent.target = nil
+	MenuItemEvents[#MenuItemEvents + 1], event.target = event
 end
 
 local function DropdownTouch (event)
