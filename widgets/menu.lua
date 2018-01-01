@@ -291,15 +291,23 @@ local function ReleaseHeading (heading)
 	heading:setFillColor(.6)
 end
 
+local function SetOrClearFocus (menu, focus)
+	display.getCurrentStage():setFocus(focus)
+
+	menu.m_touched = focus ~= nil
+end
+
 local function Close (dropdown, new)
 	transition.cancel(dropdown.m_fading)
 
 	dropdown.m_can_touch, dropdown.m_fading = false
 
 	Fade(dropdown.parent, 0)
-	ReleaseHeading(dropdown.m_bar.m_heading)
 
-	display.getCurrentStage():setFocus(new)
+	local heading = dropdown.m_bar.m_heading
+
+	ReleaseHeading(heading)
+	SetOrClearFocus(MenuFromHeading(heading), new)
 end
 
 local function TouchHeading (heading)
@@ -424,9 +432,14 @@ end
 
 local function HeadingTouch (event)
 	local heading, phase = event.target, event.phase
+	local menu = MenuFromHeading(heading)
 
 	if phase == "began" then
 		TouchHeading(heading)
+
+		menu.m_touched = true
+	elseif not menu.m_touched then
+		return
 	elseif phase == "moved" then
 		local how = InHeading(heading, event.x, event.y)
 
@@ -436,11 +449,10 @@ local function HeadingTouch (event)
 		end
 	elseif phase == "ended" or phase == "cancelled" then
 		ReleaseHeading(heading)
-
-		display.getCurrentStage():setFocus(nil)
+		SetOrClearFocus(menu, nil)
 
 		if InHeading(heading, event.x, event.y) == "this" then
-			SendMenuItemEvent(MenuFromHeading(heading), DataFromHeading(heading), heading.m_column)
+			SendMenuItemEvent(menu, DataFromHeading(heading), heading.m_column)
 		end
 	end
 
