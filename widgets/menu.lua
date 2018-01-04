@@ -123,7 +123,7 @@ local function UpdateImage (image, event, heading, sheets, str, shader)
 
 	if image_data then
 		SetImage(image, event, sheets, shader)
-		PlaceImage(image, heading, event.position, str, image.m_margin)
+		PlaceImage(image, heading, event.position, event.text and str, image.m_margin)
 	end
 
 	image.isVisible = image_data ~= nil
@@ -749,7 +749,7 @@ local function PopulateEntry (column, group, object, get_text, font, size, iw, i
 
 	if text then
 		str = display.newText(group, get_text(text), object.x, object.y, font, size)
-		str.m_text, into = text, str
+		str.m_text, into = text, str -- do m_text here, since column might be string
 
 		EnsureText(object, font, size, is_dropdown, is_heading)
 	end
@@ -786,7 +786,9 @@ local function PopulateEntry (column, group, object, get_text, font, size, iw, i
 		PlaceImage(image, object, pos, str, margin)
 
 		into = into or image -- consolidate all data in one object
+	end
 
+	if into then
 		for name, info in pairs(Names) do
 			if name ~= "text" then
 				into[info[1]] = column[name]

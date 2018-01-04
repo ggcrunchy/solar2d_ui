@@ -25,6 +25,7 @@
 
 -- Standard library imports --
 local assert = assert
+local huge = math.huge
 local max = math.max
 local min = math.min
 
@@ -70,8 +71,8 @@ local ClampMethods = {
 	end,
 
 	--
-	view_max = function(pos, p0)
-		return min(pos, p0)
+	view_max = function(pos, p1, p2)
+		return max(min(pos, p1), p2)
 	end
 }
 
@@ -203,16 +204,19 @@ end
 
 --- DOCME
 function M.DragViewTouch (view, opts)
-	local on_post_move, on_pre_move, xclamp, yclamp, x0, y0
+	local dx, dy, on_post_move, on_pre_move, xclamp, yclamp, x0, y0, x1, y1
 
 	if opts then
 		x0, y0 = ResolveCoordinate(opts.x0, view.x), ResolveCoordinate(opts.y0, view.y)
+		dx, dy = opts.dx, opts.dy
 		xclamp = ClampMethods[opts.xclamp]
 		yclamp = ClampMethods[opts.yclamp]
 		on_post_move, on_pre_move = opts.on_post_move, opts.on_pre_move
 	end
 
-	x0, y0 = x0 or 0, y0 or 0
+	x0, y0, x1, x2 = x0 or 0, y0 or 0
+	x1 = dx and (x0 - dx) or -huge
+	y1 = dy and (y0 - dy) or -huge
 	xclamp = xclamp or ClampMethods.id
 	yclamp = yclamp or ClampMethods.id
 
@@ -226,8 +230,8 @@ function M.DragViewTouch (view, opts)
 			on_pre_move(view)
 		end
 
-		view.x, object.m_dragx = xclamp(view.x - (ex - object.m_dragx), x0), ex
-		view.y, object.m_dragy = yclamp(view.y - (ey - object.m_dragy), y0), ey
+		view.x, object.m_dragx = xclamp(view.x - (ex - object.m_dragx), x0, x1), ex
+		view.y, object.m_dragy = yclamp(view.y - (ey - object.m_dragy), y0, y1), ey
 
 		if on_post_move then
 			on_post_move(view)
