@@ -368,6 +368,23 @@ function Listbox:ForEach (func, ...)
 end
 
 --- DOCME
+function Listbox:Frame (r, g, b)
+	display.remove(self.m_frame)
+
+	local bounds = self.contentBounds
+	local w, h = bounds.xMax - bounds.xMin, bounds.yMax - bounds.yMin
+	local frame = display.newRoundedRect(self.parent, bounds.xMin, bounds.yMin, w, h, layout.ResolveX(".25%"))
+
+	frame:setFillColor(0, 0)
+	frame:setStrokeColor(r, g, b)
+	frame:translate(w / 2, h / 2)
+
+	frame.strokeWidth = 2
+
+	self.m_frame = frame
+end
+
+--- DOCME
 function Listbox:GetCount ()
 	local add_group = self.m_add_group
 
@@ -456,6 +473,11 @@ function Listbox:Update (index, data)
 	end
 end
 
+--
+local function RemoveFrame (event)
+	display.remove(event.target.m_frame)
+end
+
 --- Creates a listbox, built on top of `widget.newTableView`.
 -- @pgroup group Group to which listbox will be inserted.
 -- @ptable options bool hide If true, the listbox starts out hidden.
@@ -494,6 +516,8 @@ function M.Listbox (group, options)
 	listbox.isVisible = not (options and options.hide)
 
 	meta.Augment(listbox, Listbox)
+
+	listbox:addEventListener("finalize", RemoveFrame)
 
 	return listbox
 end

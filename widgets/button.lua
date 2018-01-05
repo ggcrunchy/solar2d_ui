@@ -306,22 +306,6 @@ skins.RegisterSkin("small_text_button", {
 	_prefix_ = "button"
 })
 
--- Add some button-specific skins.
-skins.RegisterSkin("rscroll", {
-	normal = { 0, .5, 1 },
-	held = { 1, .25, 0 },
-	touch = { 0, 1, .5 },
-	image = "corona_ui/assets/Arrow.png",
-	type = "image",
-	timeout = 150,
-	_prefix_ = "button"
-})
-
-skins.RegisterSkin("lscroll", {
-	xscale = -1,
-	_prefix_ = "PARENT"
-}, "rscroll")
-
 -- Cache module members.
 _Button_XY_ = M.Button_XY
 
