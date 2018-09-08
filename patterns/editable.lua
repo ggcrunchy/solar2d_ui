@@ -37,7 +37,6 @@ local upper = string.upper
 
 -- Modules --
 local cursor = require("corona_ui.utils.cursor")
-local keyboard = require("corona_ui.widgets.keyboard")
 local layout = require("corona_ui.utils.layout")
 local net = require("corona_ui.patterns.net")
 local layout_dsl = require("corona_ui.utils.layout_dsl")
@@ -512,7 +511,6 @@ local CharWidthForFont = meta.Weak("k")
 local function Finalize (event)
 	local editable = event.target
 
-	display.remove(editable.m_keys)
 	display.remove(editable.m_net)
 	display.remove(editable.m_stub)
 end
@@ -535,11 +533,6 @@ end
 --- DOCME
 function Editable:GetChildOfParent ()
 	return self.m_stub or self
-end
-
---- DOCME
-function Editable:GetKeyboard ()
-	return self.m_keys
 end
 
 --- DOCME
@@ -648,14 +641,10 @@ local function AuxEditable (group, x, y, opts)
 	end
 
 	--
-	local mode, keys = opts and opts.mode
+	local mode = opts and opts.mode
 
 	if style == "text_only" then
 		info.m_filter = Filter[mode]
-	elseif style == "keys_and_text" then
-		keys = keyboard.Keyboard(display.getCurrentStage(), mode and { type = mode })
-
-		info.m_filter, keys.isVisible = Filter[mode], false
 	else
 		if mode == "nums" or mode == "decimal" then
 			editable.m_input_type = mode == "nums" and "number" or "decimal"
@@ -681,9 +670,7 @@ local function AuxEditable (group, x, y, opts)
 	--
 	editable.m_align, editable.m_caret, editable.m_str, editable.m_w = align, caret, str, w
 
-	if keys or caret == nil then
-		editable.m_keys = keys
-
+	if caret == nil then
 		editable:addEventListener("finalize", Finalize)
 	end
 
