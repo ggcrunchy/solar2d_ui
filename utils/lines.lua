@@ -65,11 +65,11 @@ end
 -- Default keep: always
 local function NoKeep () return true end
 
--- Helper to initialize / update line nodes
-local function UpdateNode (node, x1, y1, x2, y2)
+-- Helper to initialize / update line knots
+local function UpdateKnot (knot, x1, y1, x2, y2)
 	local x, y = CurveXY(x1, y1, x2 - x1, y2 - y1, CurveCount / 2)
 
-	node.x, node.y = node.parent:contentToLocal(x, y)
+	knot.x, knot.y = knot.parent:contentToLocal(x, y)
 end
 
 -- Update body
@@ -87,7 +87,7 @@ local function UpdateLines ()
 		-- If one or both of the endpoints was removed, or the keep condition fails, remove
 		-- the line. Since order is unimportant (and we are iterating backwards), backfill
 		-- its slot with another line.
-		if not (display.isValid(p1) and display.isValid(p2) and line.keep(p1, p2, line.node)) then
+		if not (display.isValid(p1) and display.isValid(p2) and line.keep(p1, p2, line.knot)) then
 			if display.isValid(group) then -- TODO: just a synonym for display.remove()?
 				group:removeSelf()
 			end
@@ -128,9 +128,9 @@ local function UpdateLines ()
 					seg:append(CurveXY(p1x, p1y, dx, dy, i))
 				end
 
-				-- If the line has a node, recenter it.
-				if line.node then
-					UpdateNode(line.node, p1x, p1y, p2x, p2y)
+				-- If the line has a knot, recenter it.
+				if line.knot then
+					UpdateKnot(line.knot, p1x, p1y, p2x, p2y)
 				end
 
 				-- Update state used to track dirty endpoints.
@@ -143,8 +143,8 @@ local function UpdateLines ()
 
 			group.isVisible = is_visible
 
-			if line.node then
-				line.node.isVisible = is_visible
+			if line.knot then
+				line.knot.isVisible = is_visible
 			end
 		end
 	end
@@ -157,11 +157,11 @@ end
 -- @ptable[opt] options Line options. Fields:
 --
 -- * **color**: Line color. If absent, white.
--- * **keep**: **callable** If provided, called with _p1_, _p2_, and _options_.**node** as
+-- * **keep**: **callable** If provided, called with _p1_, _p2_, and _options_.**knot** as
 -- arguments. On a false result, the line will be removed. By default, lines are always kept.
--- * **into**: **DisplayGroup** If provided, the line (and node, if available), are inserted
+-- * **into**: **DisplayGroup** If provided, the line (and knot, if available), are inserted
 -- into this group. Otherwise, they go onto the stage.
--- * **node**: **DisplayObject** Optional object to maintain on top of the line.
+-- * **knot**: **DisplayObject** Optional object to maintain on top of the line.
 -- * **width**: Line width, q.v. **display.newLine**. If absent, a default is used.
 function M.LineBetween (p1, p2, options)
 	if not Lines.is_running then
@@ -171,12 +171,12 @@ function M.LineBetween (p1, p2, options)
 	end
 
 	local group = display.newGroup()
-	local into, keep, node, color, width
+	local into, keep, knot, color, width
 
 	if options then
 		into = options.into
 		keep = options.keep
-		node = options.node
+		knot = options.knot
 		color = options.color
 		width = options.width
 	end
@@ -185,18 +185,18 @@ function M.LineBetween (p1, p2, options)
 
 	into:insert(group)
 
-	if node then
-		into:insert(node)
+	if knot then
+		into:insert(knot)
 
 		local x1, y1 = p1:localToContent(0, 0)
 		local x2, y2 = p2:localToContent(0, 0)
 
-		UpdateNode(node, x1, y1, x2, y2)
+		UpdateKnot(knot, x1, y1, x2, y2)
 	end
 
 	Lines[#Lines + 1] = {
 		p1 = p1, p2 = p2, group = group,
-		keep = keep or NoKeep, node = node,
+		keep = keep or NoKeep, knot = knot,
 		color = color or "white", width = width or 2
 	}
 end

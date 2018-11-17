@@ -48,11 +48,11 @@ local _GetLinkInfo_
 local _SetLinkInfo_
 
 --- DOCME
-function M.Break (node)
-	display.remove(node)
+function M.Break (knot)
+	display.remove(knot)
 
-	if node then
-		node.m_broken = true
+	if knot then
+		knot.m_broken = true
 	end
 end
 
@@ -62,10 +62,10 @@ end
 function M.BreakTouchFunc (on_break)
 	return touch.TouchHelperFunc(function()
 		-- ??
-	end, nil, function(_, node)
-		on_break(node)
+	end, nil, function(_, knot)
+		on_break(knot)
 
-		_Break_(node)
+		_Break_(knot)
 	end)
 end
 
@@ -84,8 +84,8 @@ end
 local LineOpts = {
 	color = { 1, 1, 1, 1 },
 
-	keep = function(_, _, node)
-		return not node.m_broken
+	keep = function(_, _, knot)
+		return not knot.m_broken
 	end
 }
 
@@ -93,16 +93,16 @@ local LineOpts = {
 local SoftLineOpts = { color = { .4, .4, .4, 1 } }
 
 --- DOCME
-function M.Connect (object1, object2, touch, lgroup, ngroup)
-	local opts, node
+function M.Connect (object1, object2, touch, lgroup, kgroup)
+	local opts, knot
 
 	if touch then
-		node = Circle(3, 16, 1, 0, 0, .5)
+		knot = Circle(3, 16, 1, 0, 0, .5)
 
-		ngroup:insert(node)
+		kgroup:insert(knot)
 
-		node:addEventListener("touch", touch)
-		node:setStrokeColor(0, .75)
+		knot:addEventListener("touch", touch)
+		knot:setStrokeColor(0, .75)
 
 		opts = LineOpts
 	else
@@ -110,13 +110,13 @@ function M.Connect (object1, object2, touch, lgroup, ngroup)
 	end
 
 -- ^^ SKIN?
-	opts.into, opts.node = lgroup, node
+	opts.into, opts.knot = lgroup, knot
 
 	lines.LineBetween(object1, object2, opts)
 
-	opts.into, opts.node = nil
+	opts.into, opts.knot = nil
 
-	return node
+	return knot
 end
 
 --- DOCME
@@ -289,14 +289,14 @@ end, function(_, link)
 	local temp = lg.m_temp
 
 	if temp then
-		local over, node = lg.m_over
+		local over, knot = lg.m_over
 
 		--
 		if over then
 			Highlight(over, false)
 
 			if lg.m_can_touch(over) then
-				node = lg:ConnectObjects(link, over)
+				knot = lg:ConnectObjects(link, over)
 			end
 		end
 
@@ -306,7 +306,7 @@ end, function(_, link)
 		end
 
 		--
-		HideNonTargets(lg, link, node and "ended" or "cancelled")
+		HideNonTargets(lg, link, knot and "ended" or "cancelled")
 
 		lg.m_over, lg.m_temp = nil
 
@@ -394,25 +394,25 @@ function LinkGroup:Clear ()
 	self.m_items = {}
 
 	WipeGroup(self.m_lines)
-	WipeGroup(self.m_nodes)
+	WipeGroup(self.m_knots)
 end
 
 --- DOCME
 function LinkGroup:ConnectObjects (obj1, obj2)
-	local node
+	local knot
 
 	if self.m_can_link(obj1, obj2) then
-		node = _Connect_(obj1, obj2, self.m_touch, self:GetGroups())
+		knot = _Connect_(obj1, obj2, self.m_touch, self:GetGroups())
 
-		self:m_connect(obj1, obj2, node)
+		self:m_connect(obj1, obj2, knot)
 	end
 
-	return node
+	return knot
 end
 
 --- DOCME
 function LinkGroup:GetGroups ()
-	return self.m_lines, self.m_nodes
+	return self.m_lines, self.m_knots
 end
 
 --
@@ -453,9 +453,9 @@ function M.LinkGroup (group, on_connect, on_touch, options)
 	lgroup.m_emphasize = emphasize
 	lgroup.m_gather = gather
 	lgroup.m_items = {}
+	lgroup.m_knots = display.newGroup()
 	lgroup.m_lines = display.newGroup()
 	lgroup.m_make_temp = make_temp or DefMakeTemp
-	lgroup.m_nodes = display.newGroup()
 	lgroup.m_show_or_hide = show_or_hide
 	lgroup.m_touch = on_touch
 
@@ -465,7 +465,7 @@ function M.LinkGroup (group, on_connect, on_touch, options)
 
 	--
 	lgroup:insert(lgroup.m_lines)
-	lgroup:insert(lgroup.m_nodes)
+	lgroup:insert(lgroup.m_knots)
 
 	meta.Augment(lgroup, LinkGroup)
 
