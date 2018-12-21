@@ -1,4 +1,4 @@
---- Nodes for building links.
+--- A collection of linkable nodes and the operations pertinent to their connections.
 --
 -- @todo Skins?
 
@@ -29,6 +29,7 @@
 local M = {}
 
 -- Standard library imports --
+local assert = assert
 local ipairs = ipairs
 local pairs = pairs
 local sort = table.sort
@@ -44,8 +45,8 @@ local display = display
 -- Cached module references --
 local _Break_
 local _Connect_
-local _GetLinkInfo_
-local _SetLinkInfo_
+local _GetNodeInfo_
+local _SetNodeInfo_
 
 --- DOCME
 function M.Break (knot)
@@ -93,7 +94,7 @@ local LineOpts = {
 local SoftLineOpts = { color = { .4, .4, .4, 1 } }
 
 --- DOCME
-function M.Connect (object1, object2, touch, lgroup, kgroup)
+function M.Connect (object1, object2, touch, ngroup, kgroup)
 	local opts, knot
 
 	if touch then
@@ -110,7 +111,7 @@ function M.Connect (object1, object2, touch, lgroup, kgroup)
 	end
 
 -- ^^ SKIN?
-	opts.into, opts.knot = lgroup, knot
+	opts.into, opts.knot = ngroup, knot
 
 	lines.LineBetween(object1, object2, opts)
 
@@ -121,27 +122,27 @@ end
 
 --- DOCME
 function M.GetLinkInfo (item)
-	return item.m_owner_id, not item.m_is_target
+	return item.m_owner_id, not item.m_is_lhs
 end
 
 -- --
-local LinkGroup = {}
+local NodeGroup = {}
 
--- Highlights / de-highlights a link
-local function Highlight (link, is_over)
-	if link then
-		link:setStrokeColor(is_over and 1 or 0, 1, 0)
+-- Highlights / de-highlights a node
+local function Highlight (node, is_over)
+	if node then
+		node:setStrokeColor(is_over and 1 or 0, 1, 0)
 -- ^^ COLOR
 	end
 end
 
--- Is the point inside the link object?
-local function InLink (link, x, y)
-	local lpath, lx, ly = link.path, link:localToContent(0, 0)
-	local radius, w = lpath.radius
+-- Is the point inside the node object?
+local function InNode (node, x, y)
+	local npath, lx, ly = node.path, node:localToContent(0, 0)
+	local radius, w = npath.radius
 
 	if w or not radius then
-		local h = lpath.height
+		local h = npath.height
 
 		radius = (w and h) and (w + h) / 4 or 25
 	end
@@ -152,17 +153,17 @@ local function InLink (link, x, y)
 end
 
 --
-local function MayPair (item, id, is_source)
-	return item.m_is_target == is_source and id ~= item.m_owner_id
+local function MayPair (item, id, is_rhs)
+	return item.m_is_lhs == is_rhs and id ~= item.m_owner_id
 end
 
 -- Enumerate all opposite typed links in other states that contain the point
-local function EnumOpposites (lg, link, x, y)
-	local id, is_source = _GetLinkInfo_(link)
+local function EnumOpposites (ng, node, x, y)
+	local id, is_rhs = _GetNodeInfo_(node)
 	local over
 
-	for _, item in ipairs(lg.m_items) do
-		if MayPair(item, id, is_source) and InLink(item, x, y) then
+	for _, item in ipairs(ng.m_items) do
+		if MayPair(item, id, is_rhs) and InNode(item, x, y) then
 			over = over or {}
 
 			over[#over + 1] = item
@@ -178,10 +179,10 @@ local function IDComp (a, b)
 end
 
 -- Updates the hovered-over link
-local function UpdateOver (lg, link, x, y)
+local function UpdateOver (ng, node, x, y)
 	-- Was the point over any objects? It may be over multiple overlapping links, so we
 	-- arbitrarily prefer the one with lowest ID.
-	local over = EnumOpposites(lg, link, x, y)
+	local over = EnumOpposites(ng, node, x, y)
 
 	if over then
 		sort(over, IDComp)
@@ -189,30 +190,30 @@ local function UpdateOver (lg, link, x, y)
 		over = over[1]
 	end
 
-	-- Update was-over / is-over link highlights.
-	Highlight(lg.m_over, false)
+	-- Update was-over / is-over node highlights.
+	Highlight(ng.m_over, false)
 	Highlight(over, true)
 
-	lg.m_over = over
+	ng.m_over = over
 end
 
--- Hides or shows links that a given link does not target
-local function HideNonTargets (lg, link, how)
-	local emphasize, show_or_hide = lg.m_emphasize, lg.m_show_or_hide
+-- Hides or shows nodes that a given node does not target
+local function HideNonTargets (ng, node, how)
+	local emphasize, show_or_hide = ng.m_emphasize, ng.m_show_or_hide
 
 	if emphasize then
-		local id, is_source = _GetLinkInfo_(link)
+		local id, is_rhs = _GetNodeInfo_(node)
 
-		for _, item in ipairs(lg.m_items) do
-			emphasize(item, how, link, item.m_is_target == is_source, id ~= item.m_owner_id)
+		for _, item in ipairs(ng.m_items) do
+			emphasize(item, how, node, item.m_is_lhs == is_rhs, id ~= item.m_owner_id)
 		end
 	end
 
 	if show_or_hide then
-		local id, is_source = _GetLinkInfo_(link)
+		local id, is_rhs = _GetNodeInfo_(node)
 
-		for _, item in ipairs(lg.m_items) do
-			if not MayPair(item, id, is_source) then
+		for _, item in ipairs(ng.m_items) do
+			if not MayPair(item, id, is_rhs) then
 				show_or_hide(item, how)
 			end
 		end
@@ -225,31 +226,31 @@ local Group = meta.Weak("kv")
 -- Options for a temporary line --
 local LineOptsMaybe = { color = { 1, .25, .25, .75 } }
 
--- Link touch listener
-local LinkTouch = touch.TouchHelperFunc(function(event, link)
-	local lg = Group[link]
+-- Node touch listener
+local NodeTouch = touch.TouchHelperFunc(function(event, node)
+	local ng = Group[node]
 
 	--
-	display.remove(lg.m_temp)
+	display.remove(ng.m_temp)
 
-	local temp = lg.m_can_touch(link) and lg.m_make_temp()
+	local temp = ng.m_can_touch(node) and ng.m_make_temp()
 
-	lg.m_temp = temp
+	ng.m_temp = temp
 
 	if temp then
 		if temp.parent then
-			lg:insert(temp)
+			ng:insert(temp)
 
 			temp:toFront()
 		end
 
-		temp.x, temp.y = lg:contentToLocal(event.x, event.y)
+		temp.x, temp.y = ng:contentToLocal(event.x, event.y)
 
 		--
-		local candidates, gather, items = lg.m_candidates, lg.m_gather, lg.m_items
+		local candidates, gather, items = ng.m_candidates, ng.m_gather, ng.m_items
 
 		if gather then
-			gather(items, event, link)
+			gather(items, event, node)
 
 			local wi = 1
 
@@ -265,38 +266,38 @@ local LinkTouch = touch.TouchHelperFunc(function(event, link)
 		end
 
 		--
-		LineOptsMaybe.into = lg.m_lines
+		LineOptsMaybe.into = ng.m_lines
 
-		lines.LineBetween(link, temp, LineOptsMaybe)
+		lines.LineBetween(node, temp, LineOptsMaybe)
 
 		LineOptsMaybe.into = nil
 
-		-- -- The link currently hovered over --
-		HideNonTargets(lg, link, "began")
-		UpdateOver(lg, link, event.x, event.y)
+		-- The node currently hovered over --
+		HideNonTargets(ng, node, "began")
+		UpdateOver(ng, node, event.x, event.y)
 	end
-end, function(event, link)
-	local lg = Group[link]
-	local temp = lg.m_temp
+end, function(event, node)
+	local ng = Group[node]
+	local temp = ng.m_temp
 
 	if temp then
-		temp.x, temp.y = lg:contentToLocal(event.x, event.y)
+		temp.x, temp.y = ng:contentToLocal(event.x, event.y)
 
-		UpdateOver(lg, link, event.x, event.y)
+		UpdateOver(ng, node, event.x, event.y)
 	end
-end, function(_, link)
-	local lg = Group[link]
-	local temp = lg.m_temp
+end, function(_, node)
+	local ng = Group[node]
+	local temp = ng.m_temp
 
 	if temp then
-		local over, knot = lg.m_over
+		local over, knot = ng.m_over
 
 		--
 		if over then
 			Highlight(over, false)
 
-			if lg.m_can_touch(over) then
-				knot = lg:ConnectObjects(link, over)
+			if ng.m_can_touch(over) then
+				knot = ng:ConnectObjects(node, over)
 			end
 		end
 
@@ -306,13 +307,13 @@ end, function(_, link)
 		end
 
 		--
-		HideNonTargets(lg, link, knot and "ended" or "cancelled")
+		HideNonTargets(ng, node, knot and "ended" or "cancelled")
 
-		lg.m_over, lg.m_temp = nil
+		ng.m_over, ng.m_temp = nil
 
 		--
-		if lg.m_gather then
-			local items = lg.m_items
+		if ng.m_gather then
+			local items = ng.m_items
 
 			for i = #items, 1, -1 do
 				items[i] = nil
@@ -322,10 +323,10 @@ end, function(_, link)
 end)
 
 --
-local function NewLinkObject (is_target)
+local function NewNodeObject (is_lhs)
 	local r, b = .125, 1
 
-	if is_target then
+	if is_lhs then
 		r, b = b, r
 	end
 
@@ -335,13 +336,18 @@ end
 
 --- DOCME
 -- @int owner_id
--- @bool is_target
+-- @string what Either **"lhs"** or **"rhs"**, indicating that the node is on the left- or
+-- right-hand side, respectively.
 -- @pobject object
 -- @treturn pobject O
-function LinkGroup:AddLink (owner_id, is_target, object)
-	object = object or NewLinkObject(is_target)
+function NodeGroup:AddNode (owner_id, what, object)
+	assert(what == "lhs" or what == "rhs", "Invalid node")
 
-	object:addEventListener("touch", LinkTouch)
+	local is_lhs = what == "lhs"
+
+	object = object or NewNodeObject(is_lhs)
+
+	object:addEventListener("touch", NodeTouch)
 
 	--
 	if self.m_gather then
@@ -355,7 +361,7 @@ function LinkGroup:AddLink (owner_id, is_target, object)
 	Group[object] = self
 
 	--
-	_SetLinkInfo_(object, owner_id, is_target)
+	_SetNodeInfo_(object, owner_id, is_lhs)
 
 	Highlight(object, false)
 
@@ -371,13 +377,13 @@ end
 
 --
 local function RemoveItem (item)
-	item:removeEventListener("touch", LinkTouch)
+	item:removeEventListener("touch", NodeTouch)
 
-	item.m_is_target, item.m_owner_id = nil
+	item.m_is_lhs, item.m_owner_id = nil
 end
 
 --- DOCME
-function LinkGroup:Clear ()
+function NodeGroup:Clear ()
 	if self.m_gather then
 		for item in pairs(self.m_candidates) do
 			RemoveItem(item)
@@ -398,7 +404,7 @@ function LinkGroup:Clear ()
 end
 
 --- DOCME
-function LinkGroup:ConnectObjects (obj1, obj2)
+function NodeGroup:ConnectObjects (obj1, obj2)
 	local knot
 
 	if self.m_can_link(obj1, obj2) then
@@ -411,7 +417,7 @@ function LinkGroup:ConnectObjects (obj1, obj2)
 end
 
 --- DOCME
-function LinkGroup:GetGroups ()
+function NodeGroup:GetGroups ()
 	return self.m_lines, self.m_knots
 end
 
@@ -429,10 +435,10 @@ end
 -- @callable on_touch
 -- @ptable options
 -- @treturn pgroup G
-function M.LinkGroup (group, on_connect, on_touch, options)
-	local lgroup = display.newGroup()
+function M.NodeGroup (group, on_connect, on_touch, options)
+	local ngroup = display.newGroup()
 
-	group:insert(lgroup)
+	group:insert(ngroup)
 
 	--
 	local can_link, can_touch, emphasize, gather, make_temp, show_or_hide
@@ -447,42 +453,42 @@ function M.LinkGroup (group, on_connect, on_touch, options)
 	end
 
 	--
-	lgroup.m_can_link = can_link or DefCanTouch
-	lgroup.m_can_touch = can_touch or DefCanTouch
-	lgroup.m_connect = on_connect
-	lgroup.m_emphasize = emphasize
-	lgroup.m_gather = gather
-	lgroup.m_items = {}
-	lgroup.m_knots = display.newGroup()
-	lgroup.m_lines = display.newGroup()
-	lgroup.m_make_temp = make_temp or DefMakeTemp
-	lgroup.m_show_or_hide = show_or_hide
-	lgroup.m_touch = on_touch
+	ngroup.m_can_link = can_link or DefCanTouch
+	ngroup.m_can_touch = can_touch or DefCanTouch
+	ngroup.m_connect = on_connect
+	ngroup.m_emphasize = emphasize
+	ngroup.m_gather = gather
+	ngroup.m_items = {}
+	ngroup.m_knots = display.newGroup()
+	ngroup.m_lines = display.newGroup()
+	ngroup.m_make_temp = make_temp or DefMakeTemp
+	ngroup.m_show_or_hide = show_or_hide
+	ngroup.m_touch = on_touch
 
 	if gather then
-		lgroup.m_candidates = {}
+		ngroup.m_candidates = {}
 	end
 
 	--
-	lgroup:insert(lgroup.m_lines)
-	lgroup:insert(lgroup.m_knots)
+	ngroup:insert(ngroup.m_lines)
+	ngroup:insert(ngroup.m_knots)
 
-	meta.Augment(lgroup, LinkGroup)
+	meta.Augment(ngroup, NodeGroup)
 
-	return lgroup
+	return ngroup
 end
 
 --- DOCME
-function M.SetLinkInfo (object, owner_id, is_target)
-	object.m_is_target = not not is_target
+function M.SetNodeInfo (object, owner_id, is_lhs)
+	object.m_is_lhs = not not is_lhs
 	object.m_owner_id = owner_id
 end
 
 -- Cache module members.
 _Break_ = M.Break
 _Connect_ = M.Connect
-_GetLinkInfo_ = M.GetLinkInfo
-_SetLinkInfo_ = M.SetLinkInfo
+_GetNodeInfo_ = M.GetNodeInfo
+_SetNodeInfo_ = M.SetNodeInfo
 
 -- Export the module.
 return M
