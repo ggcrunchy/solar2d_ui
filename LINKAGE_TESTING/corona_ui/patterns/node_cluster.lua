@@ -401,7 +401,7 @@ function M.ConnectObjects (object1, object2)
 	elseif cluster ~= ni1.cluster then
 		return false, "Objects belong to different clusters"
 	elseif ni1[object2] ~= nil then
-		return false, ni1[object2] == nil and "Nodes already connected" or "Connection in progress"
+		return false, ni1[object2] and "Nodes already connected" or "Connection in progress"
 	elseif not cluster.m_can_connect(object1, object2) then
 		return false, "Nodes not connectable"
 	end
@@ -472,8 +472,10 @@ end
 
 local ConnectedN
 
-local function AuxGetConnectedObjects (object, _, out)
-	ConnectedN, out[ConnectedN + 1] = ConnectedN + 1, object
+local function AuxGetConnectedObjects (object, curve, out)
+	if curve then -- skip connection guard
+		ConnectedN, out[ConnectedN + 1] = ConnectedN + 1, object
+	end
 end
 
 --- DOCME

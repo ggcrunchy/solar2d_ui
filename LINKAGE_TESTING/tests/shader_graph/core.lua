@@ -96,15 +96,52 @@ local function Decay (parent)
 	Resize(parent)
 end
 
-local function TryToDecay (node, parent)
+local function ScourConnectedNodes (parent, func, arg)
+	for i = 1, parent.numChildren do
+		local _, n = nc.GetConnectedObjects(parent[i], Connected)
+
+		for j = 1, n do
+			local cnode = Connected[j]
+
+			Connected[j] = false
+
+			func(cnode, arg)
+		end
+	end
+end
+
+local TryToDecay
+
+local Island = {}
+
+local function AuxPropagateDecay (cnode)
+	--[[
+	if not ResolvedType(cnode) then
+		cnode.resolve = rtype
+
+		TryToResolve(cnode, cnode.parent)
+	end
+	]]
+end
+
+local function PropagateDecay (parent)
+	ScourConnectedNodes(parent, AuxPropagateDecay)
+end
+
+function TryToDecay (node, parent)
 	if RelevantToResolve(node) then
 		parent.resolved = parent.resolved - node.bound_bit
 
 		if parent.resolved == 0 and not ResolvePending(parent) then
 			Decay(parent)
+			PropagateDecay(parent)
 		end
 	end
 end
+-- ^^ TODO: this should be half of the process, to detect if the nodes are adrift
+-- then afterward if this is found to be true, repeat and decay the rest; this might
+-- not occur right at a connection to a hard node, so requires two independent searches?
+-- Can these link up? Could both branches remain resolved?
 
 local function Resolve (parent, rtype)
 	parent.resolved_type = rtype
@@ -122,18 +159,37 @@ local function Resolve (parent, rtype)
 	Resize(parent)
 end
 
-local function TryToResolve (node, parent)
-	local was = ExtractOldResolved(parent)
+local function ResolvedType (node)
+	return node.hard_type or node.parent.resolved_type
+end
+
+local TryToResolve
+
+local function AuxPropagateResolve (cnode, rtype)
+	if not ResolvedType(cnode) then
+		cnode.resolve = rtype
+
+		TryToResolve(cnode, cnode.parent)
+	end
+end
+
+local function PropagateResolve (parent, rtype)
+	ScourConnectedNodes(parent, AuxPropagateResolve, rtype)
+end
+
+function TryToResolve (node, parent)
+	local was = ExtractOldResolved(parent) or 0
 
 	if RelevantToResolve(node) then
 		local rtype = node.resolve
 
-		parent.resolved, node.resolve = parent.resolved + node.bound_bit
+		if rtype then
+			parent.resolved, node.resolve = parent.resolved + node.bound_bit
 
-		if rtype then--was == 0 then
-			assert(was == 0--[[rtype]], "Missing resolve type")
-
-			Resolve(parent, rtype)
+			if was == 0 then
+				Resolve(parent, rtype)
+				PropagateResolve(parent, rtype)
+			end
 		end
 	end
 
@@ -186,9 +242,6 @@ local NC = cluster_basics.NewCluster{
 
 			TryToResolve(a, aparent)
 			TryToResolve(b, bparent)
-			-- ^^ TODO: allowing wildcard-wildcard linking means this can set off a cascade of resolves
-			-- iterate nodes and check:
-				-- if parent.wildcard_type and not parent.resolved_type
 		elseif how == "disconnect" then -- ...but here it usually does, cf. note in FadeAndDie()
 			aparent.bound, bparent.bound = aparent.bound - a.bound_bit, bparent.bound - b.bound_bit
 
@@ -445,10 +498,6 @@ end
 -- "vector" -> set as wildcard type, use AllowT
 -- "vector|float" -> use different rule, use AllowTOrFloat
 -- other -> at the moment, as above (e.g. bvector, ivector), else hard type (float, sampler, etc.)
-
-local function ResolvedType (node)
-	return node.hard_type or node.parent.resolved_type
-end
 
 local function Hard (node, other)
 	local resolved = ResolvedType(other)
