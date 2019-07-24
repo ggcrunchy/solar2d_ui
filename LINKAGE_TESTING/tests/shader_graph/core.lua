@@ -112,25 +112,26 @@ end
 
 local Branch1, Branch2 = {}, {}
 
-local function PropagateDecay (cnode, branch)
-	local n = branch.n
+local PropagateDecay
 
-	if n then
+local function AuxPropagateDecay (cnode, branch)
+	local cparent = cnode.parent
+
+	if branch.exploring and branch[cparent] == nil then -- ignore break itself
 		if RelevantToResolve(cnode) then
-			branch.n, branch[n + 1] = n + 1, cnode
+			branch[cparent] = true
 
-			-- TODO: recurse...
-			-- ...but avoid revisits
-			-- check a generation counter?
-			-- or just do as key-value pairs
+			PropagateDecay(cparent, branch)
 		else -- found a hard node, so kill this branch
-			for i = 1, n do
-				branch[i] = false
+			for k in pairs(branch) do -- includes 'exploring'
+				branch[k] = nil
 			end
-
-			branch.n = false
 		end
 	end
+end
+
+function PropagateDecay (parent, branch)
+	ScourConnectedNodes(parent, AuxPropagateDecay, branch)
 end
 
 local function TryToDecay (node, parent, branch)
@@ -139,14 +140,10 @@ local function TryToDecay (node, parent, branch)
 
 		if parent.resolved == 0 and not ResolvePending(parent) then
 			Decay(parent)
-			ScourConnectedNodes(parent, PropagateDecay, branch)
+			PropagateDecay(parent, branch)
 		end
 	end
 end
--- ^^ TODO: this should be half of the process, to detect if the nodes are adrift
--- then afterward if this is found to be true, repeat and decay the rest; this might
--- not occur right at a connection to a hard node, so requires two independent searches?
--- Can these link up? Could both branches remain resolved?
 
 local function Resolve (parent, rtype)
 	parent.resolved_type = rtype
@@ -216,8 +213,14 @@ local function TYPE (node)
 end
 
 local function PurgeBranch (branch)
-	for i = 1, branch.n or 0 do
-		--
+	if branch.exploring then
+		branch.exploring = nil
+
+		for parent, exists in pairs(branch) do
+			if exists then
+				Decay(parent)
+			end
+		end
 	end
 end
 
@@ -252,7 +255,8 @@ local NC = cluster_basics.NewCluster{
 		elseif how == "disconnect" then -- ...but here it usually does, cf. note in FadeAndDie()
 			aparent.bound, bparent.bound = aparent.bound - a.bound_bit, bparent.bound - b.bound_bit
 
-			Branch1.n, Branch2.n = 0, 0
+			Branch1.exploring, Branch1[bparent] = true, false
+			Branch2.exploring, Branch2[aparent] = true, false
 
 			TryToDecay(a, aparent, Branch1)
 			TryToDecay(b, bparent, Branch2)
