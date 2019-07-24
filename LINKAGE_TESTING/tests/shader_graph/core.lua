@@ -110,31 +110,36 @@ local function ScourConnectedNodes (parent, func, arg)
 	end
 end
 
-local TryToDecay
+local Branch1, Branch2 = {}, {}
 
-local Island = {}
+local function PropagateDecay (cnode, branch)
+	local n = branch.n
 
-local function AuxPropagateDecay (cnode)
-	--[[
-	if not ResolvedType(cnode) then
-		cnode.resolve = rtype
+	if n then
+		if RelevantToResolve(cnode) then
+			branch.n, branch[n + 1] = n + 1, cnode
 
-		TryToResolve(cnode, cnode.parent)
+			-- TODO: recurse...
+			-- ...but avoid revisits
+			-- check a generation counter?
+			-- or just do as key-value pairs
+		else -- found a hard node, so kill this branch
+			for i = 1, n do
+				branch[i] = false
+			end
+
+			branch.n = false
+		end
 	end
-	]]
 end
 
-local function PropagateDecay (parent)
-	ScourConnectedNodes(parent, AuxPropagateDecay)
-end
-
-function TryToDecay (node, parent)
+local function TryToDecay (node, parent, branch)
 	if RelevantToResolve(node) then
 		parent.resolved = parent.resolved - node.bound_bit
 
 		if parent.resolved == 0 and not ResolvePending(parent) then
 			Decay(parent)
-			PropagateDecay(parent)
+			ScourConnectedNodes(parent, PropagateDecay, branch)
 		end
 	end
 end
@@ -165,16 +170,12 @@ end
 
 local TryToResolve
 
-local function AuxPropagateResolve (cnode, rtype)
+local function PropagateResolve (cnode, rtype)
 	if not ResolvedType(cnode) then
 		cnode.resolve = rtype
 
 		TryToResolve(cnode, cnode.parent)
 	end
-end
-
-local function PropagateResolve (parent, rtype)
-	ScourConnectedNodes(parent, AuxPropagateResolve, rtype)
 end
 
 function TryToResolve (node, parent)
@@ -188,7 +189,7 @@ function TryToResolve (node, parent)
 
 			if was == 0 then
 				Resolve(parent, rtype)
-				PropagateResolve(parent, rtype)
+				ScourConnectedNodes(parent, PropagateResolve, rtype)
 			end
 		end
 	end
@@ -211,6 +212,12 @@ local function TYPE (node)
 		return HardToWildcard[hard_type]
 	else
 		return WildcardType(node)
+	end
+end
+
+local function PurgeBranch (branch)
+	for i = 1, branch.n or 0 do
+		--
 	end
 end
 
@@ -245,8 +252,13 @@ local NC = cluster_basics.NewCluster{
 		elseif how == "disconnect" then -- ...but here it usually does, cf. note in FadeAndDie()
 			aparent.bound, bparent.bound = aparent.bound - a.bound_bit, bparent.bound - b.bound_bit
 
-			TryToDecay(a, aparent)
-			TryToDecay(b, bparent)
+			Branch1.n, Branch2.n = 0, 0
+
+			TryToDecay(a, aparent, Branch1)
+			TryToDecay(b, bparent, Branch2)
+
+			PurgeBranch(Branch1)
+			PurgeBranch(Branch2)
 		end
 	end,
 
