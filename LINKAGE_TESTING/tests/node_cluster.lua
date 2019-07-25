@@ -131,7 +131,7 @@ local NC = nc.New{
 						nc.DisconnectObjects(a, b)
 					end
 
-					return false
+					return true
 				end)
 			end
 

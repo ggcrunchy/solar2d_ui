@@ -469,7 +469,9 @@ function NODE_INFO (node)
 	if ni then
 		local info = {}
 		for k, v in pairs(ni) do
+if k ~= "cluster" and k ~= "id" and k ~= "is_lhs" and k ~= "owner_id" then -- skip some unenlightening stuff
 			info[#info + 1] = ("%s = %s"):format(tostring(k), tostring(v))
+end
 		end
 		return "{ " .. table.concat(info, ", ") .. " }"
 	end

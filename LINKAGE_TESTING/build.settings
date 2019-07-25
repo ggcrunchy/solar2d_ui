@@ -10,6 +10,10 @@ settings =
 			default = "landscape"
 	},
 
+	plugins = {
+		["plugin.bit"] = { publisherId = "com.coronalabs" }
+	},
+
 	excludeFiles =
     {
         -- 

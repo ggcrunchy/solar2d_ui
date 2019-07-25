@@ -28,6 +28,9 @@ local cluster_basics = require("tests.shader_graph.cluster_basics")
 local drag = require("corona_ui.utils.drag")
 local nc = require("corona_ui.patterns.node_cluster")
 
+-- Plugins --
+local bit = require("plugin.bit")
+
 --
 --
 --
@@ -112,16 +115,16 @@ end
 
 local Branch1, Branch2 = {}, {}
 
-local PropagateDecay
+local DetectOrphanedBranch
 
-local function AuxPropagateDecay (cnode, branch)
+local function AuxDetectOrphanedBranch (cnode, branch)
 	local cparent = cnode.parent
 
-	if branch.exploring and branch[cparent] == nil then -- ignore cut nodes' elements
+	if branch.exploring and not branch[cparent] then
 		if RelevantToResolve(cnode) then
 			branch[cparent] = true
 
-			PropagateDecay(cparent, branch)
+			DetectOrphanedBranch(cparent, branch)
 		else -- found a hard node, so kill this branch
 			for k in pairs(branch) do -- includes 'exploring'
 				branch[k] = nil
@@ -130,18 +133,20 @@ local function AuxPropagateDecay (cnode, branch)
 	end
 end
 
-function PropagateDecay (parent, branch)
-	ScourConnectedNodes(parent, AuxPropagateDecay, branch)
+function DetectOrphanedBranch (parent, branch)
+	ScourConnectedNodes(parent, AuxDetectOrphanedBranch, branch)
 end
 
 local function TryToDecay (node, parent, branch)
-	if RelevantToResolve(node) then
+	if bit.band(parent.resolved, node.bound_bit) ~= 0 then
 		parent.resolved = parent.resolved - node.bound_bit
-
+print("--",node,parent.resolved)
 		if parent.resolved == 0 and not ResolvePending(parent) then
 			Decay(parent)
-			PropagateDecay(parent, branch)
+			DetectOrphanedBranch(parent, branch)
 		end
+		-- TODO: can be orphaned without resolve going to 0...
+		-- during ResolvePending?
 	end
 end
 
@@ -182,8 +187,8 @@ function TryToResolve (node, parent)
 		local rtype = node.resolve
 
 		if rtype then
-			parent.resolved, node.resolve = parent.resolved + node.bound_bit
-
+			parent.resolved, node.resolve = bit.bor(parent.resolved, node.bound_bit)
+print("+", node, parent.resolved)
 			if was == 0 then
 				Resolve(parent, rtype)
 				ScourConnectedNodes(parent, PropagateResolve, rtype)
@@ -212,31 +217,39 @@ local function TYPE (node)
 	end
 end
 
-local function PurgeBranch (branch)
+local function PurgeOrphanedBranch (branch)
 	if branch.exploring then
 		branch.exploring = nil
 
-		for parent, exists in pairs(branch) do
-			if exists then
-				Decay(parent)
-			end
+		for parent in pairs(branch) do
+			Decay(parent)
+
+			parent.resolved = 0
 		end
 	end
 end
 
-function DUMP_INFO ()
+function DUMP_INFO (why)
 	local stage = display.getCurrentStage()
+	print("DUMP", why)
 	for i = 1, stage.numChildren do
 		local p = stage[i]
 		if p.numChildren and p.numChildren >= 2 and p[2].text then
-			print("ELEMENT:", p[2].text)
+			print("ELEMENT:", p, p[2].text)
+
+			local info = {}
+			for k, v in pairs(p) do
+if k ~= "_class" and k ~= "_proxy" and k ~= "back" then -- skip some unenlightening stuff
+				info[#info + 1] = ("%s = %s"):format(tostring(k), tostring(v))
+end
+			end
+			print("{ " .. table.concat(info, ", ") .. " }")
 
 			for j = 3, p.numChildren do
 				local _, n = nc.GetConnectedObjects(p[j], Connected)
 
 				if n > 0 then
-					print("NODE: ", p[j + 1].text)
-					print("INFO: ", NODE_INFO(p[j]))
+					print("NODE: ", p[j + 1].text, NODE_INFO(p[j]))
 
 					for k = 1, n do
 						print("CONNECTED TO: ", NODE_INFO(Connected[k]))
@@ -279,18 +292,19 @@ local NC = cluster_basics.NewCluster{
 
 			TryToResolve(a, aparent)
 			TryToResolve(b, bparent)
+			DUMP_INFO("connect")
 		elseif how == "disconnect" then -- ...but here it usually does, cf. note in FadeAndDie()
 			aparent.bound, bparent.bound = aparent.bound - a.bound_bit, bparent.bound - b.bound_bit
 
-			Branch1.exploring, Branch1[bparent] = true, false
-			Branch2.exploring, Branch2[aparent] = true, false
+			Branch1.exploring = true
+			Branch2.exploring = true
 
 			TryToDecay(a, aparent, Branch1)
 			TryToDecay(b, bparent, Branch2)
 
-			PurgeBranch(Branch1)
-			PurgeBranch(Branch2)
-			DUMP_INFO()
+			PurgeOrphanedBranch(Branch1)
+			PurgeOrphanedBranch(Branch2)
+			DUMP_INFO("disconnect")
 		end
 	end,
 
