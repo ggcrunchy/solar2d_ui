@@ -463,7 +463,17 @@ function M.DisconnectObjects (object1, object2)
 
 	return true
 end
+function NODE_INFO (node)
+	local ni = NodeInfo[node]
 
+	if ni then
+		local info = {}
+		for k, v in pairs(ni) do
+			info[#info + 1] = ("%s = %s"):format(tostring(k), tostring(v))
+		end
+		return "{ " .. table.concat(info, ", ") .. " }"
+	end
+end
 --- DOCME
 -- @pobject object
 function M.GetCluster (object)

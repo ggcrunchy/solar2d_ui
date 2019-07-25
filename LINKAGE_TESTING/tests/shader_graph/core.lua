@@ -117,7 +117,7 @@ local PropagateDecay
 local function AuxPropagateDecay (cnode, branch)
 	local cparent = cnode.parent
 
-	if branch.exploring and branch[cparent] == nil then -- ignore break itself
+	if branch.exploring and branch[cparent] == nil then -- ignore cut nodes' elements
 		if RelevantToResolve(cnode) then
 			branch[cparent] = true
 
@@ -224,6 +224,33 @@ local function PurgeBranch (branch)
 	end
 end
 
+function DUMP_INFO ()
+	local stage = display.getCurrentStage()
+	for i = 1, stage.numChildren do
+		local p = stage[i]
+		if p.numChildren and p.numChildren >= 2 and p[2].text then
+			print("ELEMENT:", p[2].text)
+
+			for j = 3, p.numChildren do
+				local _, n = nc.GetConnectedObjects(p[j], Connected)
+
+				if n > 0 then
+					print("NODE: ", p[j + 1].text)
+					print("INFO: ", NODE_INFO(p[j]))
+
+					for k = 1, n do
+						print("CONNECTED TO: ", NODE_INFO(Connected[k]))
+					end
+
+					print("")
+				end
+			end
+
+			print("")
+		end
+	end
+end
+
 local NC = cluster_basics.NewCluster{
 	can_connect = function(a, b)
 		local compatible = TYPE(a) == TYPE(b) -- e.g. restrict to vectors, matrices, etc.
@@ -263,6 +290,7 @@ local NC = cluster_basics.NewCluster{
 
 			PurgeBranch(Branch1)
 			PurgeBranch(Branch2)
+			DUMP_INFO()
 		end
 	end,
 
