@@ -49,6 +49,226 @@ local function StandardColor (what)
 	return r, .125, b, .75
 end
 
+
+
+
+
+
+-- Adapted from Sedgewick's "Algorithms in C++, 3rd edition: part 5, Graph Algorithms":
+
+
+--[[
+	Tarjan:
+
+	const Graph & G;
+	STACK<int> S;
+	int cnt, scnt;
+	vector<int> pre, low, id;
+
+	void scR (int w)
+	{
+		int t, min = low[w] = pre[w] = cnt++;
+
+		S.push(w);
+	
+		typename Graph::adjIterator A(G, w);
+
+		for (t = A.beg(); !A.end(); t = A.nxt())
+		{
+			if (pre[t] == -1) scR(t);
+			if (low[t] < min) min = low[t];
+		}
+
+		if (min < low[w]) { low[w] = min; return; }
+
+		do {
+			id[t = S.pop()] = scnt;
+			low[t] = G.V();
+		} while (t != w);
+
+		scnt++;
+	}
+	
+	SC (const Graph & G) : G(G), cnt(0), scnt(0), pre(G.V(), -1), low(G.V()), id(G.V())
+	{
+		for (int v = 0; v < G.V(); ++v)
+		{
+			if (pre[v] == -1) scR(v);
+		}
+	}
+
+	int count (void) const { return scnt; }
+
+	bool strongly_reachable (int v, int w) const
+	{
+		return id[v] == id[w];
+	}
+]]
+
+--[[
+	Gabow:
+
+	void scR (int w)
+	{
+		int v;
+
+		pre[w] = cnt++;
+
+		S.push(w);
+		path.push(w);
+
+		typename Graph::adjIterator A(G, w);
+		
+		for (int t = A.beg(); !A.end(); t = A.nxt())
+		{
+			if (pre[t] == -1) scR(t);
+			else if (id[t] == -1)
+			{
+				while (pre[path.top()] > pre[t]) path.pop();
+			}
+		}
+
+		if (path.top() == w) path.pop();
+		else return;
+
+		do {
+			id[v = S.pop()] = scnt;
+		} while (v != w);
+
+		scnt++;
+	}
+]]
+
+
+
+
+
+
+local G = {
+	{ what = "A" }, -- 1
+	{ what = "2" }, -- 2
+	{ what = "C" }, -- 3
+	{ what = ":::" }, -- 4
+	{ what = 3445 }, -- 5
+	{ what = 3434 }, -- 6
+	{ what = "DFDF" }, -- 7
+	{ what = "+" }, -- 8
+	{ what = {} }, -- 9
+	{ what = function() end }, -- 10
+	{ what = "3334" }
+}
+
+table.insert(G[1], 2) -- A -> 2
+table.insert(G[1], 3) -- A -> 2, C
+table.insert(G[3], 1) -- A -> 2, <-> C
+
+table.insert(G[3], 4) -- A -> 2, <-> C -> :::
+table.insert(G[4], 5) -- A -> 2, <-> C -> ::: -> 5
+table.insert(G[5], 4) -- A -> 2, <-> C -> ::: <-> 5
+
+table.insert(G[7], 8) -- DFDF -> +
+table.insert(G[8], 9) -- DFDF -> + -> {}
+table.insert(G[9], 10) -- DFDF -> + -> {} -> func()
+table.insert(G[10], 11) -- DFDF -> + -> {} -> func() -> 3334
+table.insert(G[11], 10) -- DFDF -> + -> {} -> func() <-> 3334
+table.insert(G[11], 7) -- <3334> -> DFDF -> + -> {} -> func() <-> 3334 -> <DFDF>
+
+local function scR (graph, state, w)
+	local cnt, pre, S, path = state.cnt, state.pre, state.S, state.path
+
+	pre[w], state.cnt = cnt, cnt + 1
+
+	S[#S + 1] = w
+	path[#path + 1] = w
+	
+	local id = state.id
+
+	for _, t in ipairs(graph[w]) do
+		local cur = pre[t]
+
+		if not cur then
+			scR(graph, state, t)
+		elseif not id[t] then
+			for j = #path, 1, -1 do
+				if pre[path[j]] <= cur then
+					break
+				else
+					path[j] = nil
+				end
+			end
+		end
+	end
+
+	if path[#path] == w then
+		path[#path] = nil
+	else
+		return
+	end
+
+	local scnt = state.scnt
+
+	repeat
+		local v = table.remove(S)
+
+		id[v] = scnt
+	until v == w
+
+
+	state.scnt = scnt + 1
+end
+
+local function Build (graph)
+	local pre = {}
+	local state = { id = {}, pre = pre, cnt = 0, scnt = 0, S = {}, path = {} }
+
+	for i = 1, #graph do
+		if not pre[i] then
+			scR(graph, state, i)
+		end
+	end
+
+	return state.id, state.scnt
+end
+
+local function StronglyReachable (id, v, w)
+	return id[v] == id[w]
+end
+
+
+local id, n = Build(G)
+
+print("# strong components", n)
+
+for i = 0, n - 1 do
+	print("Component: ", i)
+	print("")
+	
+	for j = 1, #G do
+		if id[j] == i then
+			print("    ", G[j].what)
+		end
+	end
+end
+
+-- adjacency should explore resolvable nodes (if wildcard) or all nodes (if hard type)
+-- how to handle those with "T or float" type connections?
+-- add should be incremental: if neither or both resolved, arbitrarily subsume other
+	-- if one resolved, subsume other and resolve its wildcards
+-- remove seems more difficult
+	-- probably should just recalc components
+	-- find the two parts that were separated
+		-- still reachable?
+			-- if so, no change
+			-- else see what hard types each can reach
+				-- one part might be severed, in which case decay it
+-- ^^ what if doing a "reroute"? (remove and replace with another)
+	-- if same box, no change
+	-- else probably needs a recalc
+		-- do add logic, then remove's
+		-- keep some sort of before-and-after to avoid resolving and immediately decaying a box
+
+
+
 local Connected = {}
 
 local function BreakOldConnection (node)
@@ -149,6 +369,10 @@ print("--",node,parent.resolved)
 		-- during ResolvePending?
 	end
 end
+
+-- TODO: maybe this bitwise business is too fragile. Perhaps we can semi-incrementally
+-- resolve: cache previous links, then recursively resolve new link, then scour previous
+-- ones as per decay logic
 
 local function Resolve (parent, rtype)
 	parent.resolved_type = rtype
