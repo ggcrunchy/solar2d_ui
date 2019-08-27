@@ -267,6 +267,39 @@ end
 		-- do add logic, then remove's
 		-- keep some sort of before-and-after to avoid resolving and immediately decaying a box
 
+-- on connection between nodes x, y
+	-- if y.rule = Hard then
+		-- x, y = y, x
+	-- if y.rule = Hard then
+		-- nothing to do
+	-- elseif x.rule ~= Hard
+		-- if ResolvedType(x)
+			-- Resolve(y) and merge
+		-- elseif ResolvedType(y)
+			-- Resolve(x) and merge
+		-- else
+			-- nothing to do
+	-- elseif y.rule = AllowXXXOrT and x.hard_type = "xxx"
+		-- nothing to do
+	-- else
+		-- ???
+
+-- on break between nodes x, y
+	-- if y.rule = Hard
+		-- x, y = y, x
+	-- if y.rule = Hard
+		-- nothing to do
+	-- elseif x.rule ~= Hard
+		-- if ResolvedType(x)
+			-- recalc
+		-- else
+			-- nothing to do
+	-- elseif y.rule = AllowXXXOrT and x.hard_type = "xxx"
+		-- nothing to do
+	-- else
+		-- recalc
+
+
 
 
 local Connected = {}
@@ -738,32 +771,30 @@ back.width,back.height = w, h
 	VisitGroup(parent, PlaceItems, back)
 back.width,back.height = bw, bh
 	if ToUpdate then
-		if ToUpdate then
-			local to_update = ToUpdate
+		local to_update = ToUpdate
 
-			timer.performWithDelay(35, function(event)
-				local any
+		timer.performWithDelay(35, function(event)
+			local any
 
-				for object, count in pairs(to_update) do
-					if count == 0 then
-						to_update[object], object.to_update = nil
-					else
-						any = true
-					end
-
-					nc.PutInUpdateList(object)
-				end
-
-				if any then
-					NC:Update()
+			for object, count in pairs(to_update) do
+				if count == 0 then
+					to_update[object], object.to_update = nil
 				else
-					timer.cancel(event.source)
+					any = true
 				end
-			end, 0)
-		end
 
-		ToUpdate = nil
+				nc.PutInUpdateList(object)
+			end
+
+			if any then
+				NC:Update()
+			else
+				timer.cancel(event.source)
+			end
+		end, 0)
 	end
+
+	ToUpdate = nil
 end
 -- ^^^ ARGH, this is actually tough :/
 
