@@ -115,6 +115,36 @@ end
 -- merge components preferring lower ID?
 -- give each new object a new ID
 
+local AdjacentBoxes = {}
+
+local function AuxAdjacentBoxesIter (_, i)
+	i = i + 1
+
+	if i <= AdjacentBoxes.n then
+		return i, AdjacentBoxes[i]
+	else -- clean up when done
+		for j = 1, AdjacentBoxes.n do
+			AdjacentBoxes[j] = false
+		end
+	end
+end
+
+local function GatherAdjacentBoxes (neighbor, node)
+	-- classify
+		-- hard or neither_hard
+			-- AdjacentBoxes[Adjacent.Boxes.n++] = c.parent
+end
+
+local function AdjacentBoxesIter (_, node) -- TODO: node works as index EXCEPT with undo / redo
+	AdjacentBoxes.n = 0
+
+	-- ScourConnectedNodes(node.parent, GatherAdjacentBoxes, node)
+
+	return AuxAdjacentBoxesIter, AdjacentBoxes.n, 0
+end
+
+-- top-level just an ipairs? (one- or two-element array)
+
 local Connected = {}
 
 local function BreakOldConnection (node)
