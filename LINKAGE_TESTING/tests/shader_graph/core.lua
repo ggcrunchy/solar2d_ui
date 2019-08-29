@@ -67,23 +67,6 @@ end
 		-- do add logic, then remove's
 		-- keep some sort of before-and-after to avoid resolving and immediately decaying a box
 
--- on connection between nodes x, y
-	-- if y.rule = Hard then
-		-- x, y = y, x
-	-- if y.rule = Hard then
-		-- nothing to do
-	-- elseif x.rule ~= Hard
-		-- if ResolvedType(x)
-			-- Resolve(y) and merge
-		-- elseif ResolvedType(y)
-			-- Resolve(x) and merge
-		-- else
-			-- nothing to do
-	-- elseif y.rule = AllowXXXOrT and x.hard_type = "xxx"
-		-- nothing to do
-	-- else
-		-- ???
-
 local ObjectToID = {}
 
 local function Merge (was, new, func)
@@ -96,37 +79,38 @@ local function Merge (was, new, func)
 	end
 end
 
-local function Compare (x, y)
+local function Classify (x, y)
 	if y.hard_type then -- either node (or both) might have hard type; in this case, we can
 						-- streamline some of the next steps by making sure "x" does
 		x, y = y, x
 	end
 
 	if not y.hard_type then -- if both were hard, we have nothing left to do
-		if not x.hard_type then -- neither has hard type?
-			-- "neither"
-		elseif y.rule == AllowXXXOrT and x.hard_type == "xxx" then
-			-- return "soft", x, y
-		else
-			-- return "hard", y
+		local hard_type = x.hard_type
+	
+		if not hard_type then
+			return "neither_hard"
+		elseif hard_type ~= y.nonresolving_hard_type then -- at the moment, only the "hard" case matters
+			return "hard", x, y
 		end
 	end
 end
 
+-- on connection between nodes x, y
+	-- local what, a, b = Classify(x, y)
+	-- if what == "hard" then
+		-- Resolve(b, a.hard_type)
+	-- elseif what == "neither_hard" then
+		-- if x.resolved_type, else y...
+		-- merge
+
 -- on break between nodes x, y
-	-- if y.rule = Hard
-		-- x, y = y, x
-	-- if y.rule = Hard
-		-- nothing to do
-	-- elseif x.rule ~= Hard
-		-- if ResolvedType(x)
-			-- recalc
-		-- else
-			-- nothing to do
-	-- elseif y.rule = AllowXXXOrT and x.hard_type = "xxx"
-		-- nothing to do
-	-- else
-		-- recalc
+	-- local what, a, b = Classify(x, y)
+	-- if what == "hard" then
+		-- recalc(y)
+	-- elseif what == "neither_hard" then
+		-- if resolved(x) then
+			-- recalc(x, y)
 
 -- merge components preferring lower ID?
 -- give each new object a new ID
@@ -665,8 +649,8 @@ local function AllowT (node, other, compatible)
 	end
 end
 
-local function AllowFloatOrT (node, other)
-	if ResolvedType(other) == "float" then
+local function AllowHardTypeOrT (node, other)
+	if ResolvedType(other) == node.nonresolving_hard_type then
 		return true
 	else
 		return AllowT(node, other)
@@ -686,8 +670,9 @@ local function NewNode (group, what, name, how)
 		if how == "fv" then
 			assert(object.parent.wildcard_type == nil or object.parent.wildcard_type == "vector", "Group already has other wildcard type")
 
+			object.nonresolving_hard_type = "float"
 			object.parent.wildcard_type = "vector"
-			object.rule = AllowFloatOrT
+			object.rule = AllowHardTypeOrT
 		elseif how == "?v" then
 			assert(object.parent.wildcard_type == nil or object.parent.wildcard_type == "vector", "Group already has other wildcard type")
 

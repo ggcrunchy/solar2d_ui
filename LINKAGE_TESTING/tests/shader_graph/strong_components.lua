@@ -43,11 +43,21 @@ end
 
 local Stack, Top = {}, 0
 
+local ComponentID = 0
+
+local function NewComponent (ids, w)
+	repeat
+		local v = Stack[Top]
+
+		ids[v], Top = ComponentID, Top - 1
+	until v == w
+ 
+	ComponentID = ComponentID + 1
+end
+
 local Path, Length = {}, 0
 
 local Count = 0
-
-local ComponentID = 0
 
 -- Adapted from Sedgewick's "Algorithms in C++, 3rd edition: part 5, Graph Algorithms"
 local function AuxBuild (graph, adj_iter, ids, w)
@@ -76,13 +86,7 @@ local function AuxBuild (graph, adj_iter, ids, w)
 	if Path[Length] == w then -- nothing left to explore?
 		Length = Length - 1
 
-		repeat
-			local v = Stack[Top]
-
-			ids[v], Top = ComponentID, Top - 1
-		until v == w -- w being what we pushed up top
-	 
-		ComponentID = ComponentID + 1
+		NewComponent(ids, w)
 	end
 end
 
@@ -104,28 +108,28 @@ local LowID
 
 --- Compute strongly connected components using Gabow's path-based algorithm.
 --
--- This follows a depth-first search, starting with a set of top level objects. Each object
+-- This follows a depth-first search, starting with a set of top-level vertices. Each vertex
 -- must have some user-defined "index" that uniquely identifies it.
--- @tparam Forest forest One or more graphs comprising the objects to strongly connect.
+-- @param top_level_vertices Vertices to strongly connect.
 -- @ptable[opt] opts Computation options, which may include:
 --
--- * **adjacency\_iter**: If present, called as `for _, neighbor_index in adjacency_iter(graph, object_index) do`
--- to iterate through the neighbors of an object, with _graph_ coming from the top level.
+-- * **adjacency\_iter**: If present, called as `for _, neighbor_index in adjacency_iter(graph, vertex_index) do`
+-- to iterate through a vertex's neighbors, with _graph_ coming from the top level.
 --
--- The default assumes that _forest_ is an array such as `{}, {1,3}, {1,2}`, where each table
--- is an object, an object's index is its position in the array, and each object's array
+-- The default assumes that _top\_level\_vertices_ is an array such as `{}, {1,3}, {1,2}`, where each table
+-- is a vertex, a vertex's index is its position in this array, and each vertex's array
 -- part consists of its neighbor indices.
--- * **top\_level\_iter**: If present, called as `for _, graph, object_index in top_level_iter(forest) do`
--- to get the top-level objects and the subgraphs to which each belongs.
+-- * **top\_level\_iter**: If present, called as `for _, graph, vertex_index in top_level_iter(top_level_vertices) do`
+-- to get the top-level vertices and the subgraphs to which each belongs.
 --
 -- The default assumes the same structure as *adjacency\_iter* and will walk the whole array,
 -- supplying it as _graph_ at each step.
 -- * **out**: If present, a table that will be populated and used as the return value.
--- @treturn table A map from object indices to strong component IDs.
+-- @treturn table A map from vertex indices to strong component IDs.
 -- @treturn uint Number of strongly connected components.
 -- @treturn uint Lowest valid component ID in the results. When supplying an output table, any
 -- entries left unwritten will have lower IDs and should be ignored.
-function M.Gabow (forest, opts)
+function M.Gabow (top_level_vertices, opts)
 	local adj_iter, tl_iter, ids
 
     if opts then
@@ -134,7 +138,7 @@ function M.Gabow (forest, opts)
 
     Low, LowID, adj_iter, ids = Count, ComponentID, adj_iter or DefAdjacencyIter, ids or {}
 
-	for _, graph, index in (tl_iter or DefTopLevelIter)(forest) do
+	for _, graph, index in (tl_iter or DefTopLevelIter)(top_level_vertices) do
 		if not HasVisited(index) then
 			AuxBuild(graph, adj_iter, ids, index)
 		end
@@ -143,7 +147,7 @@ function M.Gabow (forest, opts)
 	return ids, ComponentID - LowID, LowID
 end
 
---- Get an unused component ID, e.g. for new or singleton objects.
+--- Get an unused component ID, e.g. for new or singleton vertices.
 -- @treturn uint ID.
 function M.NewID ()
 	ComponentID = ComponentID + 1
@@ -152,10 +156,10 @@ function M.NewID ()
 end
 
 ---
--- @ptable ids A map from object indices to strong component IDs, as returned by @{Gabow}.
--- @param index1 Index of object #1...
+-- @ptable ids A map from vertex indices to strong component IDs, as returned by @{Gabow}.
+-- @param index1 Index of vertex #1...
 -- @param index2 ...and #2.
--- @treturn boolean The objects are part of the same strong component?
+-- @treturn boolean The vertices belong to the same strong component?
 function M.StronglyReachable (ids, index1, index2)
 	return ids[index1] == ids[index2]
 end
