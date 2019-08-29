@@ -50,57 +50,6 @@ local function StandardColor (what)
 	return r, .125, b, .75
 end
 
-
-
-
-
-
--- Gabow's strong connected components algorithm, adapted from Sedgewick's "Algorithms in C++, 3rd edition: part 5, Graph Algorithms":
-
-local G = {
-	{ what = "A" }, -- 1
-	{ what = "2" }, -- 2
-	{ what = "C" }, -- 3
-	{ what = ":::" }, -- 4
-	{ what = 3445 }, -- 5
-	{ what = 3434 }, -- 6
-	{ what = "DFDF" }, -- 7
-	{ what = "+" }, -- 8
-	{ what = {} }, -- 9
-	{ what = function() end }, -- 10
-	{ what = "3334" }
-}
-
-table.insert(G[1], 2) -- A -> 2
-table.insert(G[1], 3) -- A -> 2, C
-table.insert(G[3], 1) -- A -> 2, <-> C
-
-table.insert(G[3], 4) -- A -> 2, <-> C -> :::
-table.insert(G[4], 5) -- A -> 2, <-> C -> ::: -> 5
-table.insert(G[5], 4) -- A -> 2, <-> C -> ::: <-> 5
-
-table.insert(G[7], 8) -- DFDF -> +
-table.insert(G[8], 9) -- DFDF -> + -> {}
-table.insert(G[9], 10) -- DFDF -> + -> {} -> func()
-table.insert(G[10], 11) -- DFDF -> + -> {} -> func() -> 3334
-table.insert(G[11], 10) -- DFDF -> + -> {} -> func() <-> 3334
-table.insert(G[11], 7) -- <3334> -> DFDF -> + -> {} -> func() <-> 3334 -> <DFDF>
-
-local ids, n = strong_components.Gabow(G)
-
-print("# strong components", n)
-
-for i = 0, n - 1 do
-	print("Component: ", i)
-	print("")
-	
-	for j = 1, #G do
-		if ids[j] == i then
-			print("    ", G[j].what)
-		end
-	end
-end
-
 -- adjacency should explore resolvable nodes (if wildcard) or all nodes (if hard type)
 -- how to handle those with "T or float" type connections?
 -- add should be incremental: if neither or both resolved, arbitrarily subsume other
@@ -135,6 +84,35 @@ end
 	-- else
 		-- ???
 
+local ObjectToID = {}
+
+local function Merge (was, new, func)
+	for object, id in pairs(ObjectToID) do
+		if id == was then
+			ObjectToID[object] = new
+
+			func(object)
+		end
+	end
+end
+
+local function Compare (x, y)
+	if y.hard_type then -- either node (or both) might have hard type; in this case, we can
+						-- streamline some of the next steps by making sure "x" does
+		x, y = y, x
+	end
+
+	if not y.hard_type then -- if both were hard, we have nothing left to do
+		if not x.hard_type then -- neither has hard type?
+			-- "neither"
+		elseif y.rule == AllowXXXOrT and x.hard_type == "xxx" then
+			-- return "soft", x, y
+		else
+			-- return "hard", y
+		end
+	end
+end
+
 -- on break between nodes x, y
 	-- if y.rule = Hard
 		-- x, y = y, x
@@ -150,8 +128,8 @@ end
 	-- else
 		-- recalc
 
-
-
+-- merge components preferring lower ID?
+-- give each new object a new ID
 
 local Connected = {}
 

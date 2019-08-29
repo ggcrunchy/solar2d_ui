@@ -1,4 +1,4 @@
---- This module provides some helpers to find strong components in a graph.
+--- Utility for finding and using strong components in a graph.
 
 --
 -- Permission is hereby granted, free of charge, to any person obtaining
@@ -35,7 +35,7 @@ local M = {}
 
 local Preorder, Low = {}
 
-local function GetPreorderNumber (index)
+local function HasVisited (index)
     local pn = Preorder[index] or Low
 
     return pn > Low, pn
@@ -47,7 +47,10 @@ local Path, Length = {}, 0
 
 local Count = 0
 
-local function AuxBuild (graph, adj_iter, ncomps, ids, w)
+local ComponentID = 0
+
+-- Adapted from Sedgewick's "Algorithms in C++, 3rd edition: part 5, Graph Algorithms"
+local function AuxBuild (graph, adj_iter, ids, w)
 	Count = Count + 1
 	Preorder[w] = Count
 
@@ -55,13 +58,13 @@ local function AuxBuild (graph, adj_iter, ncomps, ids, w)
 	Path[Length + 1], Length = w, Length + 1
 
 	for _, t in adj_iter(graph, w) do
-		local visited, cur = GetPreorderNumber(t)
+		local visited, preorder = HasVisited(t)
 
 		if not visited then
-			ncomps = AuxBuild(graph, adj_iter, ncomps, ids, t)
+			AuxBuild(graph, adj_iter, ids, t)
 		elseif not ids[t] then -- visited, but not yet assigned to a component?
 			for j = Length, 1, -1 do
-				if Preorder[Path[j]] <= cur then
+				if Preorder[Path[j]] <= preorder then
 					Length = j
 
 					break
@@ -76,12 +79,10 @@ local function AuxBuild (graph, adj_iter, ncomps, ids, w)
 		repeat
 			local v = Stack[Top]
 
-			ids[v], Top = ncomps, Top - 1
+			ids[v], Top = ComponentID, Top - 1
 		until v == w -- w being what we pushed up top
 	 
-		return ncomps + 1
-	else
-		return ncomps -- component not yet complete
+		ComponentID = ComponentID + 1
 	end
 end
 
@@ -89,46 +90,74 @@ local function DefAdjacencyIter (graph, index)
     return ipairs(graph[index])
 end
 
-local function AuxDefTopLevelIter (n, gi)
-    gi = gi + 1
+local function AuxDefTopLevelIter (forest, index)
+    index = index + 1
 
-    return gi <= n and gi or nil, gi
+    return forest[index] and index, forest, index
 end
 
-local function DefTopLevelIter (graph)
-    return AuxDefTopLevelIter, #graph, 0
+local function DefTopLevelIter (forest)
+    return AuxDefTopLevelIter, forest, 0
 end
 
---- DOCME
--- @tparam Graph graph
--- @ptable[opt] opts
--- @treturn table ids
--- @treturn uint ncomps
-function M.Gabow (graph, opts)
-	local ncomps, adj_iter, tl_iter, ids = 0
+local LowID
+
+--- Compute strongly connected components using Gabow's path-based algorithm.
+--
+-- This follows a depth-first search, starting with a set of top level objects. Each object
+-- must have some user-defined "index" that uniquely identifies it.
+-- @tparam Forest forest One or more graphs comprising the objects to strongly connect.
+-- @ptable[opt] opts Computation options, which may include:
+--
+-- * **adjacency\_iter**: If present, called as `for _, neighbor_index in adjacency_iter(graph, object_index) do`
+-- to iterate through the neighbors of an object, with _graph_ coming from the top level.
+--
+-- The default assumes that _forest_ is an array such as `{}, {1,3}, {1,2}`, where each table
+-- is an object, an object's index is its position in the array, and each object's array
+-- part consists of its neighbor indices.
+-- * **top\_level\_iter**: If present, called as `for _, graph, object_index in top_level_iter(forest) do`
+-- to get the top-level objects and the subgraphs to which each belongs.
+--
+-- The default assumes the same structure as *adjacency\_iter* and will walk the whole array,
+-- supplying it as _graph_ at each step.
+-- * **out**: If present, a table that will be populated and used as the return value.
+-- @treturn table A map from object indices to strong component IDs.
+-- @treturn uint Number of strongly connected components.
+-- @treturn uint Lowest valid component ID in the results. When supplying an output table, any
+-- entries left unwritten will have lower IDs and should be ignored.
+function M.Gabow (forest, opts)
+	local adj_iter, tl_iter, ids
 
     if opts then
         adj_iter, tl_iter, ids = opts.adjacency_iter, opts.top_level_iter, opts.out
     end
 
-    Low, adj_iter, ids = Count, adj_iter or DefAdjacencyIter, ids or {}
+    Low, LowID, adj_iter, ids = Count, ComponentID, adj_iter or DefAdjacencyIter, ids or {}
 
-	for _, index in (tl_iter or DefTopLevelIter)(graph) do
-		if not GetPreorderNumber(index) then
-			ncomps = AuxBuild(graph, adj_iter, ncomps, ids, index)
+	for _, graph, index in (tl_iter or DefTopLevelIter)(forest) do
+		if not HasVisited(index) then
+			AuxBuild(graph, adj_iter, ids, index)
 		end
 	end
 
-	return ids, ncomps
+	return ids, ComponentID - LowID, LowID
 end
 
---- DOCME
--- @ptable ids
--- @uint v
--- @uint w
--- @treturn boolean X
-function M.StronglyReachable (ids, v, w)
-	return ids[v] == ids[w]
+--- Get an unused component ID, e.g. for new or singleton objects.
+-- @treturn uint ID.
+function M.NewID ()
+	ComponentID = ComponentID + 1
+
+	return ComponentID
+end
+
+---
+-- @ptable ids A map from object indices to strong component IDs, as returned by @{Gabow}.
+-- @param index1 Index of object #1...
+-- @param index2 ...and #2.
+-- @treturn boolean The objects are part of the same strong component?
+function M.StronglyReachable (ids, index1, index2)
+	return ids[index1] == ids[index2]
 end
 
 return M
