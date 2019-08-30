@@ -67,6 +67,22 @@ end
 		-- do add logic, then remove's
 		-- keep some sort of before-and-after to avoid resolving and immediately decaying a box
 
+local Connected = {}
+
+local function ScourConnectedNodes (parent, func, arg)
+	for i = 1, parent.numChildren do
+		local _, n = nc.GetConnectedObjects(parent[i], Connected)
+
+		for j = 1, n do
+			local cnode = Connected[j]
+
+			Connected[j] = false
+
+			func(cnode, arg)
+		end
+	end
+end
+
 local ObjectToID = {}
 
 local function Merge (was, new, func)
@@ -130,22 +146,24 @@ local function AuxAdjacentBoxesIter (_, i)
 end
 
 local function GatherAdjacentBoxes (neighbor, node)
-	-- classify
-		-- hard or neither_hard
-			-- AdjacentBoxes[Adjacent.Boxes.n++] = c.parent
+	local what = Classify(neighbor, node)
+
+	if what == "hard" or what == "neither_hard" then
+		local n = AdjacentBoxes.n + 1
+
+		AdjacentBoxes.n, AdjacentBoxes[n] = n, neighbor.parent
+	end
 end
 
 local function AdjacentBoxesIter (_, node) -- TODO: node works as index EXCEPT with undo / redo
 	AdjacentBoxes.n = 0
 
-	-- ScourConnectedNodes(node.parent, GatherAdjacentBoxes, node)
+	ScourConnectedNodes(node.parent, GatherAdjacentBoxes, node)
 
 	return AuxAdjacentBoxesIter, AdjacentBoxes.n, 0
 end
 
 -- top-level just an ipairs? (one- or two-element array)
-
-local Connected = {}
 
 local function BreakOldConnection (node)
 	node.parent.resolved_was = node.parent.resolved -- breaking might indicate that we should de-resolve; however, the incoming connection
@@ -193,20 +211,6 @@ local function Decay (parent)
 	parent.resolved_type = nil
 
 	Resize(parent)
-end
-
-local function ScourConnectedNodes (parent, func, arg)
-	for i = 1, parent.numChildren do
-		local _, n = nc.GetConnectedObjects(parent[i], Connected)
-
-		for j = 1, n do
-			local cnode = Connected[j]
-
-			Connected[j] = false
-
-			func(cnode, arg)
-		end
-	end
 end
 
 local Branch1, Branch2 = {}, {}

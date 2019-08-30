@@ -50,4 +50,4 @@ function display.isValid (object)
 	return type(object) == "table" and object.parent ~= nil
 end
 
-require("tests.shader_graph.core")
+require("tests.strong_components")--shader_graph.core")

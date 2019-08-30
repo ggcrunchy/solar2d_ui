@@ -1,4 +1,6 @@
 --- Utility for finding and using strong components in a graph.
+--
+-- Adapted from Sedgewick's "Algorithms in C++, 3rd edition: part 5, Graph Algorithms".
 
 --
 -- Permission is hereby granted, free of charge, to any person obtaining
@@ -23,8 +25,8 @@
 -- [ MIT license: http://www.opensource.org/licenses/mit-license.php ]
 --
 
--- Standard library imports --
-local ipairs = ipairs
+-- Modules --
+local dfs = require("tests.shader_graph.dfs")
 
 -- Exports --
 local M = {}
@@ -33,75 +35,41 @@ local M = {}
 --
 --
 
-local Preorder, Low = {}
+local Gabow = dfs.NewAlgorithm()
 
-local function HasVisited (index)
-    local pn = Preorder[index] or Low
+local Path, Length = {}, 0
 
-    return pn > Low, pn
+local function TrimPath (t, preorder, ids)
+	if not ids[t] then -- visited, but not yet assigned to a component?
+		for j = Length, 1, -1 do
+			if dfs.GetPreorderNumber(Gabow, Path[j]) <= preorder then
+				Length = j
+
+				break
+			end
+		end
+	end
 end
 
 local Stack, Top = {}, 0
 
 local ComponentID = 0
 
-local function NewComponent (ids, w)
-	repeat
-		local v = Stack[Top]
-
-		ids[v], Top = ComponentID, Top - 1
-	until v == w
- 
-	ComponentID = ComponentID + 1
-end
-
-local Path, Length = {}, 0
-
-local Count = 0
-
--- Adapted from Sedgewick's "Algorithms in C++, 3rd edition: part 5, Graph Algorithms"
-local function AuxBuild (graph, adj_iter, ids, w)
-	Count = Count + 1
-	Preorder[w] = Count
-
+local function DoVertex (graph, w, adj_iter, ids)
 	Stack[Top + 1], Top = w, Top + 1
 	Path[Length + 1], Length = w, Length + 1
 
-	for _, t in adj_iter(graph, w) do
-		local visited, preorder = HasVisited(t)
-
-		if not visited then
-			AuxBuild(graph, adj_iter, ids, t)
-		elseif not ids[t] then -- visited, but not yet assigned to a component?
-			for j = Length, 1, -1 do
-				if Preorder[Path[j]] <= preorder then
-					Length = j
-
-					break
-				end
-			end
-		end
-	end
+	dfs.VisitAdjacentVertices(Gabow, DoVertex, TrimPath, graph, w, adj_iter, ids)
 
 	if Path[Length] == w then -- nothing left to explore?
-		Length = Length - 1
+		repeat
+			local v = Stack[Top]
 
-		NewComponent(ids, w)
+			ids[v], Top = ComponentID, Top - 1
+		until v == w
+
+		ComponentID, Length = ComponentID + 1, Length - 1
 	end
-end
-
-local function DefAdjacencyIter (graph, index)
-    return ipairs(graph[index])
-end
-
-local function AuxDefTopLevelIter (forest, index)
-    index = index + 1
-
-    return forest[index] and index, forest, index
-end
-
-local function DefTopLevelIter (forest)
-    return AuxDefTopLevelIter, forest, 0
 end
 
 local LowID
@@ -130,19 +98,11 @@ local LowID
 -- @treturn uint Lowest valid component ID in the results. When supplying an output table, any
 -- entries left unwritten will have lower IDs and should be ignored.
 function M.Gabow (top_level_vertices, opts)
-	local adj_iter, tl_iter, ids
+	local ids = opts and opts.out or {}
 
-    if opts then
-        adj_iter, tl_iter, ids = opts.adjacency_iter, opts.top_level_iter, opts.out
-    end
+    LowID = ComponentID
 
-    Low, LowID, adj_iter, ids = Count, ComponentID, adj_iter or DefAdjacencyIter, ids or {}
-
-	for _, graph, index in (tl_iter or DefTopLevelIter)(top_level_vertices) do
-		if not HasVisited(index) then
-			AuxBuild(graph, adj_iter, ids, index)
-		end
-	end
+	dfs.VisitTopLevel(Gabow, DoVertex, top_level_vertices, opts, ids)
 
 	return ids, ComponentID - LowID, LowID
 end
