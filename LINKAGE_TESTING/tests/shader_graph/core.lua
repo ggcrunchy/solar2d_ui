@@ -27,7 +27,7 @@
 local cluster_basics = require("tests.shader_graph.cluster_basics")
 local drag = require("corona_ui.utils.drag")
 local nc = require("corona_ui.patterns.node_cluster")
-local strong_components = require("tests.shader_graph.strong_components")
+local dfs = require("tests.shader_graph.dfs")
 
 -- Plugins --
 local bit = require("plugin.bit")
@@ -164,7 +164,7 @@ local function AdjacentBoxesIter (_, node) -- TODO: node works as index EXCEPT w
 end
 
 -- top-level just an ipairs? (one- or two-element array)
-
+--[=[
 local function BreakOldConnection (node)
 	node.parent.resolved_was = node.parent.resolved -- breaking might indicate that we should de-resolve; however, the incoming connection
 													-- could force us to immediately re-resolve, so save the current state to check afterward
@@ -304,7 +304,7 @@ print("+", node, parent.resolved)
 		Decay(parent)
 	end
 end
-
+]=]
 local HardToWildcard = { float = "vector", --[[ <- this one's iffy ]] vec2 = "vector", vec3 = "vector", vec4 = "vector" }
 
 local function WildcardType (node)
@@ -320,7 +320,7 @@ local function TYPE (node)
 		return WildcardType(node)
 	end
 end
-
+--[=[
 local function PurgeOrphanedBranch (branch)
 	if branch.exploring then
 		branch.exploring = nil
@@ -332,7 +332,7 @@ local function PurgeOrphanedBranch (branch)
 		end
 	end
 end
-
+]=]
 function DUMP_INFO (why)
 	local stage = display.getCurrentStage()
 	print("DUMP", why)
@@ -368,6 +368,12 @@ end
 	end
 end
 
+local IsConnecting
+
+local ToDecay, ToResolve = {}, {}
+
+local ConnectionGen = 0
+
 local NC = cluster_basics.NewCluster{
 	can_connect = function(a, b)
 		local compatible = TYPE(a) == TYPE(b) -- e.g. restrict to vectors, matrices, etc.
@@ -389,17 +395,24 @@ local NC = cluster_basics.NewCluster{
 		local aparent, bparent = a.parent, b.parent
 
 		if how == "connect" then -- n.b. display object does NOT exist yet...
+			IsConnecting = true
+--[=[
 			BreakOldConnection(a)
 			BreakOldConnection(b)
-
+]=]
 			aparent.bound, bparent.bound = aparent.bound + a.bound_bit, bparent.bound + b.bound_bit
-
+--[=[
 			TryToResolve(a, aparent)
 			TryToResolve(b, bparent)
+]=]
+			-- do resolves
+			-- do decays
+
 			DUMP_INFO("connect")
+			ConnectionGen, IsConnecting = ConnectionGen + 1
 		elseif how == "disconnect" then -- ...but here it usually does, cf. note in FadeAndDie()
 			aparent.bound, bparent.bound = aparent.bound - a.bound_bit, bparent.bound - b.bound_bit
-
+--[=[
 			Branch1.exploring = true
 			Branch2.exploring = true
 
@@ -408,7 +421,13 @@ local NC = cluster_basics.NewCluster{
 
 			PurgeOrphanedBranch(Branch1)
 			PurgeOrphanedBranch(Branch2)
+]=]
 			DUMP_INFO("disconnect")
+			if not IsConnecting then
+				-- do decays
+
+				ConnectionGen = ConnectionGen + 1
+			end
 		end
 	end,
 

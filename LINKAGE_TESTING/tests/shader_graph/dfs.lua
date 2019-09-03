@@ -85,6 +85,16 @@ function M.VisitAdjacentVertices (algorithm, visit, revisit, graph, index, adj_i
     end
 end
 
+--- DOCME
+function M.VisitAdjacentVertices_Once (algorithm, visit, graph, index, adj_iter, arg)
+    for _, t in adj_iter(graph, index) do
+        if not algorithm.HasVisited(t) then
+            algorithm.AddBeforeVisit(t)
+            visit(graph, t, adj_iter, arg)
+        end
+    end
+end
+
 local function DefAdjacencyIter (graph, index)
     return ipairs(graph[index])
 end
