@@ -29,9 +29,6 @@ local drag = require("corona_ui.utils.drag")
 local nc = require("corona_ui.patterns.node_cluster")
 local dfs = require("tests.shader_graph.dfs")
 
--- Plugins --
-local bit = require("plugin.bit")
-
 --
 --
 --
@@ -50,23 +47,6 @@ local function StandardColor (what)
 	return r, .125, b, .75
 end
 
--- adjacency should explore resolvable nodes (if wildcard) or all nodes (if hard type)
--- how to handle those with "T or float" type connections?
--- add should be incremental: if neither or both resolved, arbitrarily subsume other
-	-- if one resolved, subsume other and resolve its wildcards
--- remove seems more difficult
-	-- probably should just recalc components
-	-- find the two parts that were separated
-		-- still reachable?
-			-- if so, no change
-			-- else see what hard types each can reach
-				-- one part might be severed, in which case decay it
--- ^^ what if doing a "reroute"? (remove and replace with another)
-	-- if same box, no change
-	-- else probably needs a recalc
-		-- do add logic, then remove's
-		-- keep some sort of before-and-after to avoid resolving and immediately decaying a box
-
 local Connected = {}
 
 local function ScourConnectedNodes (parent, func, arg)
@@ -79,18 +59,6 @@ local function ScourConnectedNodes (parent, func, arg)
 			Connected[j] = false
 
 			func(cnode, arg)
-		end
-	end
-end
-
-local ObjectToID = {}
-
-local function Merge (was, new, func)
-	for object, id in pairs(ObjectToID) do
-		if id == was then
-			ObjectToID[object] = new
-
-			func(object)
 		end
 	end
 end
@@ -111,25 +79,6 @@ local function Classify (x, y)
 		end
 	end
 end
-
--- on connection between nodes x, y
-	-- local what, a, b = Classify(x, y)
-	-- if what == "hard" then
-		-- Resolve(b, a.hard_type)
-	-- elseif what == "neither_hard" then
-		-- if x.resolved_type, else y...
-		-- merge
-
--- on break between nodes x, y
-	-- local what, a, b = Classify(x, y)
-	-- if what == "hard" then
-		-- recalc(y)
-	-- elseif what == "neither_hard" then
-		-- if resolved(x) then
-			-- recalc(x, y)
-
--- merge components preferring lower ID?
--- give each new object a new ID
 
 local AdjacentBoxes = {}
 
@@ -155,7 +104,7 @@ local function GatherAdjacentBoxes (neighbor, node)
 	elseif what == "neither_hard" then
 		local n = AdjacentBoxes.n + 1
 
-		AdjacentBoxes.n, AdjacentBoxes[n] = n, neighbor.parent
+		AdjacentBoxes.n, AdjacentBoxes[n] = n, neighbor
 	end
 end
 
@@ -167,13 +116,7 @@ local function AdjacentBoxesIter (_, node) -- TODO: node works as index EXCEPT w
 	return AuxAdjacentBoxesIter, AdjacentBoxes.n, 0
 end
 
--- top-level just an ipairs? (one- or two-element array)
-
 local function BreakOldConnection (node)
-	--[[
-	node.parent.resolved_was = node.parent.resolved -- breaking might indicate that we should de-resolve; however, the incoming connection
-													-- could force us to immediately re-resolve, so save the current state to check afterward
-]]
 	-- n.b. at moment all nodes are exclusive
 	local _, n = nc.GetConnectedObjects(node, Connected)
 
@@ -183,23 +126,7 @@ local function BreakOldConnection (node)
 		Connected[i] = false
 	end
 end
---[=[
-local function ExtractOldResolved (parent)
-	local was = parent.resolved_was
 
-	parent.resolved_was = nil
-
-	return was
-end
-
-local function RelevantToResolve (node)
-	return not node.hard_type
-end
-
-local function ResolvePending (parent)
-	return parent.resolved_was ~= nil
-end
-]=]
 local Resize
 
 local function Decay (parent)
@@ -217,48 +144,7 @@ local function Decay (parent)
 
 	Resize(parent)
 end
---[=[
-local Branch1, Branch2 = {}, {}
 
-local DetectOrphanedBranch
-
-local function AuxDetectOrphanedBranch (cnode, branch)
-	local cparent = cnode.parent
-
-	if branch.exploring and not branch[cparent] then
-		if RelevantToResolve(cnode) then
-			branch[cparent] = true
-
-			DetectOrphanedBranch(cparent, branch)
-		else -- found a hard node, so kill this branch
-			for k in pairs(branch) do -- includes 'exploring'
-				branch[k] = nil
-			end
-		end
-	end
-end
-
-function DetectOrphanedBranch (parent, branch)
-	ScourConnectedNodes(parent, AuxDetectOrphanedBranch, branch)
-end
-
-local function TryToDecay (node, parent, branch)
-	if bit.band(parent.resolved, node.bound_bit) ~= 0 then
-		parent.resolved = parent.resolved - node.bound_bit
-print("--",node,parent.resolved)
-		if parent.resolved == 0 and not ResolvePending(parent) then
-			Decay(parent)
-			DetectOrphanedBranch(parent, branch)
-		end
-		-- TODO: can be orphaned without resolve going to 0...
-		-- during ResolvePending?
-	end
-end
-
--- TODO: maybe this bitwise business is too fragile. Perhaps we can semi-incrementally
--- resolve: cache previous links, then recursively resolve new link, then scour previous
--- ones as per decay logic
-]=]
 local function Resolve (parent, rtype)
 	parent.resolved_type = rtype
 
@@ -274,42 +160,11 @@ local function Resolve (parent, rtype)
 
 	Resize(parent)
 end
---]=]
+
 local function ResolvedType (node)
 	return node.hard_type or node.parent.resolved_type
 end
---[=[
-local TryToResolve
 
-local function PropagateResolve (cnode, rtype)
-	if not ResolvedType(cnode) then
-		cnode.resolve = rtype
-
-		TryToResolve(cnode, cnode.parent)
-	end
-end
-
-function TryToResolve (node, parent)
-	local was = ExtractOldResolved(parent) or 0
-
-	if RelevantToResolve(node) then
-		local rtype = node.resolve
-
-		if rtype then
-			parent.resolved, node.resolve = bit.bor(parent.resolved, node.bound_bit)
-print("+", node, parent.resolved)
-			if was == 0 then
-				Resolve(parent, rtype)
-				ScourConnectedNodes(parent, PropagateResolve, rtype)
-			end
-		end
-	end
-
-	if parent.resolved == 0 and was > 0 then
-		Decay(parent)
-	end
-end
-]=]
 local HardToWildcard = { float = "vector", --[[ <- this one's iffy ]] vec2 = "vector", vec3 = "vector", vec4 = "vector" }
 
 local function WildcardType (node)
@@ -326,18 +181,6 @@ local function TYPE (node)
 	end
 end
 --[=[
-local function PurgeOrphanedBranch (branch)
-	if branch.exploring then
-		branch.exploring = nil
-
-		for parent in pairs(branch) do
-			Decay(parent)
-
-			parent.resolved = 0
-		end
-	end
-end
-]=]
 function DUMP_INFO (why)
 	local stage = display.getCurrentStage()
 	print("DUMP", why)
@@ -372,7 +215,7 @@ end
 		end
 	end
 end
-
+]=]
 local IsConnecting
 
 local ToDecay, ToResolve = {}, {}
@@ -383,24 +226,20 @@ local ConnectionGen = 0
 
 local ConnectAlg = dfs.NewAlgorithm()
 
-local function DoConnect (graph, w, adj_iter, _)
-	-- if unresolved
-		-- add to ToResolve list and resolve any relevant nodes
-	ToResolve[w] = ConnectionGen
+local function DoConnect (graph, w, adj_iter)
+	ToResolve[w.parent] = ConnectionGen
 
-	dfs.VisitAdjacentVertices_Once(ConnectAlg, DoConnect, graph, w, adj_iter, _)
+	dfs.VisitAdjacentVertices_Once(ConnectAlg, DoConnect, graph, w, adj_iter)
 end
 
 local DisconnectAlg = dfs.NewAlgorithm()
 
-local function DoDisconnect (graph, w, adj_iter, _)
-	-- if unresolved
-		-- add to ToDecay list, doing nothing
+local function DoDisconnect (graph, w, adj_iter)
 	local n = DecayList.n + 1
 
-	DecayList[n], DecayList.n = w, n
+	DecayList[n], DecayList.n = w.parent, n
 
-	dfs.VisitAdjacentVertices_Once(DisconnectAlg, DoDisconnect, graph, w, adj_iter, _)
+	dfs.VisitAdjacentVertices_Once(DisconnectAlg, DoDisconnect, graph, w, adj_iter)
 end
 
 local function AuxTopLevelNode (x, ok)
@@ -413,7 +252,7 @@ local function TopLevelNode (top_level_vertices)
 	return AuxTopLevelNode, top_level_vertices, true
 end
 
-local Opts = { adjacency_iter = AdjacentBoxesIter, top_level_iterator = TopLevelNode }
+local Opts = { adjacency_iter = AdjacentBoxesIter, top_level_iter = TopLevelNode }
 
 local function CanReachHardNode ()
 	DecayList.n = 0 / 0
@@ -422,23 +261,19 @@ end
 local function ExploreDisconnectedNode (node)
 	DecayList.n = 0
 
-	dfs.VisitTopLevel(ConnectAlg, DoConnect, node.parent)
+	dfs.VisitTopLevel(DisconnectAlg, DoDisconnect, node, Opts)
 
 	if DecayList.n == DecayList.n then
 		for i = 1, DecayList.n do
-			ToDecay[DecayList[DecayList[i]] = ConnectionGen
+			ToDecay[DecayList[i]] = ConnectionGen
 		end
 	end
 end
 
--- enumerate node connections
-	-- classify
-	-- follow any neither_hard connection (finding a hard one would be a bug...)
-
-local function ApplyChanges (list, func)
+local function ApplyChanges (list, func, arg)
 	for index, gen in pairs(list) do
 		if gen == ConnectionGen then
-			func(index)
+			func(index, arg)
 		end
 	end
 end
@@ -462,23 +297,21 @@ local NC = cluster_basics.NewCluster{
 
 	connect = function(how, a, b, _)
 		local aparent, bparent = a.parent, b.parent
+		local ctype, x, y = Classify(a, b)
 
 		if how == "connect" then -- n.b. display object does NOT exist yet...
-			IsConnecting = true
----[=[
+			IsConnecting = true -- defer any delays introduced by the next two calls
+
 			BreakOldConnection(a)
 			BreakOldConnection(b)
---]=]
+
 			aparent.bound, bparent.bound = aparent.bound + a.bound_bit, bparent.bound + b.bound_bit
 
-			local how, x, y = Classify(a, b)
 			local to_resolve, rtype
 
-			if how == "hard" then
-				if not ResolvedType(y) then
-					to_resolve, rtype = y, x.hard_type
-				end
-			elseif how == "neither_hard" then
+			if ctype == "hard" and not ResolvedType(y) then
+				to_resolve, rtype = y, x.hard_type
+			elseif ctype == "neither_hard" then
 				local atype, btype = ResolvedType(a), ResolvedType(b)
 
 				if atype and not btype then
@@ -489,22 +322,14 @@ local NC = cluster_basics.NewCluster{
 			end
 
 			if to_resolve then
-				OnFoundHard = error
+				OnFoundHard = error -- any hard nodes along the way violate the node's unresolved state
 
-				dfs.VisitTopLevel(ConnectAlg, DoConnect, to_resolve.parent, Opts)
+				dfs.VisitTopLevel(ConnectAlg, DoConnect, to_resolve, Opts)
 			end
 
-			-- ^^ resolve! =
-				-- visit: if unresolved
-					-- add to ToResolve list and resolve any relevant nodes
-				-- enumerate node connections
-					-- classify
-					-- follow any neither_hard connection (finding a hard one would be a bug...)
---[=[
-			TryToResolve(a, aparent)
-			TryToResolve(b, bparent)
-]=]
-			for index, gen in pairs(ToDecay) do
+			for index, gen in pairs(ToDecay) do -- breaking old connections can put boxes in the to-decay list, but
+												-- the new connection might put them in the to-resolve list; these
+												-- boxes are already resolved, so remove them from both lists
 				if gen == ConnectionGen and ToResolve[index] == gen then
 					ToDecay[index], ToResolve[index] = nil
 				end
@@ -513,58 +338,32 @@ local NC = cluster_basics.NewCluster{
 			ApplyChanges(ToDecay, Decay)
 
 			if to_resolve then
-				ApplyChanges(ToResolve, Resolve)
+				ApplyChanges(ToResolve, Resolve, rtype)
 			end
 
-			DUMP_INFO("connect")
+		--	DUMP_INFO("connect")
 			ConnectionGen, IsConnecting = ConnectionGen + 1
 		elseif how == "disconnect" then -- ...but here it usually does, cf. note in FadeAndDie()
 			aparent.bound, bparent.bound = aparent.bound - a.bound_bit, bparent.bound - b.bound_bit
 
-			local how, x, y = Classify(a, b)
-			local to_decay = 0
+			local to_decay = ctype == "hard" and 1 or 0
 
-			if how == "hard" then
-				to_decay = 1
-				-- unresolve! y
-			elseif how == "neither_hard" then
-				if ResolvedType(a) then
-					to_decay = 2
-				end
-				-- if resolved type
-					-- unresolve! x
-					-- unresolve! y
+			if ctype == "neither_hard" and ResolvedType(a) then -- if a is resolved, so is b
+				to_decay, x, y = 2, a, b
 			end
 
-			OnFoundHard = CanReachHardNode
+			OnFoundHard = CanReachHardNode -- we throw away decay candidates if any node has a hard connection
 
-			if to_decay == 2 then
+			if to_decay == 2 then -- not a hard connection, so either node is a candidate...
 				ExploreDisconnectedNode(x)
 			end
 
-			if to_decay >= 1 then
+			if to_decay >= 1 then -- ...whereas in a hard connection, only the non-hard one is
 				ExploreDisconnectedNode(y)
 			end
-			-- unresolve! =
-				-- visit: add to ToDecay list, doing nothing
-				-- enumerate connections for relevant nodes
-					-- classify
-					-- follow any neither_hard connections
-					-- see if we hit a hard connection
-				-- if hard connection encountered, wipe list
-				-- should perhaps dump these into an array first, then roll in if still good
---[=[
-			Branch1.exploring = true
-			Branch2.exploring = true
 
-			TryToDecay(a, aparent, Branch1)
-			TryToDecay(b, bparent, Branch2)
-
-			PurgeOrphanedBranch(Branch1)
-			PurgeOrphanedBranch(Branch2)
-]=]
-			DUMP_INFO("disconnect")
-			if not IsConnecting then
+		--	DUMP_INFO("disconnect")
+			if to_decay > 0 and not IsConnecting then -- defer disconnections happening as a side effect of a connection
 				ApplyChanges(ToDecay, Decay)
 
 				ConnectionGen = ConnectionGen + 1
