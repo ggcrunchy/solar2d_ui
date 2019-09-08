@@ -34,6 +34,12 @@ local nc = require("corona_ui.patterns.node_cluster")
 local _ResolvedType_
 local _WildcardType_
 
+-- Unique keys --
+local _hard_type = {}
+local _nonresolving_hard_type = {}
+local _resolved_type = {}
+local _wildcard_type = {}
+
 -- Exports --
 local M = {}
 
@@ -74,17 +80,17 @@ end
 
 --- DOCME
 function M.Classify (x, y)
-	if y.hard_type then -- either node (or both) might have hard type; in this case, we can
-						-- streamline some of the next steps by making sure "x" does
+	if y[_hard_type] then -- either node (or both) might have hard type; in this case, we can
+						  -- streamline some of the next steps by making sure "x" does
 		x, y = y, x
 	end
 
-	if not y.hard_type then -- if both were hard, we have nothing left to do
-		local hard_type = x.hard_type
+	if not y[_hard_type] then -- if both were hard, we have nothing left to do
+		local hard_type = x[_hard_type]
 	
 		if not hard_type then
 			return "neither_hard"
-		elseif hard_type ~= y.nonresolving_hard_type then -- at the moment, only the "hard" case matters
+		elseif hard_type ~= y[_nonresolving_hard_type] then -- at the moment, only the "hard" case matters
 			return "hard", x, y
 		end
 	end
@@ -92,12 +98,12 @@ end
 
 --- DOCME
 function M.HardType (node)
-    return node.hard_type
+    return node[_hard_type]
 end
 
 --- DOCME
 function M.QueryRule (node, other, compatible)
-    local hard_type, other_resolved = node.hard_type, _ResolvedType_(other)
+    local hard_type, other_resolved = node[_hard_type], _ResolvedType_(other)
 
     if hard_type then
         if other_resolved == nil then
@@ -106,7 +112,7 @@ function M.QueryRule (node, other, compatible)
             return hard_type == other_resolved
         end
     else
-        local nonresolving_hard_type = node.nonresolving_hard_type
+        local nonresolving_hard_type = node[_nonresolving_hard_type]
 
         if nonresolving_hard_type and other_resolved == nonresolving_hard_type then
             return true
@@ -126,7 +132,7 @@ end
 
 --- DOCME
 function M.ResolvedType (node)
-	return node.hard_type or node.parent.resolved_type
+	return node[_hard_type] or node.parent[_resolved_type]
 end
 
 --- DOCME
@@ -146,33 +152,33 @@ end
 
 --- DOCME
 function M.SetHardType (node, htype)
-    node.hard_type = htype
+    node[_hard_type] = htype
 end
 
 --- DOCME
 function M.SetNonResolvingHardType (node, htype)
-    node.nonresolving_hard_type = htype
-    node.parent.wildcard_type = HardToWildcard[htype]
+    node[_nonresolving_hard_type] = htype
+    node.parent[_wildcard_type] = HardToWildcard[htype]
 end
 
 --- DOCME
 function M.SetResolvedType (parent, rtype)
-    parent.resolved_type = rtype
+    parent[_resolved_type] = rtype
 end
 
 --- DOCME
 function M.SetWildcardType (parent, wtype)
-    parent.wildcard_type = wtype
+    parent[_wildcard_type] = wtype
 end
 
 --- DOCME
 function M.WildcardType (node)
-	return node.parent.wildcard_type
+	return node.parent[_wildcard_type]
 end
 
 --- DOCME
 function M.WilcardOrHardType (node)
-	local hard_type = node.hard_type
+	local hard_type = node[_hard_type]
 
 	if hard_type then
 		return HardToWildcard[hard_type]

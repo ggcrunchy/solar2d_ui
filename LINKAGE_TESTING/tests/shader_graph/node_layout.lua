@@ -29,6 +29,12 @@ local max = math.max
 -- Cached module references --
 local _VisitGroup_
 
+-- Unique keys --
+local _extra = {}
+local _hidden_during_visits = {}
+local _side = {}
+local _sync = {}
+
 -- Exports --
 local M = {}
 
@@ -41,16 +47,15 @@ local Dimensions = {}
 local Separation
 
 local function AuxGetDimensions (item, dims, group, index)
-	local side = item.side
+	local extra, side, sync = item[_extra] or 0, item[_side]
 
 	if side then
-		local extra = item.extra or 0
 		local w, h, y = extra * Separation, 0
 
 		for i = 0, extra do
 			local elem = group[index + i]
 	
-			w, h = w + elem.contentWidth, max(h, elem.contentHeight)
+			w, h, sync = w + elem.contentWidth, max(h, elem.contentHeight), sync or elem[_sync]
 		end
 
 		if side == "lhs" then
@@ -66,16 +71,22 @@ local function AuxGetDimensions (item, dims, group, index)
 		for i = 0, extra do
 			group[index + i].y_offset = mid
 		end
-
-		return extra
 	else
-		dims.center = max(dims.center, item.contentWidth)
+		-- TODO?: use extra?
+		dims.center, sync = max(dims.center, item.contentWidth), item[_sync]
 
         local cy, ch = dims.center_y, item.contentHeight
 
-		item.y_offset, cy = cy + ch / 2, cy + ch + Separation
-		dims.center_y, dims.left_y, dims.right_y = cy, cy, cy
+		item.y_offset, dims.center_y = cy + ch / 2, cy + ch + Separation
 	end
+
+	if sync then
+		local y = max(dims.center_y, dims.left_y, dims.right_y)
+
+		dims.center_y, dims.left_y, dims.right_y = y, y, y
+	end
+
+	return extra
 end
 
 local Edge, Middle
@@ -104,17 +115,17 @@ end
 
 --- DOCME
 function M.HideItemDuringVisits (item)
-    item.hidden_during_visits = true
+    item[_hidden_during_visits] = true
 end
 
 local Place
 
 --- DOCME
 function M.PlaceItems (item, back, group, index)
-	local side, x, y = item.side, back.x, back.y - back.height / 2
+	local side, x, y = item[_side], back.x, back.y - back.height / 2
 
 	if side then
-		local extra, offset, half = item.extra, Edge, back.width / 2
+		local extra, offset, half = item[_extra], Edge, back.width / 2
 
 		for i = 0, extra or 0 do
 			item = group[index + i]
@@ -143,6 +154,11 @@ function M.SetEdgeWidth (edge)
 end
 
 --- DOCME
+function M.SetExtraTrailingItemsCount (item, extra)
+	item[_extra] = extra
+end
+
+--- DOCME
 function M.SetMiddleWidth (mid)
     Middle = mid
 end
@@ -158,13 +174,27 @@ function M.SetSeparation (sep)
 end
 
 --- DOCME
+function M.SetSide (item, side)
+	item[_side] = side
+end
+
+--- DOCME
+function M.SetSyncPoint (group)
+	local n = group.numChildren
+
+	if n > 0 then
+		group[n][_sync] = true
+	end
+end
+
+--- DOCME
 function M.VisitGroup (group, func, arg)
 	local index, n = 1, group.numChildren
 
 	repeat
 		local item, extra = group[index]
 
-		if not item.hidden_during_visits then
+		if not item[_hidden_during_visits] then
 			extra = func(item, arg, group, index)
 		end
 

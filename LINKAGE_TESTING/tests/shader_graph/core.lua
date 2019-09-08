@@ -69,12 +69,10 @@ local Drag = drag.MakeTouch_Parent{
     end
 }
 
-local function Rect (title, wildcard_type)
+local function Rect (title)
     local group = display.newGroup()
 
     group.next_bit = 1
-
-	ns.SetWildcardType(group, wildcard_type)
 
 	display.newText(group, title, 0, 0, native.systemFontBold)
 
@@ -85,7 +83,7 @@ nl.SetEdgeWidth(5)
 nl.SetMiddleWidth(20)
 nl.SetSeparation(7)
 
-local function Place_Direct (item, what, value)
+local function Place_Direct (item, what, value) -- place objects exactly where we say
 	item[what] = value
 end
 
@@ -124,39 +122,42 @@ local ResizeParams = {
 	end, time = 150
 }
 
-local function Place_MightTransition (item, what, value)
+local function Place_MightTransition (item, what, value) -- set objects' final destinations, preferring a transition
+														-- but opting for direct placement when not worth the hassle
 	local cur = item[what]
 	local diff = cur - value
 
-	if diff ~= 0 then
+	if math.abs(diff) >= 3 then -- enough to be worth transitioning?
 		ToUpdate = ToUpdate or {}
-		ToUpdate[item] = ToUpdate[item] or 0
+		ToUpdate[item] = (ToUpdate[item] or 0) + 1 -- how many properties need waiting on?
+		item.to_update, ResizeParams[what] = ToUpdate, value
 
-		if math.abs(diff) < 3 then
-			Place_Direct(item, what, value)
-		else
-			ToUpdate[item] = ToUpdate[item] + 1
-			item.to_update, ResizeParams[what] = ToUpdate, value
+		transition.to(item, ResizeParams)
 
-			transition.to(item, ResizeParams)
-
-			ResizeParams[what] = nil
-		end
+		ResizeParams[what] = nil
+	elseif diff ~= 0 then -- at least needs an update?
+		Place_Direct(item, what, value)
 	end
 end
 
 local can_connect, connect = boxes.MakeClusterFuncs(function(parent)
-	local w, h = nl.GetDimensions(parent)
-	local back = parent.back
-
-	Place_MightTransition(back.path, "width", w)
-	Place_MightTransition(back.path, "height", h)
+	local back, w, h = parent.back, nl.GetDimensions(parent)
 
 	nl.SetPlaceFunc(Place_MightTransition)
-local bw, bh = back.width, back.height
-back.width,back.height = w, h
+
+	local bw, bh = back.width, back.height	-- the back object will be used as a guide to launch the others'
+											-- transitions, so temporarily swap out its dimensions with the
+											-- final results and do those calculations, then restore them
+
+	back.width, back.height = w, h
+
 	nl.VisitGroup(parent, nl.PlaceItems, back)
-back.width,back.height = bw, bh
+
+	back.width, back.height = bw, bh
+
+	Place_MightTransition(back.path, "width", w) -- we want to transition the scale of the back object, but only
+	Place_MightTransition(back.path, "height", h) -- when necessary, so (directly) reuse the "might" logic
+
 	if ToUpdate then
 		local to_update = ToUpdate
 
@@ -164,16 +165,16 @@ back.width,back.height = bw, bh
 			local any
 
 			for object, count in pairs(to_update) do
-				if count == 0 then
+				if count == 0 then -- all properties done?
 					to_update[object], object.to_update = nil
 				else
-					any = true
+					any = true -- TODO: is this in the right place?
 				end
 
 				nc.PutInUpdateList(object)
 			end
 
-			if any then
+			if any then -- at least one property updated?
 				NC:Update()
 			else
 				timer.cancel(event.source)
@@ -200,40 +201,48 @@ end
 -- "vector|float" -> use different rule, use AllowTOrFloat
 -- other -> at the moment, as above (e.g. bvector, ivector), else hard type (float, sampler, etc.)
 
-local function NewNode (group, what, name, how)
+local function NewNode (group, what, name, payload_type, how)
+	if how == "sync" then
+		nl.SetSyncPoint(group)
+	end
+
 	local object = Circle(group, 3, 7, StandardColor(what))
 	local anchor = (what == "lhs" or what == "delete") and 0 or 1
 
-	if what ~= "delete" then
+	if what == "delete" then
+		object:setFillColor(1, 0, 0)
+		object:setStrokeColor(.7, 0, 0)
+
+		nl.SetSide(object, "lhs")
+	else
 		NC:AddNode(object, OwnerID, what)
 
 -- TODO: at the moment all vectors but needs some generalization
 		local tstr, wildcard_type = "?", ns.WildcardType(object.parent)
 
-		if how == "fv" then
+		if payload_type == "fv" then
 			assert(wildcard_type == nil or wildcard_type == "vector", "Group already has other wildcard type")
 
 			ns.SetNonResolvingHardType(object, "float")
-		elseif how == "?v" then
+		elseif payload_type == "?v" then
 			assert(wildcard_type == nil or wildcard_type == "vector", "Group already has other wildcard type")
 
 			ns.SetWildcardType(object.parent, "vector")
 		else
-			ns.SetHardType(object, assert(how, "Expected type"))
+			ns.SetHardType(object, assert(payload_type, "Expected type"))
 
-			tstr = how
+			tstr = payload_type
 		end
 
-		object.side = what
+		nl.SetExtraTrailingItemsCount(object, 2)
+		nl.SetSide(object, what)
 
 		object.bound_bit = group.next_bit
 		group.next_bit = 2 * group.next_bit
 
-		object.extra = 2
-
 		local text = display.newText(group, name, 0, 0, native.systemFont, 24)
 
-		object.anchorX, text.anchorX = anchor, anchor
+		text.anchorX = anchor
 
 		local ttext = display.newText(group, tstr, 0, 0, native.systemFont, 24)
 
@@ -247,6 +256,8 @@ local function NewNode (group, what, name, how)
 
 		ttext.anchorX = anchor
 	end
+
+	object.anchorX = anchor
 end
 
 -- TEMP!

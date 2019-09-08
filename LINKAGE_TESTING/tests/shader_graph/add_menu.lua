@@ -42,8 +42,9 @@ local CommitRect = CR
 local function OneArg (title, how)
 	return function()
 		local group = Rect(title)
--- add "delete" button
-		NewNode(group, "lhs", "x", how)
+
+		NewNode(group, "delete")
+		NewNode(group, "lhs", "x", how, "sync")
 		NewNode(group, "rhs", "result", how)
 		CommitRect(group, display.contentCenterX, 75)
 	end
@@ -52,8 +53,9 @@ end
 local function TwoArgs (title, how)
 	return function()
 		local group = Rect(title)
--- add "delete" button
-		NewNode(group, "lhs", "x", how)
+
+		NewNode(group, "delete")
+		NewNode(group, "lhs", "x", how, "sync")
 		NewNode(group, "lhs", "y", how)
 		NewNode(group, "rhs", "result", how)
 		CommitRect(group, display.contentCenterX, 75)
@@ -91,14 +93,14 @@ local dd = menu.Menu{
 do
 	local input = Rect("Input")
 
-	NewNode(input, "rhs", "texCoord", "vec2")
+	NewNode(input, "rhs", "texCoord", "vec2", "sync")
 	CommitRect(input, 75, 75)
 end
 
 do
 	local input = Rect("Output")
 
-	NewNode(input, "lhs", "color", "vec4")
+	NewNode(input, "lhs", "color", "vec4", "sync")
 	CommitRect(input, display.contentWidth - 75, 75)
 end
 
