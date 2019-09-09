@@ -33,6 +33,7 @@ local ipairs = ipairs
 local pairs = pairs
 local pcall = pcall
 local rawequal = rawequal
+local remove = table.remove
 local setmetatable = setmetatable
 local type = type
 
@@ -286,6 +287,20 @@ local function WipeObject (node)
 		cluster.m_with_temp_curve("cancelled", temp_curve)
 
 		temp_curve:RemoveDisplayObject()
+	end
+
+	local candidates, items = cluster.m_candidates, cluster.m_items
+
+	if candidates then
+		candidates[node] = nil
+	end
+
+	for i, item in ipairs(items) do
+		if item == node then
+			remove(items, i)
+
+			break
+		end
 	end
 end
 

@@ -73,7 +73,7 @@ end
 local function AdjacentBoxesIter (_, node) -- TODO: node works as index EXCEPT with undo / redo
 	AdjacentBoxes.n = 0
 
-	ns.ScourConnectedNodes(node.parent, GatherAdjacentBoxes, node)
+	ns.VisitConnectedNodes(node.parent, GatherAdjacentBoxes, node)
 
 	return AuxAdjacentBoxesIter, AdjacentBoxes.n, 0
 end
@@ -106,16 +106,12 @@ local function DoConnect (graph, node, adj_iter)
 	dfs.VisitAdjacentVertices_Once(ConnectAlg, DoConnect, graph, node, adj_iter)
 end
 
-local function Resolve (parent, rtype)
-	ns.SetResolvedType(parent, rtype)
+local function MakeResolve (func)
+	return function(parent, rtype)
+		ns.SetResolvedType(parent, rtype)
 
-	for i = 1, parent.numChildren do
-		local item = parent[i]
-
-		if item.needs_resolving then
-			item:setFillColor(1, 1, 0)
-
-			item.text = rtype
+		for i = 1, parent.numChildren do
+			func(parent[i], rtype)
 		end
 	end
 end
@@ -126,46 +122,42 @@ end
 
 local DisconnectAlg = dfs.NewAlgorithm()
 
-local DecayList = { n = 0 }
+local DecayCandidates = { n = 0 }
 
 local function DoDisconnect (graph, node, adj_iter)
-	local n = DecayList.n + 1
+	local n = DecayCandidates.n + 1
 
-	DecayList[n], DecayList.n = node.parent, n
+	DecayCandidates[n], DecayCandidates.n = node.parent, n
 
 	dfs.VisitAdjacentVertices_Once(DisconnectAlg, DoDisconnect, graph, node, adj_iter)
 end
 
 local function CanReachHardNode ()
-	DecayList.n = 0 / 0
+	DecayCandidates.n = 0 / 0
 end
 
 local ToDecay = {}
 
 local function ExploreDisconnectedNode (node)
-	DecayList.n = 0
+	DecayCandidates.n = 0
 
 	dfs.VisitTopLevel(DisconnectAlg, DoDisconnect, node, Opts)
 
-	if DecayList.n == DecayList.n then -- unable to reach hard node?
-		for i = 1, DecayList.n do
-			ToDecay[DecayList[i]], DecayList[i] = ConnectionGen, false
+	if DecayCandidates.n == DecayCandidates.n then -- unable to reach hard node?
+		for i = 1, DecayCandidates.n do
+			ToDecay[DecayCandidates[i]], DecayCandidates[i] = ConnectionGen, false
 		end
 	end
 end
 
-local function Decay (parent)
-	for i = 1, parent.numChildren do
-		local item = parent[i]
-
-		if item.needs_resolving then
-			item:setFillColor(1, 0, 1)
-
-			item.text = "?"
+local function MakeDecay (func)
+	return function(parent)
+		for i = 1, parent.numChildren do
+			func(parent[i])
 		end
-	end
 
-	ns.SetResolvedType(parent, nil)
+		ns.SetResolvedType(parent, nil)
+	end
 end
 
 --
@@ -199,8 +191,6 @@ local function CanConnect (a, b)
     end
 end
 
-local IsConnecting
-
 local function EnumerateDecayCandidates (a, b)
     local ctype, x, y = ns.Classify(a, b)
 
@@ -227,16 +217,31 @@ local function FindNodeToResolve (a, b)
     end
 end
 
+local IsDeferred
+
 --- DOCME
-function M.MakeClusterFuncs (resize)
+function M.DeferDecays ()
+	IsDeferred = true
+end
+
+--- DOCME
+function M.MakeClusterFuncs (ops)
+	local resize, decay, resolve = ops.resize, MakeDecay(ops.decay_item), MakeResolve(ops.resolve_item)
+
+	local function DoDecays ()
+		ApplyChanges(resize, ToDecay, decay)
+
+		ConnectionGen = ConnectionGen + 1
+	end
+
 	return CanConnect, function(how, a, b)
 		local aparent, bparent = a.parent, b.parent
 
 		if how == "connect" then -- n.b. display object does NOT exist yet...
-			IsConnecting = true -- defer any delays introduced by the next two calls
+			IsDeferred = true -- defer any decays introduced by the next two calls
 
-			ns.BreakOldConnection(a)
-			ns.BreakOldConnection(b)
+			ns.BreakConnections(a)
+			ns.BreakConnections(b)
 
 			aparent.bound, bparent.bound = aparent.bound + a.bound_bit, bparent.bound + b.bound_bit
 
@@ -256,14 +261,14 @@ function M.MakeClusterFuncs (resize)
 				end
 			end
 
-			ApplyChanges(resize, ToDecay, Decay)
+			ApplyChanges(resize, ToDecay, decay)
 
 			if rtype then
-				ApplyChanges(resize, ToResolve, Resolve, rtype)
+				ApplyChanges(resize, ToResolve, resolve, rtype)
 			end
 
 		--	DUMP_INFO("connect")
-			ConnectionGen, IsConnecting = ConnectionGen + 1
+			ConnectionGen, IsDeferred = ConnectionGen + 1
 		elseif how == "disconnect" then -- ...but here it usually does, cf. note in FadeAndDie()
 			aparent.bound, bparent.bound = aparent.bound - a.bound_bit, bparent.bound - b.bound_bit
 
@@ -280,13 +285,21 @@ function M.MakeClusterFuncs (resize)
 			end
 
 		--	DUMP_INFO("disconnect")
-			if ncandidates > 0 and not IsConnecting then -- defer disconnections happening as a side effect of a connection
-				ApplyChanges(resize, ToDecay, Decay)
-
-				ConnectionGen = ConnectionGen + 1
+			if ncandidates > 0 and not IsDeferred then -- defer disconnections happening as a side effect of a connection or deletion
+				DoDecays()
 			end
 		end
-	end
+	end, DoDecays
+end
+
+--- DOCME
+function M.RemoveFromDecayList (box)
+	ToDecay[box] = nil
+end
+
+--- DOCME
+function M.ResumeDecays ()
+	IsDeferred = false
 end
 
 return M

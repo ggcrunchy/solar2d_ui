@@ -111,7 +111,7 @@ function M.NewCluster (params)
                         nc.DisconnectObjects(a, b)
                     end
 
-                    return false
+                    return true
                 end)
 
                 curve:SetKnots(knots)

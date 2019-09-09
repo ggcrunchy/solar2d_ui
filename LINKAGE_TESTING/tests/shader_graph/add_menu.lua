@@ -39,9 +39,9 @@ local NewNode = NN
 local CommitRect = CR
 -- /TEMP!
 
-local function OneArg (title, how)
+local function OneArg (title, how, wildcard_type)
 	return function()
-		local group = Rect(title)
+		local group = Rect(title, wildcard_type)
 
 		NewNode(group, "delete")
 		NewNode(group, "lhs", "x", how, "sync")
@@ -50,9 +50,9 @@ local function OneArg (title, how)
 	end
 end
 
-local function TwoArgs (title, how)
+local function TwoArgs (title, how, wildcard_type)
 	return function()
-		local group = Rect(title)
+		local group = Rect(title, wildcard_type)
 
 		NewNode(group, "delete")
 		NewNode(group, "lhs", "x", how, "sync")
@@ -60,6 +60,14 @@ local function TwoArgs (title, how)
 		NewNode(group, "rhs", "result", how)
 		CommitRect(group, display.contentCenterX, 75)
 	end
+end
+
+local function OneArgWV (title, how)
+	return OneArg(title, "?", "vector")
+end
+
+local function TwoArgsWV (title, how)
+	return TwoArgs(title, "?", "vector")
 end
 
 --[[
@@ -112,24 +120,24 @@ local dd = menu.Menu{
 
 local name_to_builder, builders = {}, {
 	Common = {
-		abs = OneArg("abs(x)", "?v"),
-		ceil = OneArg("ceil(x)", "?v"),
+		abs = OneArgWV("abs(x)"),
+		ceil = OneArgWV("ceil(x)"),
 		clamp = function() end,
-		floor = OneArg("floor(x)", "?v"),
-		fract = OneArg("fract(x)", "?v"),
-		max = TwoArgs("max(x, y)", "?v"),
-		min = TwoArgs("min(x, y)", "?v"),
+		floor = OneArgWV("floor(x)"),
+		fract = OneArgWV("fract(x)"),
+		max = TwoArgsWV("max(x, y)"),
+		min = TwoArgsWV("min(x, y)"),
 		mod = function() end,
-		sign = OneArg("sign(x)", "?v"),
+		sign = OneArgWV("sign(x)"),
 		smoothstep = function() end,
 		step = function() end
 	}, Exponential = {
-		exp = OneArg("exp(x)", "?v"),
-		exp2 = OneArg("exp2(x)", "?v"),
-		inversesqrt = OneArg("inversesqrt(x)", "?v"),
-		log2 = OneArg("log2(x)", "?v"),
-		pow = TwoArgs("pow(x, y)", "?v"),
-		sqrt = OneArg("sqrt(x)", "?v")
+		exp = OneArgWV("exp(x)"),
+		exp2 = OneArgWV("exp2(x)"),
+		inversesqrt = OneArgWV("inversesqrt(x)"),
+		log2 = OneArgWV("log2(x)"),
+		pow = TwoArgsWV("pow(x, y)"),
+		sqrt = OneArgWV("sqrt(x)")
 	}, Geometric = {
 		cross = function() end,
 		distance = function() end,
@@ -140,14 +148,14 @@ local name_to_builder, builders = {}, {
 		reflect = function() end,
 		refract = function() end
 	}, Miscellaneous = {
-		degrees = OneArg("degrees(x)", "?v"),
+		degrees = OneArgWV("degrees(x)"),
 		matrixCompMult = function() end,
-		radians = OneArg("radians(x)", "?v")
+		radians = OneArgWV("radians(x)")
 	}, Operators = {
-		["X + Y"] = TwoArgs("x + y", "?v"),
-		["X - Y"] = TwoArgs("x - y", "?v"),
-		["X * Y"] = TwoArgs("x * y", "?v"),
-		["X / Y"] = TwoArgs("x / y", "?v"),
+		["X + Y"] = TwoArgsWV("x + y"),
+		["X - Y"] = TwoArgsWV("x - y"),
+		["X * Y"] = TwoArgsWV("x * y"),
+		["X / Y"] = TwoArgsWV("x / y"),
 		["X < Y"] = function() end,
 		["X <= Y"] = function() end,
 		["X > Y"] = function() end,
@@ -159,19 +167,19 @@ local name_to_builder, builders = {}, {
 		["X ^^ Y"] = function() end,
 		["B ? X : Y"] = function() end,
 		["!X"] = function() end,
-		["-X"] = OneArg("-x", "?v"),
-		["++X"] = OneArg("++x", "?v"),
-		["X++"] = OneArg("x++", "?v"),
-		["(X)"] = OneArg("(x)", "?v"),
+		["-X"] = OneArgWV("-x"),
+		["++X"] = OneArgWV("++x"),
+		["X++"] = OneArgWV("x++"),
+		["(X)"] = OneArgWV("(x)"),
 		["X.xyzw"] = function() end
 	}, Trigonometric = {
-		acos = OneArg("acos(x)", "?v"),
-		asin = OneArg("asin(x)", "?v"),
-		atan = OneArg("atan(x)", "?v"), -- TODO: y over x
-		atan2 = TwoArgs("atan(y, x)", "?v"),
-		cos = OneArg("cos(x)", "?v"),
-		sin = OneArg("sin(x)", "?v"),
-		tan = OneArg("tan(x)", "?v")
+		acos = OneArgWV("acos(x)"),
+		asin = OneArgWV("asin(x)"),
+		atan = OneArgWV("atan(x)"), -- TODO: y over x
+		atan2 = TwoArgsWV("atan(y, x)"),
+		cos = OneArgWV("cos(x)"),
+		sin = OneArgWV("sin(x)"),
+		tan = OneArgWV("tan(x)")
 	}, ["Vector Relational"] = {
 		all = function() end,
 		any = function() end,

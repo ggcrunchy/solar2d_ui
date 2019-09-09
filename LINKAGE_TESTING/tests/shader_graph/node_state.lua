@@ -67,7 +67,7 @@ end
 local Connected = {}
 
 --- DOCME
-function M.BreakOldConnection (node)
+function M.BreakConnections (node)
 	-- n.b. at moment all nodes are exclusive
 	local _, n = nc.GetConnectedObjects(node, Connected)
 
@@ -136,7 +136,29 @@ function M.ResolvedType (node)
 end
 
 --- DOCME
-function M.ScourConnectedNodes (parent, func, arg)
+function M.SetHardType (node, htype)
+    node[_hard_type] = htype
+end
+
+--- DOCME
+function M.SetNonResolvingHardType (node, htype)
+	assert(HardToWildcard[htype] == _WildcardType_(node), "Wilcard and non-resolving hard type incompatible")
+
+    node[_nonresolving_hard_type] = htype
+end
+
+--- DOCME
+function M.SetResolvedType (parent, rtype)
+    parent[_resolved_type] = rtype
+end
+
+--- DOCME
+function M.SetWildcardType (parent, wtype)
+    parent[_wildcard_type] = wtype
+end
+
+--- DOCME
+function M.VisitConnectedNodes (parent, func, arg)
 	for i = 1, parent.numChildren do
 		local _, n = nc.GetConnectedObjects(parent[i], Connected)
 
@@ -148,27 +170,6 @@ function M.ScourConnectedNodes (parent, func, arg)
 			func(cnode, arg)
 		end
 	end
-end
-
---- DOCME
-function M.SetHardType (node, htype)
-    node[_hard_type] = htype
-end
-
---- DOCME
-function M.SetNonResolvingHardType (node, htype)
-    node[_nonresolving_hard_type] = htype
-    node.parent[_wildcard_type] = HardToWildcard[htype]
-end
-
---- DOCME
-function M.SetResolvedType (parent, rtype)
-    parent[_resolved_type] = rtype
-end
-
---- DOCME
-function M.SetWildcardType (parent, wtype)
-    parent[_wildcard_type] = wtype
 end
 
 --- DOCME

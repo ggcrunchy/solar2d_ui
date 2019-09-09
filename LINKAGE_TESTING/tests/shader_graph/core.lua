@@ -69,10 +69,12 @@ local Drag = drag.MakeTouch_Parent{
     end
 }
 
-local function Rect (title)
+local function Rect (title, wildcard_type)
     local group = display.newGroup()
 
     group.next_bit = 1
+
+	ns.SetWildcardType(group, wildcard_type)
 
 	display.newText(group, title, 0, 0, native.systemFontBold)
 
@@ -140,50 +142,72 @@ local function Place_MightTransition (item, what, value) -- set objects' final d
 	end
 end
 
-local can_connect, connect = boxes.MakeClusterFuncs(function(parent)
-	local back, w, h = parent.back, nl.GetDimensions(parent)
+local function AuxDecayItem (item)
+	item:setFillColor(1, 0, 1)
 
-	nl.SetPlaceFunc(Place_MightTransition)
+	item.text = "?"
+end
 
-	local bw, bh = back.width, back.height	-- the back object will be used as a guide to launch the others'
-											-- transitions, so temporarily swap out its dimensions with the
-											-- final results and do those calculations, then restore them
+local can_connect, connect, do_decays = boxes.MakeClusterFuncs{
+	decay_item = function(item)
+		if item.needs_resolving then -- TODO: might be string, be more fancy with text, colors, etc.
+			AuxDecayItem(item)
+		end
+	end,
 
-	back.width, back.height = w, h
+	resolve_item = function(item, rtype)
+		if item.needs_resolving then -- TODO: might be string, be more fancy with text, colors, etc.
+			item:setFillColor(1, 1, 0)
 
-	nl.VisitGroup(parent, nl.PlaceItems, back)
+			item.text = rtype
+		end
+	end,
 
-	back.width, back.height = bw, bh
+	resize = function(parent)
+		local back, w, h = parent.back, nl.GetDimensions(parent)
 
-	Place_MightTransition(back.path, "width", w) -- we want to transition the scale of the back object, but only
-	Place_MightTransition(back.path, "height", h) -- when necessary, so (directly) reuse the "might" logic
+		nl.SetPlaceFunc(Place_MightTransition)
 
-	if ToUpdate then
-		local to_update = ToUpdate
+		local bw, bh = back.width, back.height	-- the back object will be used as a guide to launch the others'
+												-- transitions, so temporarily swap out its dimensions with the
+												-- final results and do those calculations, then restore them
 
-		timer.performWithDelay(35, function(event)
-			local any
+		back.width, back.height = w, h
 
-			for object, count in pairs(to_update) do
-				if count == 0 then -- all properties done?
-					to_update[object], object.to_update = nil
-				else
-					any = true -- TODO: is this in the right place?
+		nl.VisitGroup(parent, nl.PlaceItems, back)
+
+		back.width, back.height = bw, bh
+
+		Place_MightTransition(back.path, "width", w) -- we want to transition the scale of the back object, but only
+		Place_MightTransition(back.path, "height", h) -- when necessary, so (directly) reuse the "might" logic
+
+		if ToUpdate then
+			local to_update = ToUpdate
+
+			timer.performWithDelay(35, function(event)
+				local any
+
+				for object, count in pairs(to_update) do
+					if count == 0 then -- all properties done?
+						to_update[object], object.to_update = nil
+					else
+						any = true -- TODO: is this in the right place?
+					end
+
+					nc.PutInUpdateList(object)
 				end
 
-				nc.PutInUpdateList(object)
-			end
+				if any then -- at least one property updated?
+					NC:Update()
+				else
+					timer.cancel(event.source)
+				end
+			end, 0)
+		end
 
-			if any then -- at least one property updated?
-				NC:Update()
-			else
-				timer.cancel(event.source)
-			end
-		end, 0)
+		ToUpdate = nil
 	end
-
-	ToUpdate = nil
-end)
+}
 
 NC = cluster_basics.NewCluster{ can_connect = can_connect, connect = connect, get_color = StandardColor }
 
@@ -197,9 +221,30 @@ local function Circle (group, width, radius, ...)
 	return circle
 end
 
--- "vector" -> set as wildcard type, use AllowT
--- "vector|float" -> use different rule, use AllowTOrFloat
--- other -> at the moment, as above (e.g. bvector, ivector), else hard type (float, sampler, etc.)
+local function Delete (event)
+	if event.phase == "ended" then
+		local group = event.target.parent
+
+		boxes.DeferDecays()
+
+		for i = 1, group.numChildren do
+            local item = group[i]
+
+            if item.bound_bit then -- nodes will have this member
+                ns.BreakConnections(item)
+            end
+        end
+
+		boxes.RemoveFromDecayList(group)
+		boxes.ResumeDecays()
+
+		do_decays()
+
+		group:removeSelf()
+	end
+
+	return true
+end
 
 local function NewNode (group, what, name, payload_type, how)
 	if how == "sync" then
@@ -210,6 +255,7 @@ local function NewNode (group, what, name, payload_type, how)
 	local anchor = (what == "lhs" or what == "delete") and 0 or 1
 
 	if what == "delete" then
+		object:addEventListener("touch", Delete)
 		object:setFillColor(1, 0, 0)
 		object:setStrokeColor(.7, 0, 0)
 
@@ -217,21 +263,16 @@ local function NewNode (group, what, name, payload_type, how)
 	else
 		NC:AddNode(object, OwnerID, what)
 
--- TODO: at the moment all vectors but needs some generalization
-		local tstr, wildcard_type = "?", ns.WildcardType(object.parent)
+		local non_resolving, tstr
 
-		if payload_type == "fv" then
-			assert(wildcard_type == nil or wildcard_type == "vector", "Group already has other wildcard type")
+		if payload_type:sub(-1) == "~" then -- TODO: better choice???
+			non_resolving = payload_type:sub(1, -2)
 
-			ns.SetNonResolvingHardType(object, "float")
-		elseif payload_type == "?v" then
-			assert(wildcard_type == nil or wildcard_type == "vector", "Group already has other wildcard type")
+			ns.SetNonResolvingHardType(object, non_resolving)
+		elseif payload_type ~= "?" then
+			tstr = assert(payload_type, "Expected type")
 
-			ns.SetWildcardType(object.parent, "vector")
-		else
-			ns.SetHardType(object, assert(payload_type, "Expected type"))
-
-			tstr = payload_type
+			ns.SetHardType(object, tstr)
 		end
 
 		nl.SetExtraTrailingItemsCount(object, 2)
@@ -244,14 +285,14 @@ local function NewNode (group, what, name, payload_type, how)
 
 		text.anchorX = anchor
 
-		local ttext = display.newText(group, tstr, 0, 0, native.systemFont, 24)
+		local ttext = display.newText(group, tstr or "", 0, 0, native.systemFont, 24)
 
-		if tstr ~= "?" then
-			ttext:setFillColor(1, 0, 1)
+		if tstr then
+			ttext:setFillColor(0, 1, 1)
 		else
-			ttext:setFillColor(1, 1, 0)
+			ttext.needs_resolving = non_resolving or true
 
-			ttext.needs_resolving = true
+			AuxDecayItem(ttext)
 		end
 
 		ttext.anchorX = anchor
