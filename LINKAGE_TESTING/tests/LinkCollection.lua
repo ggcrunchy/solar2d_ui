@@ -25,7 +25,6 @@
 
 -- Modules --
 local button = require("ui.Button")
-local scenes = require("utils.Scenes")
 
 -- Classes --
 local LinksClass = require("tektite_base_classes.Link.Links")
@@ -39,7 +38,9 @@ local Scene = composer.newScene()
 
 --
 function Scene:create ()
-	button.Button(self.view, nil, 20, 20, 200, 50, scenes.Opener{ name = "scene.Title" }, "Go Back")
+	button.Button(self.view, nil, 20, 20, 200, 50, function()
+		composer.gotoScene("game.scene.Title")
+	end, "Go Back")
 end
 
 Scene:addEventListener("create")

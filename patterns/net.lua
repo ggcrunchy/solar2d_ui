@@ -28,10 +28,10 @@ local pairs = pairs
 
 -- Modules --
 local layout = require("corona_ui.utils.layout")
-local timers = require("corona_utils.timers")
 
 -- Corona globals --
 local display = display
+local timer = timer
 
 -- Cached module references --
 local _AddNet_
@@ -62,7 +62,7 @@ local function Catch (event)
 end
 
 -- Removes nets whose object is invisible or has been removed
-local function WatchNets ()
+local function WatchNets (event)
 	local empty = true
 
 	--
@@ -88,7 +88,7 @@ local function WatchNets ()
 	if empty then
 		Nets = nil
 
-		return "cancel"
+		timer.cancel(event.source)
 	end
 end
 
@@ -113,7 +113,7 @@ function M.AddNet (group, object, opts)
 	if not Nets then
 		Nets = {}
 
-		timers.RepeatEx(WatchNets, 20)
+		timer.performWithDelay(20, WatchNets, 0)
 	end
 
 	--

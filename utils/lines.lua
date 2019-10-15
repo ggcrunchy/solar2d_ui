@@ -32,10 +32,10 @@ local array_funcs = require("tektite_core.array.funcs")
 local curves = require("tektite_core.number.curves")
 local color = require("corona_ui.utils.color")
 local line_ex = require("corona_ui.utils.line_ex")
-local timers = require("corona_utils.timers")
 
 -- Corona globals --
 local display = display
+local timer = timer
 
 -- Exports --
 local M = {}
@@ -73,11 +73,13 @@ local function UpdateKnot (knot, x1, y1, x2, y2)
 end
 
 -- Update body
-local function UpdateLines ()
+local function UpdateLines (event)
 	if #Lines == 0 then
 		Lines.is_running = false
 
-		return "cancel"
+		timer.cancel(event.source)
+
+		-- okay to fall through
 	end
 
 	for i = #Lines, 1, -1 do
@@ -167,7 +169,7 @@ function M.LineBetween (p1, p2, options)
 	if not Lines.is_running then
 		Lines.is_running = true
 
-		timers.RepeatEx(UpdateLines, 20)
+		timer.performWithDelay(20, UpdateLines, 0)
 	end
 
 	local group = display.newGroup()

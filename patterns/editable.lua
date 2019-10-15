@@ -42,7 +42,6 @@ local net = require("corona_ui.patterns.net")
 local layout_dsl = require("corona_ui.utils.layout_dsl")
 local layout_strategies = require("corona_ui.utils.layout_strategies")
 local meta = require("tektite_core.table.meta")
-local scenes = require("corona_utils.scenes")
 
 -- Corona globals --
 local display = display
@@ -281,6 +280,10 @@ local KeyFadeOutParams = {
 	end
 }
 
+local EnterKeys, LeaveKeys
+
+local HandleKey
+
 --
 local function CloseKeysAndText (by_key)
 	--
@@ -291,11 +294,14 @@ local function CloseKeysAndText (by_key)
 	Event.target = nil
 
 	--
-	scenes.SetListenFunc(OldListenFunc)
 	transition.to(Current.m_net, FadeAwayParams)
 
 	if Current.m_stub then
 		local caret = Current:GetCaret()
+
+		if LeaveKeys then
+			LeaveKeys(HandleKey, Current)
+		end
 
 		transition.cancel(caret)
 
@@ -317,7 +323,7 @@ local function CloseKeysAndText (by_key)
 end
 
 --
-local function HandleKey (event)
+function HandleKey (event)
 	local name = event.keyName
 
 	--
@@ -357,13 +363,6 @@ local function HandleKey (event)
 	end
 
 	return true
-end
-
---
-local function Listen (what, event)
-	if what == "message:handles_key" then
-		HandleKey(event)
-	end
 end
 
 -- --
@@ -428,10 +427,10 @@ local function EnterInputMode (editable)
 	Current, OldListenFunc = editable
 
 	--
-	local caret, listen = editable:GetCaret()
+	local caret = editable:GetCaret()
 
 	if caret then
-		listen, editable.m_stub, editable.m_net = Listen, net.HoistOntoStage(editable, CloseKeysAndText, editable.m_blocking)
+		editable.m_stub, editable.m_net = net.HoistOntoStage(editable, CloseKeysAndText, editable.m_blocking)
 	else
 		local bounds = editable.contentBounds
 		local xmin, ymin, xmax, ymax = bounds.xMin, bounds.yMin, bounds.xMax, bounds.yMax
@@ -450,7 +449,9 @@ local function EnterInputMode (editable)
 		native.setKeyboardFocus(editable.m_textfield)
 	end
 
-	OldListenFunc = scenes.SetListenFunc(listen)
+	if editable.m_stub and EnterKeys then
+		EnterKeys(HandleKey, editable)
+	end
 
 	--
 	local keys = editable:GetKeyboard()
@@ -512,7 +513,14 @@ local function Finalize (event)
 	local editable = event.target
 
 	display.remove(editable.m_net)
-	display.remove(editable.m_stub)
+
+	if editable.m_stub then
+		editable.m_stub:removeSelf()
+
+		if LeaveKeys then
+			LeaveKeys(HandleKey, editable)
+		end
+	end
 end
 
 -- --
@@ -687,6 +695,11 @@ end
 --- DOCME
 function M.Editable_XY (group, x, y, opts)
 	return AuxEditable(group, x, y, opts)
+end
+
+--- DOCME
+function M.SetKeyLogic (enter, leave)
+	EnterKeys, LeaveKeys = enter, leave
 end
 
 -- Export the module.

@@ -33,6 +33,7 @@ local timers = require("corona_utils.timers")
 -- Corona globals --
 local display = display
 local native = native
+local timer = timer
 
 -- Exports --
 local M = {}
@@ -65,7 +66,7 @@ function M.DoActionThenProceed (opts)
 			if event.action == "clicked" and event.index ~= 3 then
 				local do_action = event.index == 1
 
-				timers.Defer(function()
+				timer.performWithDelay(0, function()
 					if do_action then
 						action(follow_up)
 					else
@@ -141,7 +142,7 @@ function M.WriteEntry_MightExist (name, opts, arg)
 			alert = nil
 
 			if event.action == "clicked" then
-				timers.Defer(function()
+				timer.performWithDelay(0, function()
 					local editable = editable_patterns.Editable_XY(group, "center", "center", eopts)
 
 					editable:addEventListener("closing", function(event)
@@ -156,7 +157,7 @@ function M.WriteEntry_MightExist (name, opts, arg)
 							else
 								defer_cleanup = true
 
-								timers.DeferIf(function()
+								timers.WithObjectDefer(editable, function()
 									-- If the user-provided name already exists, request permission before overwriting.
 									alert = native.showAlert(Message("The %s is already in use!", what), "Overwrite?", { "OK", "Cancel" }, function(event)
 										alert = nil
@@ -167,7 +168,7 @@ function M.WriteEntry_MightExist (name, opts, arg)
 									end)
 
 									editable:removeSelf()
-								end, editable)
+								end)
 							end
 						end
 

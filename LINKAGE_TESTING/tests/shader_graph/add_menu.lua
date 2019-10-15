@@ -190,6 +190,12 @@ local name_to_builder, builders = {}, {
 		equal = function() end,
 		["not"] = function() end,
 		notEqual = function() end
+		-- ^^^ These might call for some cleverness, since we have two types to resolve but one
+		-- determines the other, i.e. vecX -> bvecX and vice versa; any hard type reachable by
+		-- either of the two should hold the whole thing together; the bvec part is always the
+		-- output, so maybe some sort of ghost "transformer" object in between?
+		-- Nesting the bvec node in the vec one might be worth considering too, as that case will
+		-- probably come up eventually
 	}, Texture = {
 		texture2D = function() end
 	}
