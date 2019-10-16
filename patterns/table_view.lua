@@ -49,6 +49,10 @@ local _Listbox_
 local M = {}
 
 --
+--
+--
+
+--- DOCME
 function M.FileList (group, options)
 	local FileList = _Listbox_(group, options)
 
@@ -522,8 +526,6 @@ function M.Listbox (group, options)
 	return listbox
 end
 
--- Cache module references.
 _Listbox_ = M.Listbox
 
--- Export the module.
 return M

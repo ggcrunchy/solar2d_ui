@@ -45,6 +45,10 @@ local widget = require("widget")
 -- Exports --
 local M = {}
 
+--
+--
+--
+
 -- Helper to get index of current line, beginning a new one if necessary
 local function CurrentLine (dialog)
 	local lines = dialog.m_lines
@@ -290,5 +294,4 @@ function M:Update (object, addx)
 	end
 end
 
--- Export the module.
 return M

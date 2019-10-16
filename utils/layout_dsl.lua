@@ -54,6 +54,10 @@ local _EvalPos_
 -- Exports --
 local M = {}
 
+--
+--
+--
+
 --- Augments a display object's metatable, so that its objects can also query **left**,
 -- **center_x**, **right**, **bottom**, **center_y**, and **top** properties, with semantics
 -- as in @{corona_ui.utils.layout}. Additionally, any of these (and also **x** and **y**)
@@ -402,12 +406,10 @@ function EvalNewIndex (object, k, v)
 	end
 end
 
--- Cache module members.
 _AddProperties_Metatable_ = M.AddProperties_Metatable
 _EvalDims_ = M.EvalDims
 _EvalPos_ = M.EvalPos
 
 -- TODO: Pens, cursors?
 
--- Export the module.
 return M

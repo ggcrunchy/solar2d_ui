@@ -42,6 +42,10 @@ local _Checkbox_XY_
 -- Exports --
 local M = {}
 
+--
+--
+--
+
 -- Sets the check state and performs any follow-up action
 local function Check (box, mark, check)
 	mark.isVisible = check
@@ -160,8 +164,6 @@ skins.AddToDefaultSkin("checkbox", {
 	radius = "1.5%"
 })
 
--- Cache module members.
 _Checkbox_XY_ = M.Checkbox_XY
 
--- Export the module.
 return M

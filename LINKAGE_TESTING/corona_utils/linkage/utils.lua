@@ -96,5 +96,4 @@ function M.ReadLinks (level, on_entry, on_pair)
 	end
 end
 
--- Export the module.
 return M

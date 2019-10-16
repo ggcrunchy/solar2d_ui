@@ -51,6 +51,10 @@ local _Button_XY_
 -- Exports --
 local M = {}
 
+--
+--
+--
+
 -- Cleans up a button's timer, if present
 local function ClearTimer (button)
 	local update = button.m_update
@@ -306,8 +310,6 @@ skins.RegisterSkin("small_text_button", {
 	_prefix_ = "button"
 })
 
--- Cache module members.
 _Button_XY_ = M.Button_XY
 
--- Export the module.
 return M

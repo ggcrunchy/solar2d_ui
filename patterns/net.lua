@@ -39,6 +39,10 @@ local _AddNet_
 -- Exports --
 local M = {}
 
+--
+--
+--
+
 -- skins
 
 --
@@ -240,8 +244,6 @@ function M.RestoreAfterHoist (object, stub, net)
 	display.remove(net)
 end
 
--- Cache module members.
 _AddNet_ = M.AddNet
 
--- Export the module.
 return M

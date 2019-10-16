@@ -50,6 +50,10 @@ local _Grid_XY_
 -- Exports --
 local M = {}
 
+--
+--
+--
+
 --- DOCME
 function M.Grid (group, w, h, cols, rows, opts)
 	return _Grid_XY_(group, 0, 0, w, h, cols, rows, opts)
@@ -425,8 +429,6 @@ skins.AddToDefaultSkin("grid", {
 	trapinput = true
 })
 
--- Cache module members.
 _Grid_XY_ = M.Grid_XY
 
--- Export the module.
 return M

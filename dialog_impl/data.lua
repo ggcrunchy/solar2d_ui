@@ -26,6 +26,10 @@
 -- Exports --
 local M = {}
 
+--
+--
+--
+
 --- Associates a set of default values to the dialog.
 -- @ptable defs A list of default values, or **nil** to unbind defaults.
 --
@@ -66,5 +70,4 @@ function M:IsBoundToValues (values)
 	return values and self.m_values == values
 end
 
--- Export the module.
 return M

@@ -347,7 +347,6 @@ return Scene
 --[[
 Needs a home:
 
--- Listen to events.
 dispatch_list.AddToMultipleLists{
 	-- Build Level --
 	build_level = function(level)

@@ -702,5 +702,4 @@ function M.SetKeyLogic (enter, leave)
 	EnterKeys, LeaveKeys = enter, leave
 end
 
--- Export the module.
 return M

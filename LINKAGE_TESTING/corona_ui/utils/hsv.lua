@@ -37,6 +37,10 @@ local _RGB_HueInterval_
 -- Exports --
 local M = {}
 
+--
+--
+--
+
 -- --
 local RGB = {}
 
@@ -188,11 +192,9 @@ function M.RGB_HueInterval (index, t)
 	return s * r1 + t * r2, s * g1 + t * g2, s * b1 + t * b2
 end
 
--- Cache module members.
 _FindHue_ = M.FindHue
 _RGB_ColorSV_ = M.RGB_ColorSV
 _RGB_Hue_ = M.RGB_Hue
 _RGB_HueInterval_ = M.RGB_HueInterval
 
--- Export the module.
 return M

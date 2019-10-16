@@ -51,6 +51,10 @@ local _Map_
 -- Exports --
 local M = {}
 
+--
+--
+--
+
 -- Bound table getter --
 local GetTable
 
@@ -379,8 +383,6 @@ end
 -- Register bound-table functions.
 GetTable = bound_args.Register{ M.Copy, M.CopyK, AuxDeepCopy, M.DeepCopy, M.Invert, M.MakeSet, M.Map, M.MapK, M.MapKV, M.Move }
 
--- Cache module members.
 _Map_ = M.Map
 
--- Export the module.
 return M

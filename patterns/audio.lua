@@ -33,6 +33,10 @@ local table_view_patterns = require_ex.Lazy("corona_ui.patterns.table_view")
 -- Exports --
 local M = {}
 
+--
+--
+--
+
 -- --
 local Exts = { ".mp3", ".m4a", ".ogg" }
 
@@ -61,5 +65,4 @@ function M.AudioList (group, options)
 	return AudioList
 end
 
--- Export the module.
 return M

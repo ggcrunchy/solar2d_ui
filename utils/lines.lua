@@ -40,6 +40,10 @@ local timer = timer
 -- Exports --
 local M = {}
 
+--
+--
+--
+
 -- Number of segments in a curve --
 local CurveCount = 15
 
@@ -203,5 +207,4 @@ function M.LineBetween (p1, p2, options)
 	}
 end
 
--- Export the module.
 return M

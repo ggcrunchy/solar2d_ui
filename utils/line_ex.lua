@@ -39,6 +39,10 @@ local display = display
 -- Exports --
 local M = {}
 
+--
+--
+--
+
 -- Get the wrapped object
 local function Object (line)
 	return rawget(line, "m_object")
@@ -195,5 +199,4 @@ function M.NewLine (group, x1, y1, x2, y2)
 	end
 end
 
--- Export the module.
 return M

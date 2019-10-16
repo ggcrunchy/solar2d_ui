@@ -37,6 +37,10 @@ local timer = timer
 -- Exports --
 local M = {}
 
+--
+--
+--
+
 -- How many items so far?
 local function ItemCount (dialog)
 	return dialog:ItemGroup().numChildren
@@ -437,5 +441,4 @@ function M:SetStateFromValue_Watch (handle, name, predicate)
 	list[#list + 1] = predicate or false
 end
 
--- Export the module.
 return M

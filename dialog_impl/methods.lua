@@ -22,6 +22,7 @@
 --
 -- [ MIT license: http://www.opensource.org/licenses/mit-license.php ]
 --
+
 -- Modules --
 local editable_patterns = require("corona_ui.patterns.editable")
 local layout = require("corona_ui.utils.layout")
@@ -33,6 +34,10 @@ local native = native
 
 -- Exports --
 local M = {}
+
+--
+--
+--
 
 --- DOCME
 function M:Back ()
@@ -184,5 +189,4 @@ function M:UpperGroup (how)
 	return upper
 end
 
--- Export the module.
 return M

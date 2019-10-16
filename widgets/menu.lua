@@ -889,8 +889,6 @@ function M.Menu (params)
 	return menu
 end
 
--- Cache module members.
 _Menu_ = M.Menu
 
--- Export the module.
 return M

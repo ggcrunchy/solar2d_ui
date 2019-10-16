@@ -59,6 +59,10 @@ local _RightOf_
 -- Exports --
 local M = {}
 
+--
+--
+--
+
 -- Resolves a Number (most often being a delta) to a value
 local function Delta (n, dim)
 	if type(n) ~= "string" then
@@ -506,7 +510,6 @@ function M.TopAlignWith (object, ref, dy)
 	_PutBelow_(object, _Above_(ref), dy)
 end
 
--- Cache module members.
 _Above_ = M.Above
 _Below_ = M.Below
 _CenterAlignWith_ = M.CenterAlignWith
@@ -519,5 +522,4 @@ _PutLeftOf_ = M.PutLeftOf
 _PutRightOf_ = M.PutRightOf
 _RightOf_ = M.RightOf
 
--- Export the module.
 return M

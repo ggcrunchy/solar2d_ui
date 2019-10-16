@@ -47,6 +47,10 @@ local _TouchHelperFunc_
 local M = {}
 
 --
+--
+--
+
+--
 local function GetParent (object, find, how)
 	if find then
 		return find(object, how)
@@ -338,9 +342,7 @@ function M.TouchHelperFunc (began, moved, ended)
 	end
 end
 
--- Cache module members.
 _IsTouched_ = M.IsTouched
 _TouchHelperFunc_ = M.TouchHelperFunc
 
--- Export the module.
 return M

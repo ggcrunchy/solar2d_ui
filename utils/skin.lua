@@ -35,6 +35,10 @@ local native = native
 -- Exports --
 local M = {}
 
+--
+--
+--
+
 -- Keys to skip while filling skin --
 local IgnoreKeys = { _prefix_ = true }
 
@@ -157,5 +161,4 @@ function M.SetCurrentSkin (name)
 	CurSkin = name
 end
 
--- Export the module.
 return M

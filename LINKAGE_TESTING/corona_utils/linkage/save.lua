@@ -168,8 +168,6 @@ end
 
 -- ^^^ TODO: what would it take to use this to save / restore via undo?
 
--- Cache module members.
 _SaveValuesIntoEntry_ = M.SaveValuesIntoEntry
 
--- Export the module.
 return M

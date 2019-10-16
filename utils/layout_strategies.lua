@@ -35,6 +35,10 @@ local display = display
 -- Exports --
 local M = {}
 
+--
+--
+--
+
 -- --
 local Actions = {}
 
@@ -116,5 +120,4 @@ function M.PutAtFirstHit (object, ref_object, choices, center_on_fail)
 	end
 end
 
--- Export the module.
 return M

@@ -45,6 +45,10 @@ local _ColorPicker_XY_
 -- Exports --
 local M = {}
 
+--
+--
+--
+
 -- Color change event packet --
 local CCE = {}
 
@@ -322,8 +326,6 @@ end
 
 -- TODO: skin
 
--- Cache module members.
 _ColorPicker_XY_ = M.ColorPicker_XY
 
--- Export the module.
 return M

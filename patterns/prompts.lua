@@ -38,6 +38,10 @@ local timer = timer
 -- Exports --
 local M = {}
 
+--
+--
+--
+
 --- DOCME
 -- @ptable opts X
 -- @treturn ?|AlertHandle|nil X
@@ -190,5 +194,4 @@ end
 
 -- Special case for files...
 
--- Export the module.
 return M

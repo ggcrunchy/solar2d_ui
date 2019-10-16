@@ -29,6 +29,10 @@ local floor = math.floor
 -- Exports --
 local M = {}
 
+--
+--
+--
+
 --- Resolves a value to a slot in a uniform range.
 -- @number value Value to resolve.
 -- @number base Base value; values in [_base_, _base_ + _dim_) fit to slot 1.
@@ -75,5 +79,4 @@ function M.RotateIndex (index, size, to_left)
 	end
 end
 
--- Export the module.
 return M

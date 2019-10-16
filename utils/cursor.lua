@@ -41,6 +41,10 @@ local _GetPosition_XY_
 local M = {}
 
 --
+--
+--
+
+--
 local function GetChar (text, pos)
 	return sub(text, pos, pos)
 end
@@ -207,8 +211,6 @@ function M.NewText (...)
 	return AuxNewText(display.newText, ...)
 end
 
--- Cache module members.
 _GetPosition_XY_ = M.GetPosition_XY
 
--- Export the module.
 return M

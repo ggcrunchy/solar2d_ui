@@ -36,6 +36,10 @@ local operators = require("bitwise_ops.operators")
 -- Exports --
 local M = {}
 
+--
+--
+--
+
 -- Registered colors --
 local Colors = {
 	black = { 0, 0, 0, 1 },
@@ -292,5 +296,4 @@ end
 -- @treturn number A
 M.UnpackNumber = UnpackNumber
 
--- Export the module.
 return M

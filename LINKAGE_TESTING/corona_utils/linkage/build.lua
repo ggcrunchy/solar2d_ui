@@ -117,5 +117,4 @@ function M.ResolveLinks_Build (level)
 	end
 end
 
--- Export the module.
 return M

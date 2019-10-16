@@ -136,8 +136,6 @@ function M.ResolveLinks_Load (level)
 	end
 end
 
--- Cache module members.
 _LoadValuesFromEntry_ = M.LoadValuesFromEntry
 
--- Export the module.
 return M

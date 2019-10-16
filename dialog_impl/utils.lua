@@ -45,6 +45,10 @@ local _GetProperty_
 local M = {}
 
 --
+--
+--
+
+--
 local function NoTouch () return true end
 
 --- DOCME
@@ -203,10 +207,8 @@ end
 -- TODO: Make this instantiable:
 -- Make weak-keyed master table, start with "default" key
 
--- Cache module members.
 _GetDialog_ = M.GetDialog
 _GetNamespace_ = M.GetNamespace
 _GetProperty_ = M.GetProperty
 
--- Export the module.
 return M

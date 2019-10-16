@@ -25,9 +25,6 @@
 -- [ MIT license: http://www.opensource.org/licenses/mit-license.php ]
 --
 
--- Exports --
-local M = {}
-
 -- Standard library imports --
 local assert = assert
 local ipairs = ipairs
@@ -47,6 +44,13 @@ local _Break_
 local _Connect_
 local _GetNodeInfo_
 local _SetNodeInfo_
+
+-- Exports --
+local M = {}
+
+--
+--
+--
 
 --- DOCME
 function M.Break (knot)
@@ -484,11 +488,9 @@ function M.SetNodeInfo (object, owner_id, is_lhs)
 	object.m_owner_id = owner_id
 end
 
--- Cache module members.
 _Break_ = M.Break
 _Connect_ = M.Connect
 _GetNodeInfo_ = M.GetNodeInfo
 _SetNodeInfo_ = M.SetNodeInfo
 
--- Export the module.
 return M
