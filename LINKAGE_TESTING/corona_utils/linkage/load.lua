@@ -34,7 +34,7 @@ local linkage_utils = require("corona_utils.linkage.utils")
 -- Cached module references --
 local _LoadValuesFromEntry_
 
--- Export --
+-- Exports --
 local M = {}
 
 --

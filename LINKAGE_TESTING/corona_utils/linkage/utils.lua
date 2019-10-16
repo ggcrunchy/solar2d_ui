@@ -26,7 +26,7 @@
 -- Standard library imports --
 local pairs = pairs
 
--- Export --
+-- Exports --
 local M = {}
 
 --

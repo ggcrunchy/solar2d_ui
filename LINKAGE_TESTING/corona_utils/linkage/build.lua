@@ -31,7 +31,7 @@ local common = require("s3_editor.Common") -- urgh...
 local linkage_utils = require("corona_utils.linkage.utils")
 local table_funcs = require("tektite_core.table.funcs")
 
--- Export --
+-- Exports --
 local M = {}
 
 --

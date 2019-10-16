@@ -35,7 +35,7 @@ local strings = require("tektite_core.var.strings")
 -- Cached module references --
 local _SaveValuesIntoEntry_
 
--- Export --
+-- Exports --
 local M = {}
 
 --
