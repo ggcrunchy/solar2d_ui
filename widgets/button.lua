@@ -26,7 +26,6 @@
 --
 
 -- Standard library imports --
-local floor = math.floor
 local type = type
 
 -- Modules --
@@ -39,7 +38,6 @@ local touch = require("corona_ui.utils.touch")
 
 -- Corona globals --
 local display = display
-local system = system
 local timer = timer
 
 -- Imports --
@@ -55,7 +53,6 @@ local M = {}
 --
 --
 
--- Cleans up a button's timer, if present
 local function ClearTimer (button)
 	local update = button.m_update
 
@@ -66,32 +63,14 @@ local function ClearTimer (button)
 	end
 end
 
--- Do timeouts when a button is touched
 local function DoTimeouts (button)
-	button.m_since = system.getTimer()
-	button.m_update = timer.performWithDelay(20, function(event)
+	button.m_update = timer.performWithDelay(button.m_timeout, function()
 		if display.isValid(button) and touch.IsTouched(button) then
 			if button.m_inside then
-				local since, timeout = button.m_since, button.m_timeout
+				button.m_func(button.parent)
 
-				-- Do the button logic as many times as the timer elapsed. Use this opportunity to flag
-				-- that the button is now doing timeouts.
-				local nlapses = floor((event.time - since) / timeout)
-
-				for _ = 1, nlapses do
-					button.m_doing_timeouts = true
-
-					button.m_func(button.parent)
-				end
-
-				button.m_since = since + nlapses * timeout
-
-			-- Reset the timer if the touch strays outside the button.
-			else
-				button.m_since = event.time
+				button.m_doing_timeouts = true
 			end
-
-		-- Stop timeouts once the button is released.
 		else
 			ClearTimer(button)
 		end
@@ -208,17 +187,15 @@ end
 --- Setter.
 -- @function Button:SetTimeout
 -- @tparam ?|number|nil timeout A value &gt; 0. When the button is held, its function is
--- called each time this duration passes. If absent, any such timeout is removed.
+-- called each time an auxiliary timer fires. If absent, any such timeout is removed.
 function Button:SetTimeout (timeout)
 	local button = self.m_button
 
-	if timeout then
-		button.m_since, button.m_timeout = system.getTimer(), timeout
-	else
+	if not timeout then
 		ClearTimer(button)
-
-		button.m_timeout = nil
 	end
+
+	button.m_timeout = timeout or nil
 end
 
 --- Creates a new button.
