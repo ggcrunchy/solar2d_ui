@@ -98,7 +98,7 @@ local function RequiredTypes (ctype, how) -- n.b. set up by CanAddToObject()
 	return how == "keep" and AuxIterRequiredTypes_Keep or AuxIterRequiredTypes_Wipe, required_types, nil
 end
 
-local Lists = meta.Weak("k")
+local Lists = meta.WeakKeyed()
 
 --- Add a component to an object.
 --
@@ -252,7 +252,7 @@ function M.GetInterfacesForComponent (ctype, out)
     return out
 end
 
-local InterfaceGuards, AddGeneration, IsAdding = meta.Weak("k"), 0
+local InterfaceGuards, AddGeneration, IsAdding = meta.WeakKeyed(), 0
 
 local function AddOnFirstAppearance (out, interface, n)
 	if InterfaceGuards[interface] ~= AddGeneration then
@@ -362,7 +362,7 @@ function M.IsRegistered (ctype)
 	return Types[ctype] ~= nil
 end
 
-local Locks = meta.Weak("k")
+local Locks = meta.WeakKeyed()
 
 local Inf = 1 / 0
 

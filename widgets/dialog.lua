@@ -55,7 +55,7 @@ for _, mod in ipairs{ data, layout, methods, sections } do
 end
 
 -- --
-local AugmentedMethods = meta.Weak("k")
+local AugmentedMethods = meta.WeakKeyed()
 
 --- DOCME
 -- @pgroup group Group to which the dialog will be inserted.

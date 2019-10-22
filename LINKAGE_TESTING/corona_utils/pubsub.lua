@@ -51,27 +51,24 @@ local M = {}
 -- rigorously validating the ID and name as well. This suffices to ignore common inputs like
 -- **nil** and non-strings, but is vulnerable to hand-crafted not-quite-endpoints.
 -- @param candidate
--- @bool split Should an ID and name be returned if this is a valid endpoint?
--- @return[1] **true**, indicating a valid endpoint.
+-- @string[opt] how If this is **"split"** and _candidate_ is valid, return ID and name.
 -- @treturn[1] uint The ID preceding the separator...
 -- @treturn[1] string ...and the name following it.
 -- @treturn[2] boolean Was _endpoint_ valid?
-function M.IsEndpoint (candidate, split)
-	local is_endpoint = false
-
+function M.IsEndpoint (candidate, how)
 	if type(candidate) == "string" then
 		local pos = find(candidate, ":")
 
 		if pos ~= nil then
-			if split then
-				return true, tonumber(sub(candidate, 1, pos - 1)), sub(candidate, pos + 1)
+			if how == "split" then
+				return tonumber(sub(candidate, 1, pos - 1)), sub(candidate, pos + 1)
 			else
-				is_endpoint = true
+				return true
 			end
 		end
 	end
 
-	return is_endpoint
+	return false
 end
 
 --- Builds an endpoint from an ID and name.

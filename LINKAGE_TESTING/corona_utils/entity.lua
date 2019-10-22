@@ -120,7 +120,7 @@ local function Finalize (event)
     event.target:RemoveAllComponents()
 end
 
-local DisplayObjectMT = meta.Weak("k")
+local DisplayObjectMT = meta.WeakKeyed()
 
 local function IsDisplayObject (object)
     local mt = getmetatable(object)
@@ -228,7 +228,7 @@ end
 -- @function Entity:UnrefInObject
 Entity.UnrefComponent = component.UnrefInObject
 
-local Methods = meta.Weak("k")
+local Methods = meta.WeakKeyed()
 
 --- DOCME
 -- @param object
@@ -260,7 +260,7 @@ function M.NewMethods (parent)
     return methods
 end
 
-local Redirects = meta.Weak("k")
+local Redirects = meta.WeakKeyed()
 
 --- DOCME
 -- @param object

@@ -136,7 +136,7 @@ end
 -- @treturn function A
 -- @treturn table T
 function M.MakePerObjectCallList ()
-	local object_to_list, list = meta.Weak("k")
+	local object_to_list, list = meta.WeakKeyed()
 
 	return function(func, object)
 		local curf = object_to_list[object]
@@ -212,14 +212,6 @@ function M.NewDispatcher ()
 	return dispatcher
 end
 
-local Commands = meta.Weak("k")
-
---- DOCME
--- n.b. see note for SetActionCommands
-function M.GetActionCommands (action)
-	return Commands[action]
-end
-
 -- List iterator body
 local function AuxList (list, index)
 	if not index then
@@ -235,17 +227,6 @@ end
 -- @treturn iterator X
 function M.IterateCallList (list)
 	return AuxList, list, list and list("n")
-end
-
---- DOCME
--- n.b. this is just meant to share some logic between modules
--- however, once entities and / or components become pervasive it
--- will basically be obsolete
-function M.SetActionCommands (action, cmds)
-	assert(type(action) == "function", "Non-function action")
-	assert(cmds == nil or type(cmds) == "function", "Non-function commands")
-
-	Commands[action] = cmds
 end
 
 --- DOCME

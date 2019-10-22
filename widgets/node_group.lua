@@ -225,7 +225,7 @@ local function HideNonTargets (ng, node, how)
 end
 
 -- --
-local Group = meta.Weak("kv")
+local Group = meta.FullyWeak()
 
 -- Options for a temporary line --
 local LineOptsMaybe = { color = { 1, .25, .25, .75 } }

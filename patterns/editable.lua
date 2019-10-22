@@ -507,7 +507,7 @@ end
 -- Needs to handle all three alignments, too
 
 -- --
-local CharWidthForFont = meta.Weak("k")
+local CharWidthForFont = meta.WeakKeyed()
 
 local function Finalize (event)
 	local editable = event.target
