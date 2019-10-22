@@ -214,7 +214,7 @@ end
 -- All of this WILL make versioning harder, of course :)
 
 -- also some of the functions that make up editor events
--- e.g. "super" part (event block, action, etc.); part itself; "super" boilerplate; part follow-up
+-- e.g. "super" part (action, block, etc.); part itself; "super" boilerplate; part follow-up
 -- how to compose this w.l.o.g.?
 
 	-- Forward references --
