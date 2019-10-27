@@ -39,12 +39,6 @@ local type = type
 local lazy = require("tektite_core.table.lazy")
 local var_preds = require("tektite_core.var.predicates")
 
--- Imports --
-local HasMeta = var_preds.HasMeta
-local IsCallable = var_preds.IsCallable
-local IsInteger = var_preds.IsInteger
-local SubTablesOnDemand = lazy.SubTablesOnDemand
-
 -- Exports --
 local M = {}
 
@@ -84,7 +78,7 @@ end
 local function Pretty (v, hex_uints, guard, tfunc)
 	local vtype = type(v)
 
-	if vtype == "number" and IsInteger(v) then
+	if vtype == "number" and var_preds.IsInteger(v) then
 		return "integer", IntegerToString(v, hex_uints)
 	elseif vtype == "string" then
 		return "string", format("\"%s\"", v)
@@ -108,7 +102,7 @@ end
 
 -- Prints a table level
 local function PrintLevel (t, outf, tfunc, indent, guard, hex_uints)
-	local lists = SubTablesOnDemand()
+	local lists = lazy.SubTablesOnDemand()
 	local member_indent = indent .. "   "
 
 	-- Mark this table to guard against cycles.
@@ -120,7 +114,7 @@ local function PrintLevel (t, outf, tfunc, indent, guard, hex_uints)
 	for k in pairs(t) do
 		local ktype = type(k)
 
-		if ktype == "number" and IsInteger(k) then
+		if ktype == "number" and var_preds.IsInteger(k) then
 			ktype = "integer"
 		end
 
@@ -142,7 +136,7 @@ local function PrintLevel (t, outf, tfunc, indent, guard, hex_uints)
 				-- Print out the current line. If the value has string conversion, use
 				-- that, ignoring its type. Otherwise, if this is a table, this will open
 				-- it up; proceed to recursively dump the table itself.
-				if HasMeta(v, "__tostring") then
+				if var_preds.HasMeta(v, "__tostring") then
 					vstr = tostring(v)
 				else
 					vtype, vstr = Pretty(v, hex_uints, guard, tfunc)
@@ -226,10 +220,10 @@ function M.Print (var, opts)
 	outf = outf or DefaultOutf
 	tfunc = tfunc or DefTableFunc
 
-	assert(IsCallable(outf), "Invalid output function")
-	assert(IsCallable(tfunc), "Invalid table function")
+	assert(var_preds.IsCallable(outf), "Invalid output function")
+	assert(var_preds.IsCallable(tfunc), "Invalid table function")
 
-	if HasMeta(var, "__tostring") then
+	if var_preds.HasMeta(var, "__tostring") then
 		outf("%s%s", indent, tostring(var))
 
 	elseif type(var) == "table" then
@@ -253,7 +247,7 @@ end
 --- Sets the default output function used by @{Print}.
 -- @tparam ?|callable|nil outf Output function to assign, or **nil** to clear the default.
 function M.SetDefaultOutf (outf)
-	assert(outf == nil or IsCallable(outf), "Invalid output function")
+	assert(outf == nil or var_preds.IsCallable(outf), "Invalid output function")
 
 	DefaultOutf = outf
 end

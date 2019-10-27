@@ -26,9 +26,9 @@
 -- Standard library imports --
 local assert = assert
 local setmetatable = setmetatable
+local type = type
 
 -- Modules --
-local bound_args = require("tektite_core.var.bound_args")
 local var_preds = require("tektite_core.var.predicates")
 
 -- Imports --
@@ -44,9 +44,6 @@ local M = {}
 --
 --
 --
-
--- Bound table getter --
-local GetTable
 
 --- Builds a new table. If one of the table's keys is missing, it will be filled in
 -- automatically when indexed with a new object.
@@ -151,27 +148,35 @@ do
 	-- Note that this effect is not propagated to the subtables.
 	--
 	-- The table's metatable is fixed.
+	-- @ptable[opt] opts Subtable options, which include:
 	--
-	-- When called in a bound table context, the binding is used as the destination table.
-	-- @string[opt] choice If **nil**, subtables will be normal tables.
+	-- * **choice**: If **nil**, subtables will be normal tables.
 	--
-	-- Otherwise, the weak option, as per @{tektite_core.table.funcs.Weak}, to assign a new subtable.
-	-- @string[opt] weakness The weak option, as per @{tektite_core.table.funcs.Weak}, to apply to the
-	-- table itself.
+	-- Otherwise, the weak option, one of **"k"**, **"v"**, or **"kv"**, to assign a new subtable.
+	-- * **weakness**: The weak option to apply to the table itself.
 	--
 	-- If **nil**, it will be a normal table.
-	-- @callable[opt] cache Optional cache from which to pull subtables.
+	-- * **cache**: Optional callable cache from which to pull subtables.
 	--
 	-- If **nil**, fresh tables will always be supplied.
+	-- * **out**: Top-level destination table. If absent, a new table is supplied.
 	-- @treturn table Table.
-	-- @see tektite_core.var.bound_args.WithBoundTable
-	function M.SubTablesOnDemand (choice, weakness, cache)
-		local dt = GetTable()
+	function M.SubTablesOnDemand (opts)
+		assert(opts == nil or type(opts) == "table", "Invalid options")
+
+		local dt, choice, weakness, cache
+
+		if opts then
+			dt, choice, weakness, cache = opts.out, opts.choice, opts.weakness, opts.cache
+		end
+
 		local mt = Weakness[choice]
 
 		assert(choice == nil or mt, "Invalid choice")
 		assert(weakness == nil or Weakness[weakness], "Invalid weakness")
 		assert(cache == nil or IsCallable(cache), "Uncallable cache function")
+
+		dt = dt or {}
 
 		setmetatable(dt, OnDemand[weakness or false])
 
@@ -181,9 +186,6 @@ do
 		return dt
 	end
 end
-
--- Register bound-table functions.
-GetTable = bound_args.Register{ M.SubTablesOnDemand }
 
 _MakeOnDemand_Meta_ = M.MakeOnDemand_Meta
 _MakeOnDemand_Meta_Nullary_ = M.MakeOnDemand_Meta_Nullary

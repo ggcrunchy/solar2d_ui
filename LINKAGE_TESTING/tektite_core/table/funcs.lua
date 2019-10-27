@@ -25,25 +25,12 @@
 
 -- Standard library imports --
 local assert = assert
-local getmetatable = getmetatable
 local ipairs = ipairs
 local pairs = pairs
-local rawequal = rawequal
-local rawget = rawget
-local rawset = rawset
-local setmetatable = setmetatable
 local type = type
 
 -- Modules --
-local bound_args = require("tektite_core.var.bound_args")
 local wipe = require("tektite_core.array.wipe")
-
--- Cookies --
-local _self = {}
-
--- Imports --
-local WipeRange = wipe.WipeRange
-local WithBoundTable = bound_args.WithBoundTable
 
 -- Cached module references --
 local _Map_
@@ -55,95 +42,40 @@ local M = {}
 --
 --
 
--- Bound table getter --
-local GetTable
-
--- Helper to fix copy case where a table was its own key
-local function FixSelfKey (t, dt)
-	if rawget(t, t) ~= nil and not rawequal(t, dt) then
-		rawset(dt, dt, rawget(dt, t))
-		rawset(dt, t, nil)
-	end
-end
-
 -- Helper to pass value through unaltered
 local function PassThrough (var)
 	return var
+end
+
+local function CheckOpts (opts)
+	assert(opts == nil or type(opts) == "table", "Invalid options")
+
+	return opts and opts.out or {}
 end
 
 --- Shallow-copies a table.
 --
 -- @todo Account for cycles, table as key; link to Map
 -- @ptable t Table to copy.
--- @param how Copy behavior, as per `Map`.
--- @param how_arg Copy behavior, as per `Map`.
+-- @ptable[opt] opts TODO!
 -- @treturn table Copy.
-function M.Copy (t, how, how_arg)
-    return _Map_(t, PassThrough, how, nil, how_arg)
+function M.Copy (t, opts)
+    return _Map_(t, PassThrough, opts)
 end
 
 --- Copies all values with the given keys into a second table with those keys.
 -- @ptable t Table to copy.
 -- @ptable keys Key array.
+-- @ptable[opt] opts TODO!
 -- @treturn table Copy.
-function M.CopyK (t, keys)
-    local dt = GetTable()
+function M.CopyK (t, keys, opts)
+    local dt = CheckOpts(opts)
 
     for _, k in ipairs(keys) do
         dt[k] = t[k]
     end
 
     return dt
-end
-
--- Forward reference --
-local AuxDeepCopy
-
-do
-	-- Maps a table value during copies
-	local function Mapping (v, guard)
-		if type(v) == "table" then
-			return AuxDeepCopy(v, guard)
-		else
-			return v
-		end
-	end
-
-	-- DeepCopy helper
-	function AuxDeepCopy (t, guard)
-		local dt = guard[t]
-
-		if dt then
-			return dt
-		else
-			dt = GetTable()
-
-			guard[t] = dt
-
-			WithBoundTable(dt, _Map_, t, Mapping, nil, guard, _self)
-
-			return setmetatable(dt, getmetatable(t))
-		end
-	end
-
-	--- Deep-copies a table.
-	--
-	-- This will also copy metatables, and thus assumes these are accessible.
-	--
-	-- @todo Account for cycles, table as key
-	-- @ptable t Table to copy.
-	-- @treturn table Copy.
-	function M.DeepCopy (t)
-		local dt = GetTable()
-
-		if not rawequal(t, dt) then
-			WithBoundTable(dt, AuxDeepCopy, t, {})
-
-			FixSelfKey(t, dt)
-		end
-
-		return dt
-	end
 end
 
 --- Finds a match for a value in the table. The **"eq"** metamethod is respected by
@@ -201,13 +133,17 @@ end
 -- @param arg Argument to _func_.
 -- @return Interruption result, or **nil** if the iteration completed.
 function M.ForEach (t, func, is_array, arg)
+	local result
+
 	for _, v in (is_array and ipairs or pairs)(t) do
-		local result = func(v, arg)
+		result = func(v, arg)
 
 		if result ~= nil then
-			return result
+			break
 		end
 	end
+
+	return result
 end
 
 --- Key-value variant of @{ForEach}.
@@ -220,13 +156,17 @@ end
 -- @param arg Argument to _func_.
 -- @return Interruption result, or **nil** if the iteration completed.
 function M.ForEachKV (t, func, is_array, arg)
+	local result
+
 	for k, v in (is_array and ipairs or pairs)(t) do
 		local result = func(k, v, arg)
 
 		if result ~= nil then
-			return result
+			break
 		end
 	end
+
+	return result
 end
 
 --- Builds a table's inverse, i.e. a table with the original keys as values and vice versa.
@@ -234,9 +174,10 @@ end
 -- Where the same value maps to many keys, no guarantee is provided about which key becomes
 -- the new value.
 -- @ptable t Table to invert.
+-- @ptable[opt] opts TODO!
 -- @treturn table Inverse table.
-function M.Invert (t)
-	local dt = GetTable()
+function M.Invert (t, opts)
+	local dt = CheckOpts(opts)
 
 	assert(t ~= dt, "Invert: Table cannot be its own destination")
 
@@ -250,9 +191,10 @@ end
 --- Makes a set, i.e. a table where each element has value **true**. For each value in
 -- _t_, an element is added to the set, with the value instead as the key.
 -- @ptable t Key array.
+-- @ptable[opt] opts TODO!
 -- @treturn table Set constructed from array.
-function M.MakeSet (t)
-	local dt = GetTable()
+function M.MakeSet (t, opts)
+	local dt = CheckOpts(opts)
 
 	for _, v in ipairs(t) do
 		dt[v] = true
@@ -273,7 +215,7 @@ end
 -- how_arg: Argument specific to behavior
 local function Resolve (t, how, offset, how_arg)
 	if how == "overwrite_trim" then
-		WipeRange(t, offset, how_arg)
+		wipe.WipeRange(t, offset, how_arg)
 	end
 end
 
@@ -282,10 +224,15 @@ end
 -- how: Mapping behavior
 -- arg: Mapping argument
 -- how_arg: Argument specific to mapping behavior
+-- @ptable[opt] opts TODO!
 -- Returns: Mapped table
 -------------------------------------------------- DOCMEMORE
-function M.Map (t, map, how, arg, how_arg)
-	local dt = GetTable()
+function M.Map (t, map, opts)
+	local dt, how, arg, how_arg = CheckOpts(opts)
+
+	if opts then
+		how, arg, how_arg = opts.how, opts.arg, opts.how_arg
+	end
 
 	if how then
 		local offset = GetOffset(dt, how)
@@ -311,10 +258,12 @@ end
 -- ka: Key array
 -- map: Mapping function
 -- arg: Mapping argument
+-- @ptable[opt] opts TODO!
 -- Returns: Mapped table
 ------------------------- DOCMEMORE
-function M.MapK (ka, map, arg)
-	local dt = GetTable()
+function M.MapK (ka, map, opts)
+	local dt = CheckOpts(opts)
+	local arg = opts and opts.arg
 
 	for _, k in ipairs(ka) do
 		dt[k] = map(k, arg)
@@ -328,10 +277,15 @@ end
 -- how: Mapping behavior
 -- arg: Mapping argument
 -- how_arg: Argument specific to mapping behavior
+-- @ptable[opt] opts TODO!
 -- Returns: Mapped table
 -------------------------------------------------- DOCMEMORE
-function M.MapKV (t, map, how, arg, how_arg)
-	local dt = GetTable()
+function M.MapKV (t, map, opts)
+	local dt, how, arg, how_arg = CheckOpts(opts)
+
+	if opts then
+		how, arg, how_arg = opts.how, opts.arg, opts.how_arg
+	end
 
 	if how then
 		local offset = GetOffset(dt, how)
@@ -355,10 +309,15 @@ end
 
 -- Moves items into a second table
 -- how, how_arg: Move behavior, argument
+-- @ptable[opt] opts TODO!
 -- Returns: Destination table
 ----------------------------------------- DOCMEMORE
-function M.Move (t, how, how_arg)
-	local dt = GetTable()
+function M.Move (t, opts)
+	local dt, how, how_arg = CheckOpts(opts)
+
+	if opts then
+		how, how_arg = opts.how, opts.how_arg
+	end
 
 	if t ~= dt then
 		if how then
@@ -379,9 +338,6 @@ function M.Move (t, how, how_arg)
 
 	return dt
 end
-
--- Register bound-table functions.
-GetTable = bound_args.Register{ M.Copy, M.CopyK, AuxDeepCopy, M.DeepCopy, M.Invert, M.MakeSet, M.Map, M.MapK, M.MapKV, M.Move }
 
 _Map_ = M.Map
 
