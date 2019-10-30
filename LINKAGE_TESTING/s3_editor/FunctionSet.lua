@@ -205,35 +205,34 @@ end
 -- String keys beginning with an underscore are reserved. In particular, **_name** is
 -- required and will be used as the name of the set.
 --
--- The remainder of the params are key-value pairs, with the value being a function and the
--- key its name. These will be added under the same names in the definition.
+-- The remaining parameters are key-value pairs, with the value being a function and the key
+-- its name. These will be added under the same keys in the definition.
 --
 -- The name of a previously defined set may be supplied under **_prototype**, in which case
--- the definition will also incorporate the functions in that set. A prototype may also be
--- accompanied by **_before** and **_instead** tables, described in what follows.
+-- its functions will be incorporated into the new set. A prototype may also be accompanied
+-- by **_before** and **_instead** tables, described in what follows.
 --
--- In the absence of a name clash, either the prototype's function or the new one, whichever
--- actually exists, will be added to the definition.
+-- In the absence of a name clash, either the function in the prototype or the one in _params_
+-- &mdash;whichever actually exists&mdash;will be added to the new set.
 --
 -- Otherwise, the two functions are usually sequenced, i.e. the final function will invoke
--- one then the other. By default, new functions come after those from the prototype; a
--- function found under the same name in **_before** will precede them. It is fine to supply
--- either or both. (**N.B.** Prototype entries might themselves be sequences. For composition
--- purposes they are interpreted as a unit.)
+-- one then the other. A function found in _params_ comes after its prototype counterpart; a
+-- function in **_before** will precede it. It is fine to supply either or both. (**N.B.**
+-- Prototype entries might themselves be sequences. For composition purposes these are
+-- treated as a unit.)
 --
--- Any functions found in **_instead**, on the other hand, will override anything coming from
--- the prototype. A name in **_instead** may not also be in the "before" or "after" entries.
+-- A function found in **_instead**, on the other hand, is used in place of the prototype's
+-- entry. An "instead" name may not also belong to "before" or "after".
 --
--- A prototype might not provide a function found in any of the provided tables. In this
--- case, the aforementioned "after", "before", and "instead" logic behave as if given a
--- do-nothing function.
+-- If a prototype has no function with a given name, the composition logic interprets it as
+-- providing one that does nothing.
 --
 -- A **_state** function may be made available for @{GetState}.
 --
 -- If an **_init** function is provided, it is called as `init(name, def)` once the rest of the
--- definition has been established. This might error, so _def_ is not yet registered (and
+-- definition _def_ has been established. This might error, so _def_ is not yet registered (and
 -- thus available as a prototype); `GetState(name)` is allowed, though.
--- @treturn table Set definition, suitable as a methods metatable.
+-- @treturn table Set definition, suitable as a methods table.
 --
 -- Its contents may be modified, aside from values with reserved keys.
 -- @return _params_.**name**, as a convenience.
