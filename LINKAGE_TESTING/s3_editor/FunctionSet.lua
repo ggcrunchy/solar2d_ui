@@ -77,34 +77,27 @@ local State = {}
 --
 -- If it already exists, the state is returned.
 --
--- Otherwise, if the parameters to @{New} contain a **_state** member, this is called as
--- `state{ name = name }`. If the table's **result** member is non-**nil** afterward, that
--- becomes the state; otherwise, it will be **false**.
+-- Failing that, we request any **state** that was provided as an option to @{New}.
 --
--- Failing that, an empty table is created.
+-- If found, it is called as `result = state{ name = name }`. If _result_ is non-**nil** (the
+-- modified table, for instance), this becomes the state.
 --
--- **N.B.** This may be called within **_init**, cf. @{New}, with the same provisos.
+-- Otherwise, the state is assigned a new empty table.
+--
+-- **N.B.** This may be called within **init**, cf. @{New}, with the same provisos.
 -- @param name Name of set.
 -- @return State.
 function M.GetState (name)
 	local state = State[name]
 
 	if state == nil then
-		local set = assert(Sets[name], "Set not found")
-		local make = set._state
+		local make = assert(Sets[name], "Set not found")("get_state")
+		local result = make{ name = name }
 
-		if make then
-			local work = { name = name }
+		state = result == nil and {} or result -- allow for result of false
 
-			make(work)
-
-			state, set._state = work.result or false
-		else
-			state = {}
-		end
+		State[name] = state
 	end
-
-	State[name] = state
 
 	return state
 end
@@ -129,10 +122,7 @@ local function AddFunctionDirectly (def, name, func)
 end
 
 local function PrototypeEntry (proto, name)
-	local list = proto._list
-	local entry = list and list[name] or proto[name] -- n.b. fallthrough when list[name] nil
-
-	return adaptive.IterArray(entry)
+	return adaptive.IterArray(proto[name])
 end
 
 local function AppendFunction (def, name, func, proto)
@@ -158,32 +148,20 @@ local function PrependFunction (def, name, func, proto)
 end
 
 local function WrapCallLists (def)
-	local list
-
 	for k, v in pairs(def) do
 		if type(v) == "table" then
-			list = list or {} -- only create if needed
-
-			local function wrapped (event)
+			def[k] = function(event)
 				for i = 1, #v do
 					v[i](event)
 				end
 			end
-
-			wrapped[k], def[k] = wrapped
 		end
 	end
-
-	def._list = list
 end
 
-local Reserved = { _before = true, _instead = true, _list = true, _name = true, _prototype = true }
-
-local function AddNewFunctions (def, params, add, proto)
-	for k, v in pairs(params) do
-		if not Reserved[k] then
-			add(def, k, v, proto)
-		end
+local function AddNewFunctions (def, funcs, add, proto)
+	for k, v in pairs(funcs) do
+		add(def, k, v, proto)
 	end
 
 	WrapCallLists(def)
@@ -191,111 +169,113 @@ end
 
 local function MergePrototype (def, proto)
 	for k, v in pairs(proto) do
-		if k == "_list" and def._list then
-			MergePrototype(def._list, v) -- will both be tables without own _list member
-		elseif def[k] == nil then -- not defined in new type, including not extending anything in prototype
+		if def[k] == nil then
 			def[k] = v
 		end
 	end
 end
 
 --- Instantiate a **FunctionSet**.
--- @ptable params Functions and parameters for the set.
+-- @param Set name, which may be any non-**nil** or -NaN value.
+-- @ptable funcs Key-value pairs, with each value being a function and the key its name.
+-- These will be added under the same keys in the definition, according to certain options.
+-- @ptable[opt] Creation options.
 --
--- String keys beginning with an underscore are reserved. In particular, **_name** is
--- required and will be used as the name of the set.
---
--- The remaining parameters are key-value pairs, with the value being a function and the key
--- its name. These will be added under the same keys in the definition.
---
--- The name of a previously defined set may be supplied under **_prototype**, in which case
+-- The name of a previously defined set may be supplied under **prototype**, in which case
 -- its functions will be incorporated into the new set. A prototype may also be accompanied
--- by **_before** and **_instead** tables, described in what follows.
+-- by **before** and **instead** tables, described in what follows.
 --
 -- In the absence of a name clash, either the function in the prototype or the one in _params_
 -- &mdash;whichever actually exists&mdash;will be added to the new set.
 --
 -- Otherwise, the two functions are usually sequenced, i.e. the final function will invoke
 -- one then the other. A function found in _params_ comes after its prototype counterpart; a
--- function in **_before** will precede it. It is fine to supply either or both. (**N.B.**
+-- function in **before** will precede it. It is fine to supply either or both. (**N.B.**
 -- Prototype entries might themselves be sequences. For composition purposes these are
 -- treated as a unit.)
 --
--- A function found in **_instead**, on the other hand, is used in place of the prototype's
+-- A function found in **instead**, on the other hand, is used in place of the prototype's
 -- entry. An "instead" name may not also belong to "before" or "after".
 --
 -- If a prototype has no function with a given name, the composition logic interprets it as
 -- providing one that does nothing.
 --
--- A **_state** function may be made available for @{GetState}.
+-- A **state** function may be made available for @{GetState}.
 --
--- If an **_init** function is provided, it is called as `init(name, def)` once the rest of the
--- definition _def_ has been established. This might error, so _def_ is not yet registered (and
--- thus available as a prototype); `GetState(name)` is allowed, though.
+-- If an **init** function is provided, it is called as `init(name, def)` once the definition
+-- _def_ has been established, e.g. to modify _def_. This might error, so _def_ is not yet
+-- registered (and thus available as a prototype).
 -- @treturn table Set definition, suitable as a methods table.
---
--- Its contents may be modified, aside from values with reserved keys.
--- @return _params_.**name**, as a convenience.
-function M.New (params)
-	assert(type(params) == "table", "Invalid params")
-
-	local name = params._name
-
+function M.New (name, funcs, opts)
 	assert(name ~= nil and name == name, "Invalid name")
 	assert(not Sets[name], "Name already in use")
+	assert(type(funcs) == "table", "Invalid params")
+	assert(opts == nil or type(opts) == "table", "Invalid params")
 
-	local before, instead, pname, def = params._before, params._instead, params._prototype, {}
+	local def, before, init, instead, pname, state = {}
+
+	if opts then
+		before, init, instead, pname, state = opts.before, opts.init, opts.instead, opts.prototype, opts.state
+	end
 
 	if pname == nil then
 		assert(not before, "Prototype must be available for `before` calls")
 		assert(not instead, "Prototype must be available for `instead` calls")
 
-		AddNewFunctions(def, params, AddFunctionDirectly)
+		AddNewFunctions(def, funcs, AddFunctionDirectly)
 	else
-		local proto = assert(Sets[pname], "Prototype not found")
+		local proto, pready = assert(Sets[pname], "Prototype not found")()
 
-		assert(proto._initialized, "Prototype still being initialized")
+		assert(pready, "Prototype still being initialized")
 
 		if instead then
-			assert(not instead._state, "Instead list may not contain `state` call")
-
 			for k, v in pairs(instead) do
 				assert(not (before and before[k] ~= nil), "Entry in `instead` also in `before`")
-				assert(params[k] ~= nil, "Entry in `instead` also in main list")
+				assert(funcs[k] ~= nil, "Entry in `instead` also in main list")
 
 				def[k] = v
 			end
 		end
 
 		if before then
-			assert(not before._state, "Before list may not contain `state` call")
-
 			for k, v in pairs(before) do
 				PrependFunction(def, k, v, proto)
 			end
 		end
 
-		AddNewFunctions(def, params, AppendFunction, proto)
+		AddNewFunctions(def, funcs, AppendFunction, proto)
 		MergePrototype(def, proto)
 	end
 
-	Sets[name] = def -- add provisionally for GetState()...
+	local ready
 
-	local init = def._init
+	local function with_def (what)
+		if what ~= "get_state" then
+			return def, ready
+		else
+			local result = state
+
+			state = nil
+
+			return result
+		end
+	end
+
+	Sets[name] = with_def -- add provisionally for GetState()...
 
 	if init then
 		local ok, err = pcall(init, name, def)
 
 		if not ok then
-			Sets[name] = nil -- ...but remove if something went wrong
+			Sets[name], State[name] = nil -- ...but remove if something went wrong
 
 			error(err)
 		end
 	end
 
-	def._initialized = true
+	ready = true
 
-	return def, name
+	return def
 end
 
 _GetState_ = M.GetState
