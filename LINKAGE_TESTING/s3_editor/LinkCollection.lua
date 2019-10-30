@@ -1,12 +1,13 @@
---- Collections of links between item pairs.
+--- Collections of links between objects.
 --
 -- A link is formed between two endpoints: `(id1, name1)` and `(id2, name2)`. The (distinct)
--- IDs specify the items themselves, whereas particular attachment points, or "nodes", are
--- listed by name. An example pairing: `(7, "out")-(2, "in")`.
+-- IDs specify the objects themselves, whereas the named denote particular attachment
+-- points, or "nodes". An example pairing: `(7, "out")-(2, "in")`.
 --
--- An **ID** or **NodeName** value may be anything other than **nil** or NaN.
+-- An object may be linked to multiple objects, or even to the same object multiple times via
+-- different attachment points.
 --
--- An item may belong to multiple collections, each describing a unique linking situation.
+-- An **ID** or **Name** may be any value other than **nil** or NaN.
 -- @module LinkCollection
 
 --
@@ -62,9 +63,7 @@ local function LinkPosition (owner, link)
 	end
 end
 
---- Break this link.
---
--- If the link is no longer intact, this is a no-op.
+--- If this link is intact, break it.
 -- @see Link:IsIntact
 function Link:Break ()
 	local pair_links = self.m_owner
@@ -83,16 +82,16 @@ end
 
 ---
 -- @treturn[1] ID ID #1...
--- @treturn[1] ID ...and #2.
--- @treturn[1] NodeName Node name for ID #1...
--- @treturn[1] NodeName ...and for ID #2.
+-- @treturn[1] Name ...and name of corresponding attachment point.
+-- @treturn[1] ID ID #2...
+-- @treturn[1] Name ...ditto.
 -- @return[2] **nil**, meaning the link is no longer intact.
--- @see Link:GetOtherItem, Link:IsIntact
-function Link:GetLinkedItems ()
+-- @see Link:GetOtherPair, Link:IsIntact
+function Link:GetLinkedPairs ()
 	local pair_links = self.m_owner
 
 	if pair_links then
-		return pair_links.m_id1, pair_links.m_id2, self.m_name1, self.m_name2
+		return pair_links.m_id1, self.m_name1, pair_links.m_id2, self.m_name2
 	end
 
 	return nil
@@ -101,10 +100,10 @@ end
 ---
 -- @tparam ID id
 -- @treturn[1] ID The ID paired with _id_ in this link...
--- @treturn[1] NodeName ...and its node name.
--- @return[2] **nil**, meaning neither linked item uses _id_ or the link is no longer intact.
--- @see LinkCollection:LinkItems, Link:GetLinkedItems, Link:IsIntact
-function Link:GetOtherItem (id)
+-- @treturn[1] Name ...and its node name.
+-- @return[2] **nil**, meaning neither pair uses _id_ or the link is no longer intact.
+-- @see LinkCollection:LinkPairs, Link:GetLinkedPairs, Link:IsIntact
+function Link:GetOtherPair (id)
 	local pair_links = self.m_owner
 
 	if pair_links then
@@ -122,7 +121,7 @@ end
 
 ---
 -- @treturn boolean The link is still intact?
--- @see LinkCollection:LinkItems, LinkCollection:RemoveID, Link:Break
+-- @see LinkCollection:LinkPairs, LinkCollection:Remove, Link:Break
 function Link:IsIntact ()
 	return self.m_owner ~= nil
 end
@@ -131,11 +130,17 @@ local LinkCollection = {}
 
 LinkCollection.__index = LinkCollection
 
-local Counter, IDToCounter = 0, { __mode = "k" }
-
-setmetatable(IDToCounter, IDToCounter)
+local Counter, IDToCounter = 0
 
 local function GetCounter (id)
+	if id == "__mode" then -- guard for weak table key
+		return -1
+	elseif not IDToCounter then
+		IDToCounter = { __mode = "k" }
+
+		setmetatable(IDToCounter, IDToCounter)
+	end
+
 	local counter = IDToCounter[id]
 
 	if not counter then
@@ -149,16 +154,14 @@ end
 local function LessThan (id1, id2)
 	local type1, type2 = type(id1), type(id2)
 
-	if type1 == type2 then
-		if type1 == "string" or type1 == "number" then
-			return id1 < id2
-		elseif type1 == "boolean" then
-			return id1 -- n.b. will be keys, so one must be true and the other false
-		else -- GC object
-			return GetCounter(id1) < GetCounter(id2)
-		end
-	else
+	if type1 ~= type2 then
 		return type1 < type2
+	elseif type1 == "string" or type1 == "number" then
+		return id1 < id2
+	elseif type1 == "boolean" then
+		return id1 -- n.b. will be keys, so one must be true and the other false
+	else -- GC object
+		return GetCounter(id1) < GetCounter(id2)
 	end
 end
 
@@ -168,7 +171,7 @@ end
 
 ---
 -- @tparam ID id
--- @tparam NodeName name
+-- @tparam Name name
 -- @treturn uint Number of links to _id_ via _name_.
 function LinkCollection:CountLinks (id, name)
 	local list, count = self[id], 0
@@ -186,27 +189,6 @@ function LinkCollection:CountLinks (id, name)
 	end
 
 	return count
-end
-
---- DOCME
--- @tparam ID id
--- @param name
--- @callable func
--- @param arg
-function LinkCollection:ForEachItemLink (id, name, func, arg)
-	local list = self[id]
-
-	if list then
-		for id2, pair_links in pairs(list) do
-			local key = NameKey(id, id2)
-
-			for _, link in ipairs(pair_links) do
-				if rawequal(link[key], name) then
-					func(link, id, arg)
-				end
-			end
-		end
-	end
 end
 
 --- DOCME
@@ -240,9 +222,30 @@ function LinkCollection:ForEachLinkWithID (id, func, arg)
 	end
 end
 
+--- DOCME
+-- @tparam ID id
+-- @param name
+-- @callable func
+-- @param arg
+function LinkCollection:ForEachPairLink (id, name, func, arg)
+	local list = self[id]
+
+	if list then
+		for id2, pair_links in pairs(list) do
+			local key = NameKey(id, id2)
+
+			for _, link in ipairs(pair_links) do
+				if rawequal(link[key], name) then
+					func(link, id, arg)
+				end
+			end
+		end
+	end
+end
+
 ---
 -- @tparam ID id
--- @tparam NodeName name
+-- @tparam Name name
 -- @treturn boolean X
 function LinkCollection:HasLinks (id, name)
 	local list = self[id]
@@ -268,7 +271,7 @@ end
 
 ---
 -- @return Iterator that supplies each **ID** involved in links.
--- @see LinkCollection:LinkItems, LinkCollection:RemoveID
+-- @see LinkCollection:LinkPairs, LinkCollection:Remove
 function LinkCollection:IterIDs ()
 	return AuxIterIDs, self, nil
 end
@@ -295,13 +298,13 @@ end
 
 --- DOCME
 -- @tparam ID id1
+-- @tparam Name name1
 -- @tparam ID id2
--- @tparam NodeName name1
--- @tparam NodeName name2
+-- @tparam Name name2
 -- @treturn[1] Link L
 -- @return[2] **nil**, indicating failure.
 -- @treturn[2] string Reason for failure.
-function LinkCollection:LinkItems (id1, id2, name1, name2)
+function LinkCollection:LinkPairs (id1, name1, id2, name2)
 	CheckValue(id1, "Invalid ID #1")
 	CheckValue(id2, "Invalid ID #2")
 	CheckValue(name1, "Invalid name #1") -- strictly speaking, nil names are allowed, but these
@@ -340,7 +343,7 @@ end
 --- DOCME
 -- @tparam ID id
 -- @see Link:IsIntact
-function LinkCollection:RemoveID (id)
+function LinkCollection:Remove (id)
 	local list = self[id]
 
 	if list then

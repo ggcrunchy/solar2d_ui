@@ -1,4 +1,4 @@
---- **FunctionSet**s are bundles of related functions.
+--- Bundles of related functions.
 --
 -- Inheritance is supported, with functions being strung together in sequence if they share
 -- the same name. This somewhat resembles behaviors found in aspect-oriented programming and

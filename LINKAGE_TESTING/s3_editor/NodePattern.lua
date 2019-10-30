@@ -75,10 +75,10 @@ local function GetInterfaces (env, what, which)
 
 		if interfaces then
 			for i = 1, #interfaces do
-				list = adaptive.Append(list, Mangle(interfaces[i]))
+				list = adaptive.Append(list, Mangle(which, interfaces[i]))
 			end
 		else
-			list = adaptive.Append(nil, Mangle(what))
+			list = adaptive.Append(nil, Mangle(which, what))
 		end
 
 		env.m_mangled[index], ifx_list[what] = list, index
