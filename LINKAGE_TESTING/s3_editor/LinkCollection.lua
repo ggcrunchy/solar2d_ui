@@ -1,8 +1,8 @@
 --- Collections of links between objects.
 --
 -- A link is formed between two endpoints: `(id1, name1)` and `(id2, name2)`. The (distinct)
--- IDs specify the objects themselves, whereas the named denote particular attachment
--- points, or "nodes". An example pairing: `(7, "out")-(2, "in")`.
+-- IDs specify the objects themselves, whereas the names denote particular attachment
+-- points. An example pairing: `(7, "out")-(2, "in")`.
 --
 -- An object may be linked to multiple objects, or even to the same object multiple times via
 -- different attachment points.
@@ -91,7 +91,25 @@ function Link:GetLinkedPairs ()
 	local pair_links = self.m_owner
 
 	if pair_links then
-		return pair_links.m_id1, self.m_name1, pair_links.m_id2, self.m_name2
+		return pair_links.id1, self.m_name1, pair_links.id2, self.m_name2
+	end
+
+	return nil
+end
+
+---
+-- @tparam id
+-- @treturn[1] Name
+-- @return[1] **nil**, meaning neither pair uses _id_ or the link is no longer intact.
+function Link:GetName (id)
+	local pair_links = self.m_owner
+
+	if pair_links then
+		if rawequal(id, pair_links.id1) then
+			return self.m_name1
+		elseif rawequal(id, pair_links.id2) then
+			return self.m_name2
+		end
 	end
 
 	return nil
@@ -100,7 +118,7 @@ end
 ---
 -- @tparam ID id
 -- @treturn[1] ID The ID paired with _id_ in this link...
--- @treturn[1] Name ...and its node name.
+-- @treturn[1] Name ...and the name of its attachment point.
 -- @return[2] **nil**, meaning neither pair uses _id_ or the link is no longer intact.
 -- @see LinkCollection:LinkPairs, Link:GetLinkedPairs, Link:IsIntact
 function Link:GetOtherPair (id)
@@ -326,7 +344,7 @@ function LinkCollection:LinkPairs (id1, name1, id2, name2)
 		assert(rawequal(pair_links.id2, id2), "Mismatch with pair ID #2")
 
 		if FindLink(pair_links, name1, name2) then
-			return nil, "IDs already linked via these nodes"
+			return nil, "IDs already linked via these attachment points"
 		end
 	else
 		pair_links = { id1 = id1, id2 = id2 }

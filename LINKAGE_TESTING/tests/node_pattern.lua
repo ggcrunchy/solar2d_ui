@@ -1,4 +1,4 @@
---- Entry point.
+--- Node pattern unit test.
 
 --
 -- Permission is hereby granted, free of charge, to any person obtaining
@@ -23,31 +23,9 @@
 -- [ MIT license: http://www.opensource.org/licenses/mit-license.php ]
 --
 
-local var_dump = require("tektite_core.var.dump")
+-- Modules --
+local NP = require("s3_editor.NodePattern")
 
---- Helper to print formatted argument.
--- @string s Format string.
--- @param ... Format arguments.
-function printf (s, ...)
-	print(s:format(...))
-end
-
--- Install printf as the default var dump routine.
-var_dump.SetDefaultOutf(printf)
-
---- Helper to dump generic variable.
--- @param var Variable to dump.
--- @param name As per @{tektite_core.var.dump.Print}.
--- @uint limit As per @{tektite_core.var.dump.Print}.
-function vdump (var, name, limit)
-	var_dump.Print(var, name and { name = name, limit = limit })
-end
-
--- Monkey-patch.
-local type = type
-
-function display.isValid (object)
-	return type(object) == "table" and object.parent ~= nil
-end
-
-require("tests.link_collection")
+--
+--
+--

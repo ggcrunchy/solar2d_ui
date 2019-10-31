@@ -79,10 +79,8 @@ local State = {}
 --
 -- Failing that, we request any **state** that was provided as an option to @{New}.
 --
--- If found, it is called as `result = state{ name = name }`. If _result_ is non-**nil** (the
--- modified table, for instance), this becomes the state.
---
--- Otherwise, the state is assigned a new empty table.
+-- If found, it is called as `result = state(name)`. A non-**nil** _result_ will become the
+-- new state; in the other scenarios, the state is assigned a new empty table.
 --
 -- **N.B.** This may be called within **init**, cf. @{New}, with the same provisos.
 -- @param name Name of set.
@@ -92,7 +90,7 @@ function M.GetState (name)
 
 	if state == nil then
 		local make = assert(Sets[name], "Set not found")("get_state")
-		local result = make{ name = name }
+		local result = make(name)
 
 		state = result == nil and {} or result -- allow for result of false
 
@@ -231,7 +229,7 @@ function M.New (name, funcs, opts)
 		if instead then
 			for k, v in pairs(instead) do
 				assert(not (before and before[k] ~= nil), "Entry in `instead` also in `before`")
-				assert(funcs[k] ~= nil, "Entry in `instead` also in main list")
+				assert(not funcs[k], "Entry in `instead` also in main list")
 
 				def[k] = v
 			end
