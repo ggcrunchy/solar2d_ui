@@ -213,7 +213,7 @@ end)
 
 print("")
 
-
+-- TODO: now try with non-integer / string IDs and names...
 
 --[[
 Needs a home:

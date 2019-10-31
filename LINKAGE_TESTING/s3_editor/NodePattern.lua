@@ -288,7 +288,7 @@ local Environments = {}
 -- @param name Node name, expected to be unique among both exports and imports.
 --
 -- String-type names that end in **"*"** are interpreted as templates and may be cloned via
--- @{NodePattern:Generate}, useful for effecting certain variable length patterns.
+-- @{NodePattern:Generate}, useful for effecting certain dynamic patterns.
 -- @param what What sort of node this will be.
 --
 -- If this is a string, it may also end with some combination of options: **"-"** or **"+"**
@@ -297,20 +297,19 @@ local Environments = {}
 --
 -- Three kinds of node are currently available: functions, values, and wildcards.
 --
--- Functions are denoted by _what_ being **"func"** and will only match fellow functions.
+-- Functions are denoted by _what_ being **"event"** and will only match fellow events.
 --
--- Values are subtyped by _what_ and will typically give themselves the interface generated
+-- Values are subtyped by _what_ and will typically give themselves the interface derived
 -- from _what_ and the node's list, e.g. something like `interface = NameFrom(what, "exports")`,
 -- although this can be changed on a case-by-case basis in the interface lists, cf.
--- @{NewEnvironment}. A value node will match the interface in the opposite list, e.g.
--- `opposite = NameFrom(what, "imports")` with respect to the previous example.
+-- @{NewEnvironment}. The node in question will match the interface `opposite = NameFrom(what, "imports")`.
 --
 -- By default, values will also have a "this is a value" interface, making them visible
 -- to @{ImplementsValue}, and also try to match wildcards. The strict modifier (**"="** from
 -- above) will let them opt out of this policy.
 --
 -- When a **"?"** or **"!"** modifier is present, _what_ is the name of a wildcard predicate, cf.
--- @{NewEnvironment}, which will be used to try matching values. In the mixture case (**"!"**),
+-- @{NewEnvironment}, which will be used to try to match values. In the mixture case (**"!"**),
 -- the value need only satisfy the predicate; otherwise, once one link has been established,
 -- any further matches must also implement its "primary interface", cf. @{NewEnvironment}.
 --
@@ -501,7 +500,7 @@ end
 function M.NewEnvironment (params)
 	assert(type(params) == "table", "Non-table params")
 
-	local env, ifx_lists, wlist = {}, params.interface_lists, params.wildcards
+	local env, ifx_lists, wlist = { m_rules = {} }, params.interface_lists, params.wildcards
 
 	if ifx_lists ~= nil then
 		assert(type(ifx_lists) == "table", "Non-table interface lists")
