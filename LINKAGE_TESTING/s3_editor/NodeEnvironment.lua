@@ -124,26 +124,28 @@ end
 
 local function DefFineMatch () return true end
 
-local function HasNoLinks (event)
-	return not event.linker:HasLinks(event.from_id, event.from_name)
+local function HasNoLinks (event, get_linker_and_endpoint)
+	local lc, id, name = get_linker_and_endpoint(event)
+
+	return not lc:HasLinks(id, name)
 end
 
-local function SynthesizeStandardRule (limit, mods, oifx_primary)
+local function SynthesizeStandardRule (limit, mods, oifx_primary, get_linker_and_endpoint)
 	local coarse = ImplementsInterface(oifx_primary, mods and mods.strict)
 	local fine = limit and HasNoLinks or DefFineMatch
 
 	return function(event)
 		if coarse(event) then
-			return fine(event), "Single-link node already bound" -- n.b. currently only possible failure
+			return fine(event, get_linker_and_endpoint), "Single-link node already bound" -- n.b. currently only possible failure
 		else
 			return false, "Incompatible type"
 		end
 	end
 end
 
-local function SingleLinkWildcard (predicate)
+local function SingleLinkWildcard (predicate, get_linker_and_endpoint)
 	return function(event)
-		if HasNoLinks(event) then
+		if HasNoLinks(event, get_linker_and_endpoint) then
 			return predicate(event), "Type not covered by wildcard"
 		else
 			return false, "Single-link node already bound"
@@ -157,12 +159,12 @@ local function MixtureWildcard (predicate)
 	end
 end
 
-local function RestrictedWildcard (predicate)
+local function RestrictedWildcard (predicate, get_linker_and_endpoint)
 	local current_ifx
 
 	return function(event)
 		if predicate(event) then
-			if HasNoLinks(event) then
+			if HasNoLinks(event, get_linker_and_endpoint) then
 				current_ifx = PredicateToInterface and PredicateToInterface[event.target]
 
 				return true
@@ -176,11 +178,11 @@ local function RestrictedWildcard (predicate)
 	end
 end
 
-local function SynthesizeWildcardRule (limit, mods, predicate)
+local function SynthesizeWildcardRule (limit, mods, predicate, get_linker_and_endpoint)
 	if limit then
-		return SingleLinkWildcard(predicate)
+		return SingleLinkWildcard(predicate, get_linker_and_endpoint)
 	elseif mods.wildcard == "?" then
-		return RestrictedWildcard(predicate)
+		return RestrictedWildcard(predicate, get_linker_and_endpoint)
 	else
 		return MixtureWildcard(predicate)
 	end
@@ -216,7 +218,7 @@ local function MakeRule (env, what, which)
 		local wpreds = assert(env.m_wildcard_predicates, "No wildcard predicates defined")
 		local predicate = assert(wpreds[what], "Invalid wildcard predicate")
 
-		return SynthesizeWildcardRule(limit, mods, predicate), Wildcard
+		return SynthesizeWildcardRule(limit, mods, predicate, env.get_linker_and_endpoint), Wildcard
 	else
 		local other = which == "imports" and "exports" or "imports"
 		local iter, state, index = adaptive.IterArray(GetInterfaces(env, what, other))
@@ -227,21 +229,26 @@ local function MakeRule (env, what, which)
 			interfaces = adaptive.Append(interfaces, Value)
 		end
 
-		return SynthesizeStandardRule(limit, mods, oifx_primary), interfaces
+		return SynthesizeStandardRule(limit, mods, oifx_primary, env.get_linker_and_endpoint), interfaces
 	end
 end
 
-function M.GetRule (env, what, which)
+local NodeEnvironment = {}
+
+NodeEnvironment.__index = NodeEnvironment
+
+--- DOCME
+function NodeEnvironment:GetRule (what, which)
 	if type(what) == "function" then -- already a rule, essentially
 		return what
 	else
-		local rule_list = env.m_rules[which]
+		local rule_list = self.m_rules[which]
 		local rule = rule_list[what]
 
 		if not rule then
 			local name, interfaces = {}
 
-			rule, interfaces = MakeRule(env, what, which)
+			rule, interfaces = MakeRule(self, what, which)
 
 			component.RegisterType{ name = name, interfaces = interfaces }
 			component.AddToObject(rule, name)
@@ -255,12 +262,12 @@ function M.GetRule (env, what, which)
 end
 
 --- DOCME
-function M.GenerateName (env, name)
-	local counters = env.m_counters or {}
+function NodeEnvironment:Instantiate (env, name)
+	local counters = self.m_counters or {}
 	local id = (counters[name] or 0) + 1
 	local gend = ("%s|%i|"):format(name:sub(1, -2), id)
 
-	counters[name], env.m_counters = id, counters
+	counters[name], self.m_counters = id, counters
 
 	return gend
 end
@@ -320,7 +327,7 @@ function M.New (params)
 		env.m_wildcard_predicates = wpreds
 	end
 
-	return env
+	return setmetatable(env, NodeEnvironment)
 end
 
 --- DOCME
