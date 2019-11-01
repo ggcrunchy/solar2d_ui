@@ -1,5 +1,5 @@
 --- TODO!
--- @module RuleSet
+-- @module NodeEnvironment
 
 --
 -- Permission is hereby granted, free of charge, to any person obtaining
@@ -41,29 +41,19 @@ local M = {}
 --
 --
 --
-local Value = {}
-
----
--- @ptable event Event containing a **target** member, as supplied by a "can link?" query.
--- @treturn boolean Is the target a "value" as defined by node patterns?
-function M.ImplementsValue (event)
-	return component.ImplementedByObject(event.target, Value)
-end
 
 local function Mangle (what, which)
-	return "IFX:" .. which .. ":" .. type(what) .. ":" .. tostring(what) -- reasonably unique name
+	return which .. ":" .. tostring(what) -- reasonably unique name
 end
--- ^^ TODO: is this important any more? now that a different RemoveDups() technique is used by component interfaces, maybe not?
--- anyhow, if possible, just use `what` as is, or a new table etc.
 
-local function GetInterfaces (set, what, which)
-	local ifx_list = set.m_interface_lists[which]
+local function GetInterfaces (env, what, which)
+	local ifx_list = env.m_interface_lists[which]
 	local interfaces = ifx_list and ifx_list[what]
 
 	if type(interfaces) == "number" then -- index?
-		return set.m_mangled[interfaces]
+		return env.m_mangled[interfaces]
 	else
-		local index, list = #set.m_mangled + 1
+		local index, list = #env.m_mangled + 1
 
 		if interfaces then
 			for i = 1, #interfaces do
@@ -73,7 +63,7 @@ local function GetInterfaces (set, what, which)
 			list = adaptive.Append(nil, Mangle(which, what))
 		end
 
-		set.m_mangled[index], ifx_list[what] = list, index
+		env.m_mangled[index], ifx_list[what] = list, index
 
 		return list
 	end
@@ -211,7 +201,9 @@ local function ResolveLimit (what, which, mods) -- TODO: more intuitive as "limi
 	end
 end
 
-local function MakeRule (set, what, which)
+local Value = {}
+
+local function MakeRule (env, what, which)
 	local mods
 
 	if type(what) == "string" then
@@ -221,15 +213,15 @@ local function MakeRule (set, what, which)
 	local limit = ResolveLimit(what, which, mods)
 
 	if mods and mods.wildcard then
-		local wpreds = assert(set.m_wildcard_predicates, "No wildcard predicates defined")
+		local wpreds = assert(env.m_wildcard_predicates, "No wildcard predicates defined")
 		local predicate = assert(wpreds[what], "Invalid wildcard predicate")
 
 		return SynthesizeWildcardRule(limit, mods, predicate), Wildcard
 	else
 		local other = which == "imports" and "exports" or "imports"
-		local iter, state, index = adaptive.IterArray(GetInterfaces(set, what, other))
+		local iter, state, index = adaptive.IterArray(GetInterfaces(env, what, other))
 		local _, oifx_primary = iter(state, index) -- iterate once to get primary interface
-		local interfaces = GetInterfaces(set, what, which)
+		local interfaces = GetInterfaces(env, what, which)
 
 		if not IgnoredByWildcards(what, mods) then
 			interfaces = adaptive.Append(interfaces, Value)
@@ -239,17 +231,17 @@ local function MakeRule (set, what, which)
 	end
 end
 
-function M.GetRule (set, what, which)
+function M.GetRule (env, what, which)
 	if type(what) == "function" then -- already a rule, essentially
 		return what
 	else
-		local rule_list = set.m_rules[which]
+		local rule_list = env.m_rules[which]
 		local rule = rule_list[what]
 
 		if not rule then
 			local name, interfaces = {}
 
-			rule, interfaces = MakeRule(set, what, which)
+			rule, interfaces = MakeRule(env, what, which)
 
 			component.RegisterType{ name = name, interfaces = interfaces }
 			component.AddToObject(rule, name)
@@ -262,7 +254,18 @@ function M.GetRule (set, what, which)
 	end
 end
 
-local function ListInterfaces (set, key, ifx_lists)
+--- DOCME
+function M.GenerateName (env, name)
+	local counters = env.m_counters or {}
+	local id = (counters[name] or 0) + 1
+	local gend = ("%s|%i|"):format(name:sub(1, -2), id)
+
+	counters[name], env.m_counters = id, counters
+
+	return gend
+end
+
+local function ListInterfaces (env, key, ifx_lists)
 	local list, out = ifx_lists[key]
 
 	if list ~= nil then
@@ -274,24 +277,31 @@ local function ListInterfaces (set, key, ifx_lists)
 		end
 	end
 
-	set.m_interface_lists[key] = out
+	env.m_interface_lists[key] = out
 end
 
 ---
 -- @ptable params
--- @treturn RuleSet X
+-- @treturn RuleEnvironment X
 function M.New (params)
 	assert(type(params) == "table", "Non-table params")
 
-	local set, ifx_lists, wlist = { m_counters = {}, m_rules = {} }, params.interface_lists, params.wildcards
+	local get_linker_and_endpoint = params.get_linker_and_endpoint
+
+	assert(type(get_linker_and_endpoint) == "function", "Non-function getter for linker and endpoint")
+
+	local env, ifx_lists, wlist = {
+		m_get_linker_and_endpoint = get_linker_and_endpoint,
+		m_rules = {}
+	}, params.interface_lists, params.wildcards
 
 	if ifx_lists ~= nil then
 		assert(type(ifx_lists) == "table", "Non-table interface lists")
 
-		set.m_interface_lists = {}
+		env.m_interface_lists = {}
 
-		ListInterfaces(set, "exports", ifx_lists)
-		ListInterfaces(set, "imports", ifx_lists)
+		ListInterfaces(env, "exports", ifx_lists)
+		ListInterfaces(env, "imports", ifx_lists)
 	end
 
 	if wlist ~= nil then
@@ -307,10 +317,15 @@ function M.New (params)
 			wpreds[k] = v
 		end
 
-		set.m_wildcard_predicates = wpreds
+		env.m_wildcard_predicates = wpreds
 	end
 
-	return set
+	return env
+end
+
+--- DOCME
+function M.ValueComponent ()
+	return Value
 end
 
 return M
