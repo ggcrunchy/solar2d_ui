@@ -32,7 +32,8 @@ local setmetatable = setmetatable
 local type = type
 
 -- Cached module references --
-local _Weak_
+local _FullyWeak_
+local _WeakKeyed_
 
 -- Exports --
 local M = {}
@@ -62,7 +63,7 @@ end
 -- @ptable extension
 function M.Augment (object, extension)
 	if not Cached then
-		Augmented, Cached = _Weak_("kv"), _Weak_("k")
+		Augmented, Cached = _FullyWeak_(), _WeakKeyed_()
 	end
 
 	local mt = getmetatable(object)
@@ -170,23 +171,34 @@ function M.Augment (object, extension)
 	end
 end
 
--- Weak table choices --
-local Choices = { "k", "v", "kv" }
+local Choices = { k = {}, v = {}, kv = {} }
 
-for i, mode in ipairs(Choices) do
-	Choices[mode], Choices[i] = { __metatable = true, __mode = mode }
+for mode, mt in pairs(Choices) do
+	mt.__metatable, mt.__mode = true, mode
 end
 
---- Builds a new weak table.
---
--- The table's metatable is fixed.
--- @string choice Weak option, which is one of **"k"**, **"v"**, or **"kv"**,
--- and will assign that behavior to the **__mode** key of the table's metatable.
+--- Builds a new fully weak table, with a fixed metatable.
 -- @treturn table Table.
-function M.Weak (choice)
-	return setmetatable({}, assert(Choices[choice], "Invalid weak option"))
+-- @see WeakKeyed, WeakValued
+function M.FullyWeak (choice)
+	return setmetatable({}, Choices.kv)
 end
 
-_Weak_ = M.Weak
+--- Builds a new weak-keyed table, with a fixed metatable.
+-- @treturn table Table.
+-- @see FullyWeak, WeakValued
+function M.WeakKeyed (choice)
+	return setmetatable({}, Choices.k)
+end
+
+--- Builds a new weak-valued table, with a fixed metatable.
+-- @treturn table Table.
+-- @see FullyWeak, WeakKeyed
+function M.WeakValued (choice)
+	return setmetatable({}, Choices.v)
+end
+
+_FullyWeak_ = M.FullyWeak
+_WeakKeyed_ = M.WeakKeyed
 
 return M

@@ -33,7 +33,6 @@ local setmetatable = setmetatable
 local type = type
 
 -- Modules --
-local adaptive = require("tektite_core.table.adaptive")
 local node_environment = require("s3_editor.NodeEnvironment")
 
 -- Exports --
@@ -43,18 +42,15 @@ local M = {}
 --
 --
 
-local Environments = {}
-
-local function AddNode (id, name, key, what)
-	local env = Environments[id]
-	local elist, ilist = env.m_export_nodes, env.m_import_nodes
+local function AddNode (NP, name, key, what)
+	local elist, ilist = NP.m_export_nodes, NP.m_import_nodes
 
 	assert(not (elist and elist[name]), "Name already used in exports list")
 	assert(not (ilist and ilist[name]), "Name already used in imports list")
 
-	local list = env[key] or {}
+	local list = NP[key] or {}
 
-	env[key], list[name] = env:GetRule(what, key == "m_export_nodes" and "exports" or "imports")
+	NP[key], list[name] = list, NP.m_env:GetRule(what, key == "m_export_nodes" and "exports" or "imports")
 end
 
 local NodePattern = {}
@@ -97,14 +93,14 @@ NodePattern.__index = NodePattern
 -- for everything else.
 -- @see NodePattern:AddImportNode
 function NodePattern:AddExportNode (name, what)
-	AddNode(self.m_env_id, name, "m_export_nodes", what)
+	AddNode(self, name, "m_export_nodes", what)
 end
 
 --- Add an import node to the pattern.
 -- @param name As per @{NodePattern:AddExportNode}, but for the imports list.
 -- @param what Ditto.
 function NodePattern:AddImportNode (name, what)
-	AddNode(self.m_env_id, name, "m_import_nodes", what)
+	AddNode(self, name, "m_import_nodes", what)
 end
 
 local function IsTemplate (name)
@@ -121,7 +117,7 @@ function NodePattern:Generate (name)
 		local rule = (elist and elist[name]) or (ilist and ilist[name])
 
 		if rule then
-			return Environments[self.m_env_id]:Instantiate(name), rule
+			return self.m_env:Instantiate(name), rule
 		end
 	end
 
@@ -138,36 +134,6 @@ function NodePattern:GetTemplate (name)
 	local elist, ilist = self.m_export_nodes, self.m_import_nodes
 
 	return ((elist and elist[template]) or (ilist and ilist[template])) and template
-end
-
-local function AuxIterBoth (NP, name)
-	local ilist = NP.m_import_nodes
-
-	if not rawget(ilist, name) then -- nil or in export list?
-		local k, v = next(NP.m_export_nodes, name)
-
-		if k == nil then -- switch from export to import list?
-			return next(ilist, nil)
-		else
-			return k, v
-		end
-	else
-		return next(ilist, nil)
-	end
-end
-
-local function DefIter () end
-
-local function IterBoth (NP)
-	local elist, ilist = NP.m_export_nodes, NP.m_import_nodes
-
-	if elist and ilist then
-		return AuxIterBoth, NP, nil
-	elseif elist or ilist then
-		return adaptive.IterSet(elist or ilist)
-	else
-		return DefIter
-	end
 end
 
 local function GetNodeList (NP, how)
@@ -190,6 +156,59 @@ function NodePattern:HasNode (name, how)
 	end
 end
 
+local function AuxIterBoth (NP, name)
+	local elist = NP.m_export_nodes
+
+	if elist then
+		local was_nil, node = name == nil
+
+		if was_nil and elist then
+			name, node = next(elist)
+		elseif elist then
+			node = elist[name]
+		end
+
+		if node then -- in export list?
+			if not was_nil then
+				name, node = next(elist, name)
+			end
+
+			if was_nil or name ~= nil then
+				return name, node
+			else
+				name = nil -- switch from export to import list?
+			end
+		end
+	end
+
+	local ilist = NP.m_import_nodes
+
+	if ilist then
+		return next(ilist, name) -- name will be nil if elist empty
+	end
+end
+
+local function DefIter () end
+
+local function PairsOrNoOp (list)
+	if list then
+		return pairs(list)
+	else
+		return DefIter
+	end
+end
+
+
+local function IterBoth (NP)
+	local elist, ilist = NP.m_export_nodes, NP.m_import_nodes
+
+	if elist and ilist then
+		return AuxIterBoth, NP, nil
+	else
+		return PairsOrNoOp(elist or ilist)
+	end
+end
+
 --- Iterate over a set of the nodes thus far added to the pattern.
 -- @string[opt] how If this is **"exports"** or **"imports"**, iteration will be restricted
 -- to the corresponding subset of nodes. Otherwise, all nodes are iterated.
@@ -197,7 +216,7 @@ end
 -- @see NodePattern:AddExportNode, NodePattern:AddImportNode, NodePattern:IterNonTemplateNodes, NodePattern:IterTemplateNodes
 function NodePattern:IterNodes (how)
 	if how == "exports" or how == "imports" then
-		return adaptive.IterSet(GetNodeList(self, how))
+		return PairsOrNoOp(GetNodeList(self, how))
 	else
 		return IterBoth(self)
 	end
@@ -208,15 +227,16 @@ end
 -- @treturn Iterator that supplies name, rule pairs for requested nodes.
 -- @see NodePattern:AddExportNode, NodePattern:AddImportNode, NodePattern:IterNodes, NodePattern:IterTemplateNodes
 function NodePattern:IterNonTemplateNodes (how)
-	local list = {}
+	local list
 
 	for k, v in self:IterNodes(how) do
 		if not IsTemplate(k) then
+			list = list or {}
 			list[k] = v
 		end
 	end
 
-	return pairs(list)
+	return PairsOrNoOp(list)
 end
 
 --- Variant of @{NodePattern:IterNodes} that only considers template nodes.
@@ -224,32 +244,31 @@ end
 -- @treturn Iterator that supplies name, rule pairs for requested nodes.
 -- @see NodePattern:AddExportNode, NodePattern:AddImportNode, NodePattern:IterNodes, NodePattern:IterNonTemplateNodes
 function NodePattern:IterTemplateNodes (how)
-	local list = {}
+	local list
 
 	for k, v in self:IterNodes(how) do
 		if IsTemplate(k) then
+			list = list or {}
 			list[k] = v
 		end
 	end
 
-	return pairs(list)
+	return PairsOrNoOp(list)
 end
 
-local DefEnvID
+local DefEnvironment
 
 --- DOCME
 -- @param[opt] env_id If present, an ID as returned by @{NewEnvironment}, indicating the
 -- environment to use. Otherwise, the default environment is chosen.
 -- @treturn NodePattern Node pattern.
-function M.New (env_id)
-	if env_id == nil then
-		DefEnvID = DefEnvID or node_environment.New{ get_linker_and_endpoint = nil }
-		env_id = DefEnvID
-	else
-		assert(Environments[env_id], "Invalid environment ID")
+function M.New (env)
+	if not env then
+		DefEnvironment = DefEnvironment or node_environment.New{}
+		env = DefEnvironment
 	end
 
-	return setmetatable({ m_env_id = env_id }, NodePattern)
+	return setmetatable({ m_env = env }, NodePattern)
 end
 
 return M

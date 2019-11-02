@@ -53,7 +53,8 @@ local function GetInterfaces (env, what, which)
 	if type(interfaces) == "number" then -- index?
 		return env.m_mangled[interfaces]
 	else
-		local index, list = #env.m_mangled + 1
+		local mangled = env.m_mangled or {}
+		local index, list = #mangled + 1
 
 		if interfaces then
 			for i = 1, #interfaces do
@@ -63,7 +64,13 @@ local function GetInterfaces (env, what, which)
 			list = adaptive.Append(nil, Mangle(which, what))
 		end
 
-		env.m_mangled[index], ifx_list[what] = list, index
+		env.m_mangled, mangled[index] = mangled, list
+
+		if ifx_list then
+			ifx_list[what] = index
+		else
+			env.m_interface_lists[which] = { [what] = index }
+		end
 
 		return list
 	end
@@ -238,11 +245,15 @@ local NodeEnvironment = {}
 NodeEnvironment.__index = NodeEnvironment
 
 --- DOCME
+-- @param what
+-- @param which
+-- @treturn ?|function|nil X
 function NodeEnvironment:GetRule (what, which)
 	if type(what) == "function" then -- already a rule, essentially
 		return what
 	else
-		local rule_list = self.m_rules[which]
+		local rules = self.m_rules
+		local rule_list = rules[which] or {}
 		local rule = rule_list[what]
 
 		if not rule then
@@ -257,12 +268,16 @@ function NodeEnvironment:GetRule (what, which)
 			rule_list[what] = rule
 		end
 
+		rules[which] = rule_list
+
 		return rule
 	end
 end
 
 --- DOCME
-function NodeEnvironment:Instantiate (env, name)
+-- @string name
+-- @treturn string X
+function NodeEnvironment:Instantiate (name)
 	local counters = self.m_counters or {}
 	local id = (counters[name] or 0) + 1
 	local gend = ("%s|%i|"):format(name:sub(1, -2), id)
@@ -287,25 +302,21 @@ local function ListInterfaces (env, key, ifx_lists)
 	env.m_interface_lists[key] = out
 end
 
+local function DefGetLinkerAndEndpoint (event)
+	return event.linker, event.id, event.name
+end
+
 ---
 -- @ptable params
 -- @treturn RuleEnvironment X
 function M.New (params)
 	assert(type(params) == "table", "Non-table params")
 
-	local get_linker_and_endpoint = params.get_linker_and_endpoint
-
-	assert(type(get_linker_and_endpoint) == "function", "Non-function getter for linker and endpoint")
-
-	local env, ifx_lists, wlist = {
-		m_get_linker_and_endpoint = get_linker_and_endpoint,
-		m_rules = {}
-	}, params.interface_lists, params.wildcards
+	local glae = params.get_linker_and_endpoint or DefGetLinkerAndEndpoint
+	local env, ifx_lists, wlist = { m_get_linker_and_endpoint = glae, m_interface_lists = {}, m_rules = {} }, params.interface_lists, params.wildcards
 
 	if ifx_lists ~= nil then
 		assert(type(ifx_lists) == "table", "Non-table interface lists")
-
-		env.m_interface_lists = {}
 
 		ListInterfaces(env, "exports", ifx_lists)
 		ListInterfaces(env, "imports", ifx_lists)

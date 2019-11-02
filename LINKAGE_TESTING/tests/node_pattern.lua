@@ -29,3 +29,89 @@ local NP = require("s3_editor.NodePattern")
 --
 --
 --
+
+local np = NP.New()
+
+np:AddExportNode("result", "int")
+np:AddImportNode("x", "float")
+np:AddImportNode("origin*", "pos")
+
+print(np:Generate("origin*"))
+print(np:Generate("origin*"))
+print(np:Generate("origin*"))
+
+local another = np:Generate("origin*")
+
+print(another, np:GetTemplate(another))
+print("nn|2|", np:GetTemplate("nn*"))
+print("x", np:GetTemplate("x"))
+
+print(np:HasNode("result"))
+print(np:HasNode("x", "imports"))
+print(np:HasNode("origin*", "imports"))
+print(np:HasNode("result", "imports"))
+print(np:HasNode("duck", "other"))
+print(np:HasNode("cluck", "exports"))
+
+local function Iter (patt)
+    for k, v in patt:IterNodes() do
+        print("GENERAL NODE", k, v)
+    end
+
+    for k, v in patt:IterNodes("exports") do
+        print("EXPORT NODE", k, v)
+    end
+
+    for k, v in patt:IterNodes("imports") do
+        print("IMPORT NODE", k, v)
+    end
+
+    for k, v in patt:IterTemplateNodes() do
+        print("GENERAL TEMPLATE NODE", k, v)
+    end
+
+    for k, v in patt:IterNonTemplateNodes() do
+        print("GENERAL NON-TEMPLATE NODE", k, v)
+    end
+end
+
+print("")
+print("MIXED PATTERN")
+
+Iter(np)
+
+print("")
+
+do
+    local npe = NP.New()
+
+    npe:AddExportNode("only_export", "int")
+
+    print("EXPORT-ONLY PATTERN")
+
+    Iter(npe)
+
+    print("")
+end
+
+do
+    local npi = NP.New()
+
+    npi:AddImportNode("only_import", "int")
+
+    print("IMPORT-ONLY PATTERN")
+
+    Iter(npi)
+
+    print("")
+end
+
+do
+    local np0 = NP.New()
+
+    print("EMPTY PATTERN")
+
+    Iter(np0)
+
+    print("")
+end

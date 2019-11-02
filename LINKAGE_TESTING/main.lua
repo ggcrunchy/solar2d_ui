@@ -50,4 +50,4 @@ function display.isValid (object)
 	return type(object) == "table" and object.parent ~= nil
 end
 
-require("tests.link_collection")
+require("tests.node_pattern")
