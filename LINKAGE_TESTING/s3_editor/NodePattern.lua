@@ -109,7 +109,9 @@ end
 
 --- DOCME
 -- @param name
--- @treturn ?|string|nil
+-- @treturn[1] string N
+-- @treturn[1] function F
+-- @return[2] **nil**
 -- @see NodePattern:AddExportNode, NodePattern:AddImportNode, NodePattern:GetTemplate
 function NodePattern:Generate (name)
 	if IsTemplate(name) then
@@ -122,6 +124,27 @@ function NodePattern:Generate (name)
 	end
 
 	return nil
+end
+
+local function AuxFindNode (NP, name)
+	local elist, ilist = NP.m_export_nodes, NP.m_import_nodes
+
+	return elist and elist[name], ilist and ilist[name]
+end
+
+--- DOCME
+-- @param name
+-- @treturn ?|string|nil
+function NodePattern:GetNodeType (name)
+	local enode, inode = AuxFindNode(self, name)
+
+	if enode then
+		return "exports"
+	elseif inode then
+		return "imports"
+	else
+		return nil
+	end
 end
 
 --- DOCME
@@ -150,9 +173,9 @@ function NodePattern:HasNode (name, how)
 
 		return (list and list[name]) ~= nil
 	else
-		local elist, ilist = self.m_export_nodes, self.m_import_nodes
+		local enode, inode = AuxFindNode(self, name)
 
-		return ((elist and elist[name]) or (ilist and ilist[name])) ~= nil
+		return (enode or inode) ~= nil
 	end
 end
 

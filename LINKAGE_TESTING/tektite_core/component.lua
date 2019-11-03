@@ -121,7 +121,7 @@ function M.AddToObject (object, ctype)
                 on_add(object, rtype)
             end
 
-            list = adaptive.AddToSet(list, ctype)
+            list = adaptive.AddToSet(list, rtype)
         end
 
         Lists[object] = list

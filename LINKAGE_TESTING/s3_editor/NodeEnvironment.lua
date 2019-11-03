@@ -246,15 +246,15 @@ NodeEnvironment.__index = NodeEnvironment
 
 --- DOCME
 -- @param what
--- @param which
+-- @string which
 -- @treturn ?|function|nil X
 function NodeEnvironment:GetRule (what, which)
 	if type(what) == "function" then -- already a rule, essentially
 		return what
 	else
-		local rules = self.m_rules
-		local rule_list = rules[which] or {}
-		local rule = rule_list[what]
+		assert(which == "exports" or which == "imports", "Unknown rule type")
+
+		local rule = self.m_rules[which][what]
 
 		if not rule then
 			local name, interfaces = {}
@@ -265,10 +265,8 @@ function NodeEnvironment:GetRule (what, which)
 			component.AddToObject(rule, name)
 			component.LockInObject(rule, name)
 
-			rule_list[what] = rule
+			self.m_rules[which][what] = rule
 		end
-
-		rules[which] = rule_list
 
 		return rule
 	end
@@ -290,7 +288,7 @@ end
 local function ListInterfaces (env, key, ifx_lists)
 	local list, out = ifx_lists[key]
 
-	if list ~= nil then
+	if list then
 		assert(type(list) == "table", "Non-table interface list")
 
 		for k, v in pairs(list) do
@@ -312,8 +310,11 @@ end
 function M.New (params)
 	assert(type(params) == "table", "Non-table params")
 
-	local glae = params.get_linker_and_endpoint or DefGetLinkerAndEndpoint
-	local env, ifx_lists, wlist = { m_get_linker_and_endpoint = glae, m_interface_lists = {}, m_rules = {} }, params.interface_lists, params.wildcards
+	local env, ifx_lists, wlist = {
+		m_get_linker_and_endpoint = params.get_linker_and_endpoint or DefGetLinkerAndEndpoint,
+		m_interface_lists = {},
+		m_rules = { exports = {}, imports = {} }
+	}, params.interface_lists, params.wildcards
 
 	if ifx_lists ~= nil then
 		assert(type(ifx_lists) == "table", "Non-table interface lists")
