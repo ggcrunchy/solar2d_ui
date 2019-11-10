@@ -126,6 +126,13 @@ function NodePattern:Generate (name)
 	return nil
 end
 
+--- DOCME
+-- @treturn NodeEnvironment X
+-- @see New
+function NodePattern:GetEnvironment ()
+	return self.m_env
+end
+
 local function AuxFindNode (NP, name)
 	local elist, ilist = NP.m_export_nodes, NP.m_import_nodes
 
@@ -282,9 +289,10 @@ end
 local DefEnvironment
 
 --- DOCME
--- @param[opt] env_id If present, an ID as returned by @{NewEnvironment}, indicating the
--- environment to use. Otherwise, the default environment is chosen.
+-- @tparam[opt] NodeEnvironment env If present, an environment returned by @{NodeEnvironment.New}.
+-- Otherwise, the default environment is chosen.
 -- @treturn NodePattern Node pattern.
+-- @see NodePattern:GetEnvironment
 function M.New (env)
 	if not env then
 		DefEnvironment = DefEnvironment or node_environment.New{}

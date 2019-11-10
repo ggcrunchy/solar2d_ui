@@ -34,6 +34,7 @@ local type = type
 -- Modules --
 local adaptive = require("tektite_core.table.adaptive")
 local component = require("tektite_core.component")
+local meta = require("tektite_core.table.meta")
 
 -- Exports --
 local M = {}
@@ -46,15 +47,14 @@ local function Mangle (what, which)
 	return which .. ":" .. tostring(what) -- reasonably unique name
 end
 
-local function GetInterfaces (env, what, which)
+local function GetMangledInterfaces (env, what, which)
 	local ifx_list = env.m_interface_lists[which]
-	local interfaces = ifx_list and ifx_list[what]
+	local interfaces, mangled = ifx_list and ifx_list[what], env.m_mangled or meta.WeakKeyed()
 
-	if type(interfaces) == "number" then -- index?
-		return env.m_mangled[interfaces]
+	if mangled[interfaces] then
+		return interfaces
 	else
-		local mangled = env.m_mangled or {}
-		local index, list = #mangled + 1
+		local list
 
 		if interfaces then
 			for i = 1, #interfaces do
@@ -64,12 +64,12 @@ local function GetInterfaces (env, what, which)
 			list = adaptive.Append(nil, Mangle(which, what))
 		end
 
-		env.m_mangled, mangled[index] = mangled, list
+		env.m_mangled, mangled[list] = mangled, true
 
 		if ifx_list then
-			ifx_list[what] = index
+			ifx_list[what] = list
 		else
-			env.m_interface_lists[which] = { [what] = index }
+			env.m_interface_lists[which] = { [what] = list }
 		end
 
 		return list
@@ -228,9 +228,10 @@ local function MakeRule (env, what, which)
 		return SynthesizeWildcardRule(limit, mods, predicate, env.get_linker_and_endpoint), Wildcard
 	else
 		local other = which == "imports" and "exports" or "imports"
-		local iter, state, index = adaptive.IterArray(GetInterfaces(env, what, other))
-		local _, oifx_primary = iter(state, index) -- iterate once to get primary interface
-		local interfaces = GetInterfaces(env, what, which)
+		local other_ifxs = GetMangledInterfaces(env, what, other) -- ensure existence of opposing interfaces...
+		local iter, state, index = adaptive.IterArray(other_ifxs)
+		local _, oifx_primary = iter(state, index) -- ...iterate once to get the primary one
+		local interfaces = GetMangledInterfaces(env, what, which)
 
 		if not IgnoredByWildcards(what, mods) then
 			interfaces = adaptive.Append(interfaces, Value)
@@ -273,16 +274,33 @@ function NodeEnvironment:GetRule (what, which)
 end
 
 --- DOCME
+function NodeEnvironment:FindRule (rule)
+	local rules = self.m_rules
+
+	for what, v in pairs(rules.exports) do
+		if v == rule then
+			return "exports", what
+		end
+	end
+
+	for what, v in pairs(rules.imports) do
+		if v == rule then
+			return "imports", what
+		end
+	end
+end
+
+--- DOCME
 -- @string name
 -- @treturn string X
 function NodeEnvironment:Instantiate (name)
 	local counters = self.m_counters or {}
 	local id = (counters[name] or 0) + 1
-	local gend = ("%s|%i|"):format(name:sub(1, -2), id)
+	local instance = ("%s|%i|"):format(name:sub(1, -2), id)
 
 	counters[name], self.m_counters = id, counters
 
-	return gend
+	return instance
 end
 
 local function ListInterfaces (env, key, ifx_lists)

@@ -82,6 +82,14 @@ Iter(np)
 
 print("")
 
+local env = np:GetEnvironment()
+
+for k, v in np:IterNodes() do
+    print("FIND RULE " .. k .. ":", env:FindRule(v))
+end
+
+print("")
+
 do
     local npe = NP.New()
 

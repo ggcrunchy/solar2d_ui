@@ -27,6 +27,7 @@
 local assert = assert
 local rawequal = rawequal
 local remove = table.remove
+local setmetatable = setmetatable
 local type = type
 
 -- Modules --
@@ -80,7 +81,7 @@ local function TryToReport ()
 
 	Tally = Tally + 1
 
-	if LastReported - now >= 3000 then -- throttle the reports
+	if now - LastReported >= 3000 then -- throttle the reports
 		OnTooManyEvent = OnTooManyEvent or {}
 		OnTooManyEvent.name, OnTooManyEvent.tally = "too_many_actions", Tally
 
@@ -176,6 +177,8 @@ end
 
 local Dispatcher = {}
 
+Dispatcher.__index = Dispatcher
+
 --- DOCME
 -- @treturn function A
 function Dispatcher:GetAdder ()
@@ -207,9 +210,7 @@ function M.NewDispatcher ()
 
     dispatcher.m_add_to_list, dispatcher.m_object_to_list = _MakePerObjectCallList_()
 
-    meta.Augment(dispatcher, Dispatcher)
-
-	return dispatcher
+	return setmetatable(dispatcher, Dispatcher)
 end
 
 -- List iterator body
