@@ -31,6 +31,9 @@ local rawequal = rawequal
 local setmetatable = setmetatable
 local type = type
 
+-- Modules --
+local adaptive = require("tektite_core.table.adaptive")
+
 -- Cached module references --
 local _FullyWeak_
 local _WeakKeyed_
@@ -169,6 +172,134 @@ function M.Augment (object, extension)
 
 		Augmented[object], Cached[new] = new, extension
 	end
+end
+
+local function PrototypeEntry (proto, name)
+	return adaptive.IterArray(proto[name])
+end
+
+local function AppendFunction (def, name, func, proto)
+	local arr = def[name]
+
+	if not arr then -- prototype calls not already merged by "before" logic?
+		for _, ev in PrototypeEntry(proto, name) do
+			arr = adaptive.Append(arr, ev)
+		end
+	end
+
+	def[name] = adaptive.Append(arr, func)
+end
+
+local function WrapCallLists (def)
+	for k, v in pairs(def) do
+		if type(v) == "table" then
+			def[k] = function(event)
+				for i = 1, #v do
+					v[i](event)
+				end
+			end
+		end
+	end
+end
+
+local function AppendFunctions (def, funcs, proto)
+	for k, v in pairs(funcs) do
+		AppendFunction(def, k, v, proto)
+	end
+
+	WrapCallLists(def)
+end
+
+local function MergePrototype (def, proto)
+	for k, v in pairs(proto) do
+		if def[k] == nil then
+			def[k] = v
+		end
+	end
+end
+
+local function PrependFunction (def, name, func, proto)
+	local arr = adaptive.Append(nil, func)
+
+	for _, ev in PrototypeEntry(proto, name) do
+		arr = adaptive.Append(arr, ev)
+	end
+
+	def[name] = arr
+end
+
+--- Bundle related functions. TODO: clean this all up
+--
+-- Inheritance is supported, with functions being strung together in sequence if they share
+-- the same name. This somewhat resembles behaviors found in aspect-oriented programming and
+-- Common Lisp's generic functions; it seems to nicely fit an assortment of editor-side game
+-- object logic.
+-- @ptable funcs Key-value pairs, with each value being a function and the key its name.
+-- These will be added under the same keys in the definition, according to the contents
+-- of _prototype_ and _lists_.
+-- @ptable prototype
+-- @ptable[opt] lists Additional function lists.
+--
+-- The name of a previously defined set may be supplied under **prototype**, in which case
+-- its functions will be incorporated into the new set. A prototype may also be accompanied
+-- by **before** and **instead** tables, described in what follows.
+--
+-- In the absence of a name clash, either the function in _funcs_ or the one in _prototype_
+-- &mdash;whichever actually exists&mdash;will be added to the new set.
+--
+-- Otherwise, the two functions are usually sequenced, i.e. the final function will invoke
+-- one then the other. A function found in _params_ comes after its prototype counterpart; a
+-- function in **before** will precede it. It is fine to supply either or both. (**N.B.**
+-- Prototype entries might themselves be sequences. For composition purposes these are
+-- treated as a unit.)
+--
+-- A function found in **instead**, on the other hand, is used in place of the entry from
+-- _prototype_. An "instead" name may not also belong to "before" or "after".
+--
+-- If _prototype_ has no function with a given name, the composition logic interprets it as
+-- providing one that does nothing.
+-- @treturn table Combined function list, suitable as a methods table.
+function M.CombineFunctionLists (funcs, prototype, lists)
+	assert(type(funcs) == "table", "Invalid main list")
+	assert(type(prototype) == "table", "Invalid prototype")
+	assert(lists == nil or type(lists) == "table", "Invalid additional lists")
+
+	local def, around, before, instead = {}
+
+	if lists then
+		around, before, instead = lists.around, lists.before, lists.instead
+	end
+
+	if around then
+		for k, v in pairs(around) do
+			local pfunc = assert(prototype[k], "Entry in `around` not found in prototype")
+
+			def[k] = function(...)
+				return v(pfunc, ...)
+			end
+		end
+	end
+
+	if instead then
+		for k, v in pairs(instead) do
+			assert(not (around and around[k] ~= nil), "Entry in `instead` also in `around`")
+			assert(not (before and before[k] ~= nil), "Entry in `instead` also in `before`")
+			assert(not funcs[k], "Entry in `instead` also in main list")
+
+			def[k] = v
+		end
+	end
+
+	if before then
+		for k, v in pairs(before) do
+			PrependFunction(def, k, v, prototype)
+		end
+	end
+
+	AppendFunctions(def, funcs, prototype)
+	MergePrototype(def, prototype)
+
+	return def
 end
 
 local Choices = { k = {}, v = {}, kv = {} }

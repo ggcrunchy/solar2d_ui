@@ -274,7 +274,7 @@ function NodeEnvironment:GetRule (what, which)
 end
 
 --- DOCME
-function NodeEnvironment:FindRule (rule)
+function NodeEnvironment:GetRuleInfo (rule)
 	local rules = self.m_rules
 
 	for what, v in pairs(rules.exports) do

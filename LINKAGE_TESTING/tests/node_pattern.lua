@@ -29,7 +29,8 @@ local NP = require("s3_editor.NodePattern")
 --
 --
 --
-
+local r = display.newRect(1,2,3,4)
+print("!!!",r._properties)
 local np = NP.New()
 
 np:AddExportNode("result", "int")
@@ -85,7 +86,7 @@ print("")
 local env = np:GetEnvironment()
 
 for k, v in np:IterNodes() do
-    print("FIND RULE " .. k .. ":", env:FindRule(v))
+    print("FIND RULE " .. k .. ":", env:GetRuleInfo(v))
 end
 
 print("")

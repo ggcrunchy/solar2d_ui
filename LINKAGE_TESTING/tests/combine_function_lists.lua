@@ -1,4 +1,4 @@
---- Function set unit test.
+--- Combine function lists unit test.
 
 --
 -- Permission is hereby granted, free of charge, to any person obtaining
@@ -24,106 +24,38 @@
 --
 
 -- Modules --
-local FS = require("s3_editor.FunctionSet")
+local FS = require("tektite_core.table.meta")
 
 --
 --
 --
 
-do
-	local fs = FS.New("F1", {
-		a = function(o)
-			print("a! " .. tostring(o))
-		end,
-
-		b = function(o)
-			print("b! " .. tostring(o))
-		end
-	})
-
-	print("RAW")
-
-	fs.a("aa")
-	fs.b(3456)
-
-	print("")
-
-	fs.__index = fs
-
-	local o1, o2 = setmetatable({}, fs), setmetatable({}, fs)
-
-	print("METHOD")
-
-	o1:a()
-	o2:a()
-	o1:b()
-	o2:b()
-
-	print("")
-end
+local proto
 
 do
-	local fs = FS.New("F2", {
-		c = function()
-			print("c! " .. FS.GetState("F2").info)
-		end
-	}, {
-		state = function(name)
-			print("GET STATE", name)
-
-			return { info = 5 }
-		end
-	})
-
-	print("RAW WITH STATE")
-
-	fs.c()
-
-	print("")
-end
-
-do
-	local fs = FS.New("F3", {}, {
-		init = function(_, def)
-			print("INIT")
-
-			function def.d ()
-				print("d!")
-			end
-		end
-	})
-
-	print("RAW WITH INIT")
-
-	fs.d()
-
-	print("")
-end
-
-do
-	FS.New("F4", {
+	proto = {
 		e = function()
 			print("e!")
 		end
-	})
+	}
 	
-	local fs = FS.New("F5", {
+	local fs = FS.CombineFunctionLists({
 		e = function()
 			print("e2!")
 		end
-	}, { prototype = "F4" })
+	}, proto)
 
-	print("RAW WITH INHERITANCE (AFTER)")
+	print("BASIC COMBINATION")
 
 	fs.e()
 
 	print("")
 end
 
-do
-	local fs = FS.New("F6", {}, {
-		prototype = "F4",
+local proto2
 
+do
+	proto2 = FS.CombineFunctionLists({}, proto, {
 		before = {
 			e = function()
 				print("e0!")
@@ -131,29 +63,31 @@ do
 		}
 	})
 
-	print("RAW WITH INHERITANCE (BEFORE)")
+	print("COMBINATION + BEFORE")
 
-	fs.e()
+	proto2.e()
 
 	print("")
 end
 
 do
-	local fs = FS.New("F7", {
+	local fs = FS.CombineFunctionLists({
 		e = function()
 			print("e again!")
 		end
-	}, { prototype = "F6" })
+	}, proto2)
 
-	print("RAW WITH INHERITED SEQUENCE (AFTER)")
+	print("COMBINATION WITH SEQUENCE")
 
 	fs.e()
 
 	print("")
 end
 
+local proto3
+
 do
-	FS.New("F8", {
+	proto3 = {
 		e = function()
 			print("e, suppressed!")
 		end,
@@ -161,15 +95,13 @@ do
 		f = function()
 			print("f!")
 		end
-	})
+	}
 
-	local fs = FS.New("F9", {
+	local fs = FS.CombineFunctionLists({
 		f = function()
 			print("f again!")
 		end
-	}, {
-		prototype = "F8",
-
+	}, proto3, {
 		instead = {
 			e = function()
 				print("e for real")
@@ -178,10 +110,29 @@ do
 	})
 		
 
-	print("RAW WITH INHERITED SEQUENCE AND REPLACEMENT (AFTER)")
+	print("COMBINATION + REPLACEMENT")
 
 	fs.e()
 	fs.f()
+
+	print("")
+end
+
+do
+	local fs = FS.CombineFunctionLists({}, proto3, {
+		around = {
+			e = function(other)
+				print("e around")
+
+				other()
+			end
+		}
+	})
+		
+
+	print("COMBINATION WITH AROUND")
+
+	fs.e()
 
 	print("")
 end
