@@ -29,8 +29,7 @@ local NP = require("s3_editor.NodePattern")
 --
 --
 --
-local r = display.newRect(1,2,3,4)
-print("!!!",r._properties)
+
 local np = NP.New()
 
 np:AddExportNode("result", "int")
@@ -121,6 +120,61 @@ do
     print("EMPTY PATTERN")
 
     Iter(np0)
+
+    print("")
+end
+
+do
+    local env = require("s3_editor.NodeEnvironment").New{
+        interface_lists = {
+            exports = {
+                uint = { "uint", "int" }
+            },
+            imports = {
+                int = { "int", "uint" }
+            }
+        }
+    }
+    local npc = NP.New(env) 
+
+    npc:AddImportNode("x", "int")
+    npc:AddImportNode("y", "uint")
+    npc:AddExportNode("z", "int")
+    npc:AddExportNode("w", "uint")
+
+    local rules = {}
+
+    for k, v in npc:IterNodes() do
+        rules[k] = v
+    end
+
+    print("")
+
+    print("x -> x", rules.x{ target = rules.x })
+    print("x -> y", rules.x{ target = rules.y })
+    print("x -> z", rules.x{ target = rules.z })
+    print("x -> w", rules.x{ target = rules.w })
+
+    print("")
+
+    print("y -> x", rules.y{ target = rules.x })
+    print("y -> y", rules.y{ target = rules.y })
+    print("y -> z", rules.y{ target = rules.z })
+    print("y -> w", rules.y{ target = rules.w })
+
+    print("")
+
+    print("z -> x", rules.z{ target = rules.x })
+    print("z -> y", rules.z{ target = rules.y })
+    print("z -> z", rules.z{ target = rules.z })
+    print("z -> w", rules.z{ target = rules.w })
+
+    print("")
+
+    print("w -> x", rules.w{ target = rules.x })
+    print("w -> y", rules.w{ target = rules.y })
+    print("w -> z", rules.w{ target = rules.z })
+    print("w -> w", rules.w{ target = rules.w })
 
     print("")
 end

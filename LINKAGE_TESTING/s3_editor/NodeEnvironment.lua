@@ -131,28 +131,22 @@ end
 
 local function DefFineMatch () return true end
 
-local function HasNoLinks (event, get_linker_and_endpoint)
-	local lc, id, name = get_linker_and_endpoint(event)
-
-	return not lc:HasLinks(id, name)
-end
-
-local function SynthesizeStandardRule (limit, mods, oifx_primary, get_linker_and_endpoint)
+local function SynthesizeStandardRule (limit, mods, oifx_primary, has_no_links)
 	local coarse = ImplementsInterface(oifx_primary, mods and mods.strict)
-	local fine = limit and HasNoLinks or DefFineMatch
+	local fine = limit and has_no_links or DefFineMatch
 
 	return function(event)
 		if coarse(event) then
-			return fine(event, get_linker_and_endpoint), "Single-link node already bound" -- n.b. currently only possible failure
+			return fine(event), "Single-link node already bound" -- n.b. currently only possible failure
 		else
 			return false, "Incompatible type"
 		end
 	end
 end
 
-local function SingleLinkWildcard (predicate, get_linker_and_endpoint)
+local function SingleLinkWildcard (predicate, has_no_links)
 	return function(event)
-		if HasNoLinks(event, get_linker_and_endpoint) then
+		if has_no_links(event) then
 			return predicate(event), "Type not covered by wildcard"
 		else
 			return false, "Single-link node already bound"
@@ -166,12 +160,12 @@ local function MixtureWildcard (predicate)
 	end
 end
 
-local function RestrictedWildcard (predicate, get_linker_and_endpoint)
+local function RestrictedWildcard (predicate, has_no_links)
 	local current_ifx
 
 	return function(event)
 		if predicate(event) then
-			if HasNoLinks(event, get_linker_and_endpoint) then
+			if has_no_links(event) then
 				current_ifx = PredicateToInterface and PredicateToInterface[event.target]
 
 				return true
@@ -185,11 +179,11 @@ local function RestrictedWildcard (predicate, get_linker_and_endpoint)
 	end
 end
 
-local function SynthesizeWildcardRule (limit, mods, predicate, get_linker_and_endpoint)
+local function SynthesizeWildcardRule (limit, mods, predicate, has_no_links)
 	if limit then
-		return SingleLinkWildcard(predicate, get_linker_and_endpoint)
+		return SingleLinkWildcard(predicate, has_no_links)
 	elseif mods.wildcard == "?" then
-		return RestrictedWildcard(predicate, get_linker_and_endpoint)
+		return RestrictedWildcard(predicate, has_no_links)
 	else
 		return MixtureWildcard(predicate)
 	end
@@ -225,7 +219,7 @@ local function MakeRule (env, what, which)
 		local wpreds = assert(env.m_wildcard_predicates, "No wildcard predicates defined")
 		local predicate = assert(wpreds[what], "Invalid wildcard predicate")
 
-		return SynthesizeWildcardRule(limit, mods, predicate, env.get_linker_and_endpoint), Wildcard
+		return SynthesizeWildcardRule(limit, mods, predicate, env.m_has_no_links), Wildcard
 	else
 		local other = which == "imports" and "exports" or "imports"
 		local other_ifxs = GetMangledInterfaces(env, what, other) -- ensure existence of opposing interfaces...
@@ -237,7 +231,7 @@ local function MakeRule (env, what, which)
 			interfaces = adaptive.Append(interfaces, Value)
 		end
 
-		return SynthesizeStandardRule(limit, mods, oifx_primary, env.get_linker_and_endpoint), interfaces
+		return SynthesizeStandardRule(limit, mods, oifx_primary, env.m_has_no_links), interfaces
 	end
 end
 
@@ -318,9 +312,7 @@ local function ListInterfaces (env, key, ifx_lists)
 	env.m_interface_lists[key] = out
 end
 
-local function DefGetLinkerAndEndpoint (event)
-	return event.linker, event.id, event.name
-end
+local function DefHasNoLinks () return true end
 
 ---
 -- @ptable params
@@ -329,7 +321,7 @@ function M.New (params)
 	assert(type(params) == "table", "Non-table params")
 
 	local env, ifx_lists, wlist = {
-		m_get_linker_and_endpoint = params.get_linker_and_endpoint or DefGetLinkerAndEndpoint,
+		m_has_no_links = params.has_no_links or DefHasNoLinks,
 		m_interface_lists = {},
 		m_rules = { exports = {}, imports = {} }
 	}, params.interface_lists, params.wildcards
