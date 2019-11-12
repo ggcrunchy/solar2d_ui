@@ -24,6 +24,8 @@
 --
 
 -- Modules --
+local component = require("tektite_core.component")
+local NE = require("s3_editor.NodeEnvironment")
 local NP = require("s3_editor.NodePattern")
 
 --
@@ -125,8 +127,8 @@ do
 end
 
 do
-    local env = require("s3_editor.NodeEnvironment").New{
-        interface_lists = {
+    local env = NE.New{
+        interpretation_lists = {
             exports = {
                 uint = { "uint", "int" }
             },
@@ -141,11 +143,32 @@ do
     npc:AddImportNode("y", "uint")
     npc:AddExportNode("z", "int")
     npc:AddExportNode("w", "uint")
+    npc:AddExportNode("did", "event")
+    npc:AddImportNode("fire", "event")
 
-    local rules = {}
+    -- TODO: wildcards, restricted
+
+    local rules, value = {}, NE.ValueComponent()
 
     for k, v in npc:IterNodes() do
         rules[k] = v
+
+        local which, what = env:GetRuleInfo(v)
+
+        print("INTERFACES FOR RULE: " .. k .. "(" .. which .. " " .. what .. ")")
+        print("")
+
+        for i, ifx in ipairs(component.GetInterfacesForObject(v)) do
+            local str = ifx == value and "value" or tostring(ifx)
+
+            if i == 1 then
+                print("  PRIMARY: " .. str)
+            else
+                print("  SECONDARY: " .. str)
+            end
+        end
+
+        print("")
     end
 
     print("")
@@ -154,6 +177,8 @@ do
     print("x -> y", rules.x{ target = rules.y })
     print("x -> z", rules.x{ target = rules.z })
     print("x -> w", rules.x{ target = rules.w })
+    print("x -> did", rules.x{ target = rules.did })
+    print("x -> fire", rules.x{ target = rules.fire })
 
     print("")
 
@@ -161,6 +186,8 @@ do
     print("y -> y", rules.y{ target = rules.y })
     print("y -> z", rules.y{ target = rules.z })
     print("y -> w", rules.y{ target = rules.w })
+    print("y -> did", rules.y{ target = rules.did })
+    print("y -> fire", rules.y{ target = rules.fire })
 
     print("")
 
@@ -168,6 +195,8 @@ do
     print("z -> y", rules.z{ target = rules.y })
     print("z -> z", rules.z{ target = rules.z })
     print("z -> w", rules.z{ target = rules.w })
+    print("z -> did", rules.z{ target = rules.did })
+    print("z -> fire", rules.z{ target = rules.fire })
 
     print("")
 
@@ -175,6 +204,26 @@ do
     print("w -> y", rules.w{ target = rules.y })
     print("w -> z", rules.w{ target = rules.z })
     print("w -> w", rules.w{ target = rules.w })
+    print("w -> did", rules.w{ target = rules.did })
+    print("w -> fire", rules.w{ target = rules.fire })
+
+    print("")
+
+    print("did -> x", rules.did{ target = rules.x })
+    print("did -> y", rules.did{ target = rules.y })
+    print("did -> z", rules.did{ target = rules.z })
+    print("did -> w", rules.did{ target = rules.w })
+    print("did -> did", rules.did{ target = rules.did })
+    print("did -> fire", rules.did{ target = rules.fire })
+
+    print("")
+
+    print("fire -> x", rules.fire{ target = rules.x })
+    print("fire -> y", rules.fire{ target = rules.y })
+    print("fire -> z", rules.fire{ target = rules.z })
+    print("fire -> w", rules.fire{ target = rules.w })
+    print("fire -> did", rules.fire{ target = rules.did })
+    print("fire -> fire", rules.fire{ target = rules.fire })
 
     print("")
 end

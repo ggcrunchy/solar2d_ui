@@ -43,28 +43,28 @@ local M = {}
 --
 --
 
-local function Mangle (what, which)
+local function Decorate (what, which)
 	return which .. ":" .. tostring(what) -- reasonably unique name
 end
 
-local function GetMangledInterfaces (env, what, which)
+local function GetDecoratedInterfaces (env, what, which)
 	local ifx_list = env.m_interface_lists[which]
-	local interfaces, mangled = ifx_list and ifx_list[what], env.m_mangled or meta.WeakKeyed()
+	local interfaces, decorated = ifx_list and ifx_list[what], env.m_decorated or meta.WeakKeyed()
 
-	if mangled[interfaces] then
+	if decorated[interfaces] then
 		return interfaces
 	else
 		local list
 
-		if interfaces then
+		if interfaces then -- interpreted
 			for i = 1, #interfaces do
-				list = adaptive.Append(list, Mangle(which, interfaces[i]))
+				list = adaptive.Append(list, Decorate(which, interfaces[i]))
 			end
 		else
-			list = adaptive.Append(nil, Mangle(which, what))
+			list = adaptive.Append(nil, Decorate(which, what))
 		end
 
-		env.m_mangled, mangled[list] = mangled, true
+		env.m_decorated, decorated[list] = decorated, true
 
 		if ifx_list then
 			ifx_list[what] = list
@@ -222,10 +222,10 @@ local function MakeRule (env, what, which)
 		return SynthesizeWildcardRule(limit, mods, predicate, env.m_has_no_links), Wildcard
 	else
 		local other = which == "imports" and "exports" or "imports"
-		local other_ifxs = GetMangledInterfaces(env, what, other) -- ensure existence of opposing interfaces...
+		local other_ifxs = GetDecoratedInterfaces(env, what, other) -- ensure existence of complementary interface(s)...
 		local iter, state, index = adaptive.IterArray(other_ifxs)
-		local _, oifx_primary = iter(state, index) -- ...iterate once to get the primary one
-		local interfaces = GetMangledInterfaces(env, what, which)
+		local _, oifx_primary = iter(state, index) -- ...and iterate once to get the primary one
+		local interfaces = GetDecoratedInterfaces(env, what, which)
 
 		if not IgnoredByWildcards(what, mods) then
 			interfaces = adaptive.Append(interfaces, Value)
@@ -297,11 +297,13 @@ function NodeEnvironment:Instantiate (name)
 	return instance
 end
 
-local function ListInterfaces (env, key, ifx_lists)
-	local list, out = ifx_lists[key]
+local function DefHasNoLinks () return true end
+
+local function ListInterpretations (list)
+	local out
 
 	if list then
-		assert(type(list) == "table", "Non-table interface list")
+		assert(type(list) == "table", "Non-table interface interpretation list")
 
 		for k, v in pairs(list) do
 			out = out or {}
@@ -309,10 +311,8 @@ local function ListInterfaces (env, key, ifx_lists)
 		end
 	end
 
-	env.m_interface_lists[key] = out
+	return out
 end
-
-local function DefHasNoLinks () return true end
 
 ---
 -- @ptable params
@@ -320,17 +320,17 @@ local function DefHasNoLinks () return true end
 function M.New (params)
 	assert(type(params) == "table", "Non-table params")
 
-	local env, ifx_lists, wlist = {
+	local env, ii_lists, wlist = {
 		m_has_no_links = params.has_no_links or DefHasNoLinks,
 		m_interface_lists = {},
 		m_rules = { exports = {}, imports = {} }
-	}, params.interface_lists, params.wildcards
+	}, params.interpretation_lists, params.wildcards
 
-	if ifx_lists ~= nil then
-		assert(type(ifx_lists) == "table", "Non-table interface lists")
+	if ii_lists ~= nil then
+		assert(type(ii_lists) == "table", "Non-table interface interpretation lists")
 
-		ListInterfaces(env, "exports", ifx_lists)
-		ListInterfaces(env, "imports", ifx_lists)
+		env.m_interface_lists.exports = ListInterpretations(ii_lists.exports)
+		env.m_interface_lists.imports = ListInterpretations(ii_lists.imports)
 	end
 
 	if wlist ~= nil then
@@ -355,6 +355,11 @@ end
 --- DOCME
 function M.ValueComponent ()
 	return Value
+end
+
+--- DOCME
+function M.WildcardComponent ()
+	return Wildcard
 end
 
 return M
