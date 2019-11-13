@@ -24,13 +24,12 @@
 --
 
 -- Standard library imports --
-local ipairs = ipairs
 local pairs = pairs
 
 -- Modules --
 local common = require("s3_editor.Common") -- urgh...
-local linkage_utils = require("corona_utils.linkage.utils")
 local strings = require("tektite_core.var.strings")
+local utils = require("corona_utils.linkage.utils")
 
 -- Cached module references --
 local _SaveValuesIntoEntry_
@@ -54,44 +53,45 @@ local function GatherLabel (name, labels)
 	return labels
 end
 
---- DOCME
-function M.ResolveLinks_Save (level)
-	local list = level.links
+local EntryPairTag = utils.EntryPairTag()
 
-	if list then
-		local new, links, labels = {}, common.GetLinks() -- linker:GetLinks()
-		local tag_db = links:GetTagDatabase()
+local function GetEntry (new, ids_to_entries, ids_to_indices, id)
+	local entry = ids_to_entries[id]
 
-		for _, rep in ipairs(list) do
-		-- for _, id in ipairs(list) do
-			local entry = common.GetValuesFromRep(rep)
-			-- local entry = linker:GetValuesFromIdentifier(id)
+	if entry.uid then
+		new[#new + 1] = EntryPairTag
+		new[#new + 1] = entry.uid
 
-			new[#new + 1] = "entry"
-			new[#new + 1] = entry.uid
+		local n = ids_to_indices.n + 1
 
-			entry.uid = nil
-
-			for _, sub in tag_db:Sublinks(links:GetTag(rep), "no_templates") do
-			-- for name in NODE_PATTERN(id):NonTemplateNodes() do
-				new[#new + 1] = "sub" -- "name"
-				new[#new + 1] = sub -- name
-
-				labels = GatherLabel(sub, labels)
-
-				for link in links:Links(rep, sub) do -- id
-					local obj, osub = link:GetOtherObject(rep) -- id / oid, oname = GetOtherItem()
-
-					new[#new + 1] = list[obj] -- list[oid], see notes below (could use values?)
-					new[#new + 1] = osub -- oname
-
-					labels = GatherLabel(sub, labels)
-				end
-			end
-		end
-
-		level.links, level.labels = new, labels
+		ids_to_indices[id], ids_to_indices.n, entry.uid = n, n 
 	end
+end
+
+local AttachmentPairTag = utils.AttachmentPairTag()
+
+--- DOCME
+function M.ResolveLinks_Save (links, ids_to_entries)
+	local new, ids_to_indices, labels
+
+	links:ForEachLink(function(link)
+		new, ids_to_indices = new or {}, ids_to_indices or { n = 0 }
+
+		local id1, aname1, id2, aname2 = link:GetLinkedPairs()
+
+		GetEntry(new, ids_to_entries, ids_to_indices, id1)
+		GetEntry(new, ids_to_entries, ids_to_indices, id2)
+
+		new[#new + 1] = AttachmentPairTag
+		new[#new + 1] = aname1
+		new[#new + 1] = ids_to_indices[id2]
+		new[#new + 1] = aname2
+
+		labels = GatherLabel(aname1, labels)
+		labels = GatherLabel(aname2, labels)
+	end)
+
+	return new, labels
 end
 
 --- DOCME
@@ -127,7 +127,7 @@ end
 
 --- DOCME
 function M.SaveValuesIntoEntry (level, mod, values, entry)
-	linkage_utils.EnumDefs(mod, values)
+	utils.EnumDefs(mod, values)
 
 	-- Does this values blob have any links? If so, make note of it in the blob itself and
 	-- add some tracking information in the links list.
@@ -155,10 +155,10 @@ function M.SaveValuesIntoEntry (level, mod, values, entry)
 		entry[k] = v
 	end
 
-	linkage_utils.EditorEvent(mod, "save", level, entry, values)
+	utils.EditorEvent(mod, "save", level, entry, values)
 	-- entry:SendMessage(...)
 
-	linkage_utils.AssignDefs(entry)
+	utils.AssignDefs(entry)
 
 	entry.positions, entry.instances = common.GetPositions(rep), common.GetInstances(rep, "copy")
 	-- entry.positions, entry.instances = env:GetPositions(id), env:GetGeneratedNames(id, "copy")

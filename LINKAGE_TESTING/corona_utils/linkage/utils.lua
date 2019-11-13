@@ -24,7 +24,9 @@
 --
 
 -- Standard library imports --
+local assert = assert
 local pairs = pairs
+local type = type
 
 -- Exports --
 local M = {}
@@ -65,33 +67,48 @@ function M.EnumDefs (mod, value)
 	end
 end
 
+local AttachmentPairTag, EntryPairTag = "pair>attachment", "pair>entry"
+
 --- DOCME
-function M.ReadLinks (level, on_entry, on_pair)
-	local list, index, entry, sub = level.links, 1
+function M.AttachmentPairTag ()
+	return AttachmentPairTag
+end
+
+--- DOCME
+function M.EntryPairTag ()
+	return EntryPairTag
+end
+
+local function DefCallback () end
+
+--- DOCME
+function M.VisitLinks (list, params)
+	assert(type(params) == "table", "Invalid params")
+
+	local ids_to_entries, visited_list = params.ids_to_entries or list, params.visited_list or list
+	local visit_entry, resolve_pair = params.visit_entry or DefCallback, params.resolve_pair or DefCallback
+	local index, entry, aname = 1
 
 	for i = 1, #list, 2 do
-		local item, other = list[i], list[i + 1]
+		local a, b = list[i], list[i + 1]
 
-		-- Entry pair: Load the entry via its ID (note that the build and load pre-resolve steps
-		-- both involve stuffing the ID into the links) and append it to the entries array. If
-		-- there is a per-entry visitor, call it along with its entry index.
-		if item == "entry" then
-			entry = list[other]
+		if a == EntryPairTag then -- b: entry ID
+			entry = ids_to_entries[b]
 
-			on_entry(entry, index)
+			visit_entry(entry, index)
 
-			list[index], index = entry, index + 1
+			visited_list[index], index = entry, index + 1 -- n.b. since we read two entries at a time but write
+														  -- at most one, we may safely use list as visited_list
 
-		-- Sublink pair: Get the sublink name.
-		elseif item == "sub" then
-			sub = other
+		elseif a == AttachmentPairTag then -- b: attachment point name
+			aname = b
 
-		-- Other object sublink pair: The saved entry stream is a fat representation, with both
-		-- directions represented for each link, i.e. each sublink pair will be encountered twice.
-		-- The first time, only "entry" will have been loaded, and should be ignored. On the next
-		-- pass, pair the two entries, since both will be loaded.
-		elseif index > item then
-			on_pair(list, entry, list[item], sub, other)
+		elseif index > a then -- a: index of other entry; b: attachment name of other entry
+							  -- n.b. for simplicity, (index #1, name #1) and (index #2, name #2) are each
+							  -- represented; the pair is resolved after both entries have been visited
+			resolve_pair(entry, aname, visited_list[a], b)
+			-- TODO: list used as list[entry] for "prep_link" lookups by builds; dispatchable
+			-- entries should serve just as well, and make the process more obvious.
 		end
 	end
 end

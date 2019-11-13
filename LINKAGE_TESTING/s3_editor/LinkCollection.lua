@@ -331,7 +331,7 @@ function LinkCollection:LinkPairs (id1, name1, id2, name2)
 	if rawequal(id1, id2) then
 		return nil, "Equal IDs"
 	elseif LessThan(id2, id1) then -- impose an arbitrary but consistent order for later lookup
-		id1, id2, name1, name2 = id2, id1, name2, name1
+		id1, name1, id2, name2 = id2, name2, id1, name1
 	end
 
 	local list1, list2 = GetList(self, id1), GetList(self, id2)

@@ -329,8 +329,8 @@ function M.New (params)
 	if ii_lists ~= nil then
 		assert(type(ii_lists) == "table", "Non-table interface interpretation lists")
 
-		env.m_interface_lists.exports = ListInterpretations(ii_lists.exports)
-		env.m_interface_lists.imports = ListInterpretations(ii_lists.imports)
+		env.m_interface_lists.exports = ListInterpretations(ii_lists.exports) -- these are treated as interpretations...
+		env.m_interface_lists.imports = ListInterpretations(ii_lists.imports) -- ...until being decorated
 	end
 
 	if wlist ~= nil then

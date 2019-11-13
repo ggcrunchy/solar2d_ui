@@ -29,7 +29,7 @@ local pairs = pairs
 
 -- Modules --
 local common = require("s3_editor.Common") -- urgh...
-local linkage_utils = require("corona_utils.linkage.utils")
+local utils = require("corona_utils.linkage.utils")
 
 -- Cached module references --
 local _LoadValuesFromEntry_
@@ -64,7 +64,7 @@ end
 
 --- DOCME
 function M.LoadValuesFromEntry (level, mod, values, entry)
-	linkage_utils.EnumDefs(mod, entry)
+	utils.EnumDefs(mod, entry)
 
 	-- If the entry will be involved in links, stash its rep so that it gets picked up (as
 	-- "entry") by ReadLinks() during resolution.
@@ -108,31 +108,28 @@ function M.LoadValuesFromEntry (level, mod, values, entry)
 		values[k] = v
 	end
 
-	linkage_utils.EditorEvent(mod, "load", level, entry, values)
+	utils.EditorEvent(mod, "load", level, entry, values)
 	-- entry:SendMessage(...)
 
-	linkage_utils.AssignDefs(values)
+	utils.AssignDefs(values)
 end
 
 -- ^^ TODO: Can this be made useful with Undo?
 
--- Helper to resolve sublinks that might be instantiated templates; since this is a new session, we need to
--- request new names for each instance to maintain consistency
-local function ResolveSublink (name, resolved)
-	return resolved and resolved[name] or name
-end
-
 --- DOCME
-function M.ResolveLinks_Load (level)
-	if level.links then
-		local links, resolved = common.GetLinks(), level.resolved
+function M.ResolveLinks_Load (list, links, resolved)
+	if list then
+		utils.VisitLinks(list, {
+			resolve_pair = function(id1, aname1, id2, aname2)
+				-- The attachment names might have been generated from templates. Since these are
+				-- based on some internal state (such as counters starting from 0) they are given
+				-- new names for consistency with the current session.
+				aname1 = resolved and resolved[aname1] or aname1 -- n.b. might fall through
+				aname2 = resolved and resolved[aname2] or aname2 -- ditto
 
-		linkage_utils.ReadLinks(level, function() end, function(_, obj1, obj2, sub1, sub2)
-			sub1 = ResolveSublink(sub1, resolved)
-			sub2 = ResolveSublink(sub2, resolved)
-
-			links:LinkObjects(obj1, obj2, sub1, sub2)
-		end)
+				links:LinkPairs(id1, aname1, id2, aname2)
+			end
+		})
 	end
 end
 

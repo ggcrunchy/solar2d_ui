@@ -27,9 +27,8 @@
 local pairs = pairs
 
 -- Modules --
-local common = require("s3_editor.Common") -- urgh...
-local linkage_utils = require("corona_utils.linkage.utils")
 local table_funcs = require("tektite_core.table.funcs")
+local utils = require("corona_utils.linkage.utils")
 
 -- Exports --
 local M = {}
@@ -39,7 +38,7 @@ local M = {}
 --
 
 --- DOCME
-function M.BuildEntry (level, mod, entry, acc)
+function M.BuildEntry (level, mod, entry, acc, links)
 	acc = acc or {}
 
 	local built, instances = table_funcs.Copy(entry), entry.instances
@@ -48,7 +47,7 @@ function M.BuildEntry (level, mod, entry, acc)
 		built.instances = nil
 
 		mod.EditorEvent(entry.type, "build_instances", built, {
-			instances = instances, labels = level.labels, links = common.GetLinks()
+			instances = instances, labels = level.labels, links = links
 		})
 	--[[
 		entry:SendMessage("build_generated_names", built, {
@@ -85,35 +84,48 @@ function M.BuildEntry (level, mod, entry, acc)
 	return acc
 end
 
+local function LinkEntries (event, entry1, aname1, entry2, aname2, cleanup)
+	event.entry, event.entry_attachment_point_name, event.other, event.other_attachment_point_name = entry1, aname1, entry2, aname2
+
+	entry1:dispatchEvent(event)
+
+	if event.needs_cleanup then -- has state needed while linking, but irrelevant once built
+		cleanup = cleanup or {}
+		cleanup[entry1], event.needs_cleanup = true
+	end
+
+	event.entry, event.entry_attachment_point_name, event.other, event.other_attachment_point_name = nil
+
+	return cleanup
+end
+
 --- DOCME
-function M.ResolveLinks_Build (level)
-	if level.links then
-		linkage_utils.ReadLinks(level, function(entry, index)
-			entry.uid = index
-		end, function(list, entry1, entry2, sub1, sub2)
-			local func1, func2 = list[entry1], list[entry2]
+function M.ResolveLinks_Build (list, labels)
+	if list then
+		local link_event, cleanup = { name = "link_entries", labels = labels }
 
-			if func1 then
-				func1(entry1, entry2, sub1, sub2)
+		utils.VisitLinks(list, {
+			resolve_pair = function(entry1, aname1, entry2, aname2)
+				cleanup = LinkEntries(link_event, entry1, aname1, entry2, aname2, cleanup)
+				cleanup = LinkEntries(link_event, entry2, aname2, entry1, aname1, cleanup)
+			end,
+
+			visit_entry = function(entry, index)
+				entry.uid = index
 			end
+		})
 
-			if func2 then
-				func2(entry2, entry1, sub2, sub1)
+		if cleanup then
+			local cleanup_event = { name = "link_entry_cleanup" }
+
+			for entry in pairs(cleanup) do
+				cleanup_event.entry = entry
+
+				entry:dispatchEvent(cleanup_event)
 			end
-		end)
-
-		-- Tidy up any information only needed during linking.
-		if level.cleanup then
-			for entry, cleanup in pairs(level.cleanup) do
-				cleanup(entry)
-			end
-
-			level.cleanup = nil
 		end
 
-		-- All labels and link information have now been incorporated into the entries
-		-- themselves, so there is no longer need to retain it in the editor state.
-		level.labels, level.links = nil
+		-- TODO: level.labels, level.links = nil (in caller)
 	end
 end
 
