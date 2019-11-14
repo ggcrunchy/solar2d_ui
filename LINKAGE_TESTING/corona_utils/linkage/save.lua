@@ -24,7 +24,9 @@
 --
 
 -- Standard library imports --
+local getmetatable = getmetatable
 local pairs = pairs
+local setmetatable = setmetatable
 
 -- Modules --
 local common = require("s3_editor.Common") -- urgh...
@@ -95,59 +97,33 @@ function M.ResolveLinks_Save (links, ids_to_entries)
 end
 
 --- DOCME
-function M.SaveGroupOfValues (level, what, mod, view)
+function M.SaveGroupOfValues (values_group, links, list, building)
 	local target = {}
+	local saved = { entries = target, version = 1 }
 
-	level[what] = { entries = target, version = 1 }
-
-	local values = view:GetValues()
-
-	for k, v in pairs(values) do
-		target[k] = _SaveValuesIntoEntry_(level, mod, v, {})
+	for k, values in pairs(values_group) do
+		target[k], list = _SaveValuesIntoEntry_(values, {}, links, list, building)
 	end
+
+	return saved
 end
 
-local function HasAny (rep) -- id
-	local links = common.GetLinks() -- env:GetLinks()
-	local tag = links:GetTag(rep) -- Type(id)
-
-	if tag then
-		local f, s, v0, reclaim = links:GetTagDatabase():Sublinks(tag, "no_templates")
-
-		for _, sub in f, s, v0 do
-			if links:HasLinks(rep, sub) then
-			-- if links:HasLinks(id, sub) then
-				reclaim()
-
-				return true
-			end
-		end
-	end
-end
+local SaveEvent = { name = "save" }
 
 --- DOCME
-function M.SaveValuesIntoEntry (level, mod, values, entry)
-	utils.EnumDefs(mod, values)
+function M.SaveValuesIntoEntry (values, entry, links, list, building)
+--	utils.EnumDefs(mod, values)
 
 	-- Does this values blob have any links? If so, make note of it in the blob itself and
 	-- add some tracking information in the links list.
 	local rep = common.GetRepFromValues(values)
 	-- local id = env:GetIdentifierFromValues(values)
 
-	if HasAny(rep) then
+	if links:HasAnyLinks(rep) and not values.uid then
 	-- if HasAny(id) then
-		local list = level.links or {}
-
-		if not list[rep] then -- see note below
-		-- if not list[id] then
-			values.uid = strings.NewName()
-
-			list[#list + 1] = rep
-			-- list[#list + 1] = id
-			list[rep] = #list -- TODO: as id, might mix with list... maybe negate or stringify?
-		end
-
-		level.links = list
+		list, values.uid = list or {}, strings.NewName()
+		list[#list + 1] = rep
+		-- list[#list + 1] = id
 	end
 
 	-- Copy the values into the editor state, alert any listeners, and add defaults as necessary.
@@ -155,15 +131,23 @@ function M.SaveValuesIntoEntry (level, mod, values, entry)
 		entry[k] = v
 	end
 
-	utils.EditorEvent(mod, "save", level, entry, values)
-	-- entry:SendMessage(...)
+	SaveEvent.entry, SaveEvent.values = entry, values
 
-	utils.AssignDefs(entry)
+	values:dispatchEvent(SaveEvent)
 
+	SaveEvent.entry, SaveEvent.values = nil
+
+	if building then
+		setmetatable(entry, getmetatable(values))
+	end
+
+--	utils.AssignDefs(entry)
+
+	-- dispatch for positions, instances?
 	entry.positions, entry.instances = common.GetPositions(rep), common.GetInstances(rep, "copy")
 	-- entry.positions, entry.instances = env:GetPositions(id), env:GetGeneratedNames(id, "copy")
 
-	return entry
+	return entry, list
 end
 
 -- ^^^ TODO: what would it take to use this to save / restore via undo?

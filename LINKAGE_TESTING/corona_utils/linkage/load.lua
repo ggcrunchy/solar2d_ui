@@ -44,7 +44,7 @@ local M = {}
 local function NoOp () end
 
 --- DOCME
-function M.LoadGroupOfValues (into, level, what, mod, before, before_loop, after_loop, after)
+function M.LoadGroupOfValues (into, level, what, before, before_loop, after_loop, after)
 	local values = assert(before(into), "No values supplied")
 
 	level[what].version = nil
@@ -54,7 +54,7 @@ function M.LoadGroupOfValues (into, level, what, mod, before, before_loop, after
 	for k, entry in pairs(level[what].entries) do
 		before_loop(k, entry)
 
-		_LoadValuesFromEntry_(level, mod, values[k], entry)
+		_LoadValuesFromEntry_(level, values[k], entry --[[ argh ]])
 
 		after_loop()
 	end
@@ -62,9 +62,17 @@ function M.LoadGroupOfValues (into, level, what, mod, before, before_loop, after
 	;(after or NoOp)()
 end
 
+local EnumDefsEvent = {}
+
+local LoadEvent = { name = "load" }
+
 --- DOCME
-function M.LoadValuesFromEntry (level, mod, values, entry)
-	utils.EnumDefs(mod, entry)
+function M.LoadValuesFromEntry (values, entry, links, list, labels)
+	EnumDefsEvent.name = "enum_defs"
+
+	values:dispatchEvent(EnumDefsEvent)
+
+	EnumDefsEvent.name = nil
 
 	-- If the entry will be involved in links, stash its rep so that it gets picked up (as
 	-- "entry") by ReadLinks() during resolution.
@@ -72,11 +80,11 @@ function M.LoadValuesFromEntry (level, mod, values, entry)
 	-- local id = env:GetIdentitfierFromValues(values)
 
 	if entry.uid then
-		level.links[entry.uid] = rep
+		list[entry.uid] = rep
 	end
 
 	--
-	local links, labels, resolved = common.GetLinks() -- env:GetLinks()
+	local resolved
 	local tag_db, tag = links:GetTagDatabase(), links:GetTag(rep)
 
 	for i = 1, #(entry.instances or "") do
@@ -84,7 +92,7 @@ function M.LoadValuesFromEntry (level, mod, values, entry)
 		local name = entry.instances[i]
 		-- local name = entry.generated_names[i]
 
-		labels, resolved = labels or level.labels, resolved or {}
+		resolved = resolved or {}
 		resolved[name] = tag_db:ReplaceSingleInstance(tag, name)
 		-- resolved[name] = ???:ReplaceSingleGeneratedName(name)
 
@@ -108,10 +116,19 @@ function M.LoadValuesFromEntry (level, mod, values, entry)
 		values[k] = v
 	end
 
-	utils.EditorEvent(mod, "load", level, entry, values)
-	-- entry:SendMessage(...)
+	LoadEvent.entry, LoadEvent.values = entry, values
 
-	utils.AssignDefs(values)
+	values:dispatchEvent(LoadEvent)
+
+	LoadEvent.entry, LoadEvent.values = nil
+
+	for k, v in pairs(EnumDefsEvent) do
+		if values[k] ~= nil then
+			values[k] = v
+		end
+
+		EnumDefsEvent[k] = nil
+	end
 end
 
 -- ^^ TODO: Can this be made useful with Undo?

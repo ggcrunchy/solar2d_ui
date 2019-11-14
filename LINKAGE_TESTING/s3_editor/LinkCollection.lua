@@ -263,6 +263,23 @@ end
 
 ---
 -- @tparam ID id
+-- @treturn boolean X
+function LinkCollection:HasAnyLinks (id)
+	local list = self[id]
+
+	if list then
+		for _, pair_links in pairs(list) do
+			if #pair_links > 0 then
+				return true
+			end
+		end
+	end
+
+	return false
+end
+
+---
+-- @tparam ID id
 -- @tparam Name name
 -- @treturn boolean X
 function LinkCollection:HasLinks (id, name)
