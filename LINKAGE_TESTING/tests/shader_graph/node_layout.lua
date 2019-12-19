@@ -114,6 +114,11 @@ function M.GetDimensions (group)
 end
 
 --- DOCME
+function M.GetSide (item)
+	return item[_side]
+end
+
+--- DOCME
 function M.HideItemDuringVisits (item)
     item[_hidden_during_visits] = true
 end
