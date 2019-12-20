@@ -109,6 +109,16 @@ local function DefTopLevelIter (top_level_vertices)
     return AuxDefTopLevelIter, top_level_vertices, 0
 end
 
+local function AuxRoot (x, ok)
+	if ok then
+		return false, x
+	end
+end
+
+local function Root (root_vertex)
+	return AuxRoot, root_vertex, true
+end
+
 --- Perform a depth-first search, starting with a set of top-level vertices. Each vertex
 -- must have some user-defined "index" that uniquely identifies it.
 -- @param top_level_vertices Vertices to strongly connect.
@@ -133,6 +143,10 @@ function M.VisitTopLevel (algorithm, visit, top_level_vertices, opts, arg)
     end
 
     adj_iter = adj_iter or DefAdjacencyIter
+
+    if tl_iter == "root" then
+        tl_iter = Root
+    end
 
     algorithm.Begin()
 

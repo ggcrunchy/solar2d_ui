@@ -78,17 +78,7 @@ local function AdjacentBoxesIter (_, node) -- TODO: node works as index EXCEPT w
 	return AuxAdjacentBoxesIter, AdjacentBoxes.n, 0
 end
 
-local function AuxTopLevelNode (x, ok)
-	if ok then
-		return false, nil, x
-	end
-end
-
-local function TopLevelNode (top_level_vertices)
-	return AuxTopLevelNode, top_level_vertices, true
-end
-
-local Opts = { adjacency_iter = AdjacentBoxesIter, top_level_iter = TopLevelNode }
+local Opts = { adjacency_iter = AdjacentBoxesIter, top_level_iter = "root" }
 
 --
 -- Connect / Resolve
@@ -128,7 +118,7 @@ local function DoDisconnect (graph, node, adj_iter)
 	local n = DecayCandidates.n + 1
 
 	DecayCandidates[n], DecayCandidates.n = node.parent, n
-
+-- ^^^ TODO: can n be NaN here?
 	dfs.VisitAdjacentVertices_Once(DisconnectAlg, DoDisconnect, graph, node, adj_iter)
 end
 
