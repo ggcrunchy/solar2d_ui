@@ -115,15 +115,17 @@ local DisconnectAlg = dfs.NewAlgorithm()
 local DecayCandidates = { n = 0 }
 
 local function DoDisconnect (graph, node, adj_iter)
-	local n = DecayCandidates.n + 1
+	local n = DecayCandidates.n + 1 -- "n" might be NaN
 
-	DecayCandidates[n], DecayCandidates.n = node.parent, n
--- ^^^ TODO: can n be NaN here?
-	dfs.VisitAdjacentVertices_Once(DisconnectAlg, DoDisconnect, graph, node, adj_iter)
+	if n == n then -- no hard nodes yet?
+		DecayCandidates[n], DecayCandidates.n = node.parent, n
+
+		dfs.VisitAdjacentVertices_Once(DisconnectAlg, DoDisconnect, graph, node, adj_iter)
+	end
 end
 
 local function CanReachHardNode ()
-	DecayCandidates.n = 0 / 0
+	DecayCandidates.n = 0 / 0 -- see "x == x" checks in DoDisconnect and ExploreDisconnectedNode
 end
 
 local ToDecay = {}
@@ -171,6 +173,8 @@ local function CanConnect (a, b)
     local how2, what2 = ns.QueryRule(b, a, compatible)
 
     if how1 and how2 then
+		-- can a already reach b?
+		-- ditto the reverse...
         if how1 == "resolve" then
             a.resolve = what1
         elseif how2 == "resolve" then
@@ -232,7 +236,7 @@ function M.MakeClusterFuncs (ops)
 
 			ns.BreakConnections(a)
 			ns.BreakConnections(b)
-
+-- ^^ TODO: this is not robust if already typed :/
 			aparent.bound, bparent.bound = aparent.bound + a.bound_bit, bparent.bound + b.bound_bit
 
 			local rnode, rtype = FindNodeToResolve(a, b)
@@ -256,8 +260,8 @@ function M.MakeClusterFuncs (ops)
 			if rtype then
 				ApplyChanges(resize, ToResolve, resolve, rtype)
 			end
-
-		--	DUMP_INFO("connect")
+			-- if wasn't reachable from "output", rebuild
+--DUMP_INFO("connect")
 			ConnectionGen, IsDeferred = ConnectionGen + 1
 		elseif how == "disconnect" then -- ...but here it usually does, cf. note in FadeAndDie()
 			aparent.bound, bparent.bound = aparent.bound - a.bound_bit, bparent.bound - b.bound_bit
@@ -273,11 +277,11 @@ function M.MakeClusterFuncs (ops)
 			if ncandidates >= 1 then -- ...whereas in a hard connection, only the non-hard one is
 				ExploreDisconnectedNode(y)
 			end
-
-		--	DUMP_INFO("disconnect")
+--DUMP_INFO("disconnect")
 			if ncandidates > 0 and not IsDeferred then -- defer disconnections happening as a side effect of a connection or deletion
 				DoDecays()
 			end
+			-- if was reachable from "output", rebuild
 		end
 	end, DoDecays
 end
@@ -291,11 +295,11 @@ end
 function M.ResumeDecays ()
 	IsDeferred = false
 end
-
-return M
---[=[
+---[=[
 function DUMP_INFO (why)
 	local stage = display.getCurrentStage()
+	local Connected={}
+	local nc = require("corona_ui.patterns.node_cluster")
 	print("DUMP", why)
 	for i = 1, stage.numChildren do
 		local p = stage[i]
@@ -328,4 +332,5 @@ end
 		end
 	end
 end
-]=]
+--]=]
+return M

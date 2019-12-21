@@ -111,7 +111,7 @@ end
 
 local function AuxRoot (x, ok)
 	if ok then
-		return false, x
+		return false, nil, x
 	end
 end
 
