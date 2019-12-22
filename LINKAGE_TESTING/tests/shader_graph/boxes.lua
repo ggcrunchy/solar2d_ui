@@ -29,6 +29,7 @@ local pairs = pairs
 
 -- Modules --
 local dfs = require("tests.shader_graph.dfs")
+local nl = require("tests.shader_graph.node_layout")
 local ns = require("tests.shader_graph.node_state")
 
 -- Exports --
@@ -42,43 +43,59 @@ local M = {}
 -- Connectedness search
 --
 
-local AdjacentBoxes = {}
+local AdjacencyStack = {}
 
-local function AuxAdjacentBoxesIter (_, i)
-	i = i + 1
+local Height = 0
 
-	if i <= AdjacentBoxes.n then
-		return i, AdjacentBoxes[i]
+local function Push (node)
+	Height = Height + 1
+
+	local aboxes = AdjacencyStack[Height] or {}
+
+	AdjacencyStack[Height], aboxes.node = aboxes, node
+
+	return aboxes
+end
+
+local function AuxAdjacentBoxesIter (aboxes, index)
+	local box = aboxes[index + 1]
+
+	if box then
+		return index + 1, box
 	else -- clean up when done
-		for j = 1, AdjacentBoxes.n do
-			AdjacentBoxes[j] = false
+		for i = #aboxes, 1, -1 do
+			aboxes[i] = nil
 		end
+
+		Height = Height - 1
 	end
 end
 
+local function MakeAdjacencyIterator(gather)
+	return function(_, node) -- TODO: node works as index EXCEPT with undo / redo
+		local aboxes = Push(node)
+
+		ns.VisitConnectedNodes(node.parent, gather, aboxes)
+
+		aboxes.node = nil
+
+		return AuxAdjacentBoxesIter, aboxes, 0
+	end
+end
+
+local Opts = { top_level_iter = "root" }
+
 local OnFoundHard
 
-local function GatherAdjacentBoxes (neighbor, node)
-	local what = ns.Classify(neighbor, node)
+Opts.adjacency_iter = MakeAdjacencyIterator(function(neighbor, aboxes)
+	local what = ns.Classify(neighbor, aboxes.node)
 
 	if what == "hard" then
 		OnFoundHard()
 	elseif what == "neither_hard" then
-		local n = AdjacentBoxes.n + 1
-
-		AdjacentBoxes.n, AdjacentBoxes[n] = n, neighbor
+		aboxes[#aboxes + 1] = neighbor
 	end
-end
-
-local function AdjacentBoxesIter (_, node) -- TODO: node works as index EXCEPT with undo / redo
-	AdjacentBoxes.n = 0
-
-	ns.VisitConnectedNodes(node.parent, GatherAdjacentBoxes, node)
-
-	return AuxAdjacentBoxesIter, AdjacentBoxes.n, 0
-end
-
-local Opts = { adjacency_iter = AdjacentBoxesIter, top_level_iter = "root" }
+end)
 
 --
 -- Connect / Resolve
@@ -114,10 +131,12 @@ local DisconnectAlg = dfs.NewAlgorithm()
 
 local DecayCandidates = { n = 0 }
 
-local function DoDisconnect (graph, node, adj_iter)
-	local n = DecayCandidates.n + 1 -- "n" might be NaN
+local NoHardNodes
 
-	if n == n then -- no hard nodes yet?
+local function DoDisconnect (graph, node, adj_iter)
+	if NoHardNodes then
+		local n = DecayCandidates.n + 1
+
 		DecayCandidates[n], DecayCandidates.n = node.parent, n
 
 		dfs.VisitAdjacentVertices_Once(DisconnectAlg, DoDisconnect, graph, node, adj_iter)
@@ -125,20 +144,22 @@ local function DoDisconnect (graph, node, adj_iter)
 end
 
 local function CanReachHardNode ()
-	DecayCandidates.n = 0 / 0 -- see "x == x" checks in DoDisconnect and ExploreDisconnectedNode
+	NoHardNodes = false
 end
 
 local ToDecay = {}
 
 local function ExploreDisconnectedNode (node)
-	DecayCandidates.n = 0
+	DecayCandidates.n, NoHardNodes = 0, true
 
 	dfs.VisitTopLevel(DisconnectAlg, DoDisconnect, node, Opts)
 
-	if DecayCandidates.n == DecayCandidates.n then -- unable to reach hard node?
-		for i = 1, DecayCandidates.n do
-			ToDecay[DecayCandidates[i]], DecayCandidates[i] = ConnectionGen, false
-		end
+	for i = 1, NoHardNodes and DecayCandidates.n or 0 do
+		ToDecay[DecayCandidates[i]] = ConnectionGen
+	end
+
+	for i = 1, DecayCandidates.n do
+		DecayCandidates[i] = false
 	end
 end
 
@@ -167,14 +188,42 @@ local function ApplyChanges (resize, list, func, arg)
 	end
 end
 
+local CycleCheckOpts = { top_level_iter = "root" }
+
+local FromBox, FromSide, CycleFormed
+
+CycleCheckOpts.adjacency_iter = MakeAdjacencyIterator(function(neighbor, aboxes)
+	if neighbor.parent == FromBox then
+		CycleFormed = true
+	elseif nl.GetSide(neighbor) == FromSide then
+		aboxes[#aboxes + 1] = neighbor
+	end
+end)
+
+local CycleCheckAlg = dfs.NewAlgorithm()
+
+local function DoCycleCheck (graph, node, adj_iter)
+	if not CycleFormed then
+		dfs.VisitAdjacentVertices_Once(CycleCheckAlg, DoCycleCheck, graph, node, adj_iter)
+	end
+end
+
+local function FormsCycle (from, to)
+	FromBox, FromSide, CycleFormed = from.parent, nl.GetSide(from)
+
+	dfs.VisitTopLevel(CycleCheckAlg, DoCycleCheck, to, CycleCheckOpts)
+
+	FromBox = nil
+
+	return CycleFormed
+end
+
 local function CanConnect (a, b)
     local compatible = ns.WilcardOrHardType(a) == ns.WilcardOrHardType(b) -- e.g. restrict to vectors, matrices, etc.
     local how1, what1 = ns.QueryRule(a, b, compatible)
     local how2, what2 = ns.QueryRule(b, a, compatible)
 
-    if how1 and how2 then
-		-- can a already reach b?
-		-- ditto the reverse...
+    if how1 and how2 and not FormsCycle(a, b) then
         if how1 == "resolve" then
             a.resolve = what1
         elseif how2 == "resolve" then
@@ -236,7 +285,7 @@ function M.MakeClusterFuncs (ops)
 
 			ns.BreakConnections(a)
 			ns.BreakConnections(b)
--- ^^ TODO: this is not robust if already typed :/
+
 			aparent.bound, bparent.bound = aparent.bound + a.bound_bit, bparent.bound + b.bound_bit
 
 			local rnode, rtype = FindNodeToResolve(a, b)
@@ -247,14 +296,24 @@ function M.MakeClusterFuncs (ops)
 				dfs.VisitTopLevel(ConnectAlg, DoConnect, rnode, Opts)
 			end
 
+			local adgen, bdgen = ToDecay[aparent], ToDecay[bparent]
+
+			if adgen == ConnectionGen and adgen == ToResolve[bparent] then
+				ToResolve[bparent] = nil
+			elseif bdgen == ConnectionGen and bdgen == ToResolve[aparent] then
+				ToResolve[aparent] = nil
+			end
+			--[=[
 			for index, gen in pairs(ToDecay) do -- breaking old connections can put boxes in the to-decay list, but
 												-- the new connection might put them in the to-resolve list; these
 												-- boxes are already resolved, so remove them from both lists
 				if gen == ConnectionGen and ToResolve[index] == gen then
+--print("MIRBLE")
 					ToDecay[index], ToResolve[index] = nil
 				end
 			end
-
+			]=]
+-- seems to be missing that it's decaying, but the other thing WILL be resolved?
 			ApplyChanges(resize, ToDecay, decay)
 
 			if rtype then
@@ -295,7 +354,7 @@ end
 function M.ResumeDecays ()
 	IsDeferred = false
 end
----[=[
+--[=[
 function DUMP_INFO (why)
 	local stage = display.getCurrentStage()
 	local Connected={}
