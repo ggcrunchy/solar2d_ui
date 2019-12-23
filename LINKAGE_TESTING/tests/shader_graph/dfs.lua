@@ -41,8 +41,10 @@ end
 
 local PreorderMT = { __mode = "k" }
 
+local function DefAfterVisit () end
+
 --- DOCME
-function M.NewAlgorithm ()
+function M.NewAlgorithm (opts)
     local algorithm = {}
 
     local preorder, low = setmetatable({}, PreorderMT)
@@ -68,6 +70,8 @@ function M.NewAlgorithm ()
         low = count
     end
 
+	algorithm.DoAfterVisit = opts and opts.after_visit or DefAfterVisit -- n.b. can fall through
+
     return algorithm
 end
 
@@ -81,6 +85,7 @@ function M.VisitAdjacentVertices (algorithm, visit, revisit, graph, index, adj_i
         else
             algorithm.AddBeforeVisit(t)
             visit(graph, t, adj_iter, arg)
+			algorithm.DoAfterVisit(t)
         end
     end
 end
@@ -91,6 +96,7 @@ function M.VisitAdjacentVertices_Once (algorithm, visit, graph, index, adj_iter,
         if not algorithm.HasVisited(t) then
             algorithm.AddBeforeVisit(t)
             visit(graph, t, adj_iter, arg)
+			algorithm.DoAfterVisit(t)
         end
     end
 end
@@ -154,6 +160,7 @@ function M.VisitTopLevel (algorithm, visit, top_level_vertices, opts, arg)
         if not algorithm.HasVisited(index) then
             algorithm.AddBeforeVisit(index)
             visit(graph, index, adj_iter, arg)
+			algorithm.DoAfterVisit(index)
         end
     end
 end

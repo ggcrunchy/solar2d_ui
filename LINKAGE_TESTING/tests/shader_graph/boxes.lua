@@ -26,11 +26,15 @@
 -- Standard library imports --
 local error = error
 local pairs = pairs
+local sort = table.sort
 
 -- Modules --
 local dfs = require("tests.shader_graph.dfs")
 local nl = require("tests.shader_graph.node_layout")
 local ns = require("tests.shader_graph.node_state")
+
+-- Cached module references --
+local _SetCodeSegmentName_
 
 -- Exports --
 local M = {}
@@ -174,19 +178,8 @@ local function MakeDecay (func)
 end
 
 --
--- Cluster logic
+-- Cycle check
 --
-
-local function ApplyChanges (resize, list, func, arg)
-	for box, gen in pairs(list) do
-		if gen == ConnectionGen then
-			func(box, arg)
-            resize(box)
-		end
-
-        list[box] = nil
-	end
-end
 
 local CycleCheckOpts = { top_level_iter = "root" }
 
@@ -216,6 +209,98 @@ local function FormsCycle (from, to)
 	FromBox = nil
 
 	return CycleFormed
+end
+
+--
+-- Program building
+--
+
+local BuildOpts = {}
+
+local function GatherLHS (neighbor, aboxes)
+	if nl.GetSide(neighbor) == "lhs" then
+		aboxes[#aboxes + 1] = neighbor
+	end
+end
+
+BuildOpts.adjacency_iter = MakeAdjacencyIterator(GatherLHS)
+
+local function AuxRewrappedAdjBoxesIter (anodes, index) -- ???
+	local node
+
+	index, node = AuxAdjacentBoxesIter(anodes, index)
+
+	return index, anodes, node
+end
+
+function BuildOpts.top_level_iter (last_box)
+	local aboxes = Push(nil)
+
+	ns.VisitConnectedNodes(last_box, GatherLHS, aboxes)
+
+	return AuxRewrappedAdjBoxesIter, aboxes, 0
+end
+
+local SortedBoxes = {}
+
+local BuildAlg = dfs.NewAlgorithm{
+	after_visit = function()
+		-- increment topo count
+	end
+}
+
+local function DoBuild (graph, node, adj_iter)
+--	if not CycleFormed then
+		dfs.VisitAdjacentVertices_Once(BuildAlg, DoBuild, graph, node, adj_iter)
+--	end
+end
+
+local BuildGen = 0
+
+local IsBuildDirty
+
+local LastInLine
+
+local function BoxLess (a, b)
+	return a.m_tcount < b.m_tcount
+end
+
+local function Rebuild ()
+	if IsBuildDirty then
+		BuildGen, IsBuildDirty = BuildGen + 1
+
+		dfs.VisitTopLevel(BuildAlg, DoBuild, LastInLine, BuildOpts)
+		-- traverse from "output" box, follow lhs links
+		-- topologically sort
+
+		sort(SortedBoxes, BoxLess)
+
+		-- walk back in reverse
+		for i = #SortedBoxes, 1, -1 do
+			local box = SortedBoxes[i]
+
+			-- add to code...
+
+			box.m_tcount, SortedBoxes[i] = nil
+		end
+
+		-- concat and apply
+	end
+end
+
+--
+-- Cluster logic
+--
+
+local function ApplyChanges (resize, list, func, arg)
+	for box, gen in pairs(list) do
+		if gen == ConnectionGen then
+			func(box, arg)
+            resize(box)
+		end
+
+        list[box] = nil
+	end
 end
 
 local function CanConnect (a, b)
@@ -267,18 +352,91 @@ function M.DeferDecays ()
 	IsDeferred = true
 end
 
+--[=[
+function M.AttachCodeForm (box, code_form, scheme)
+	box.m_code_form, box.m_inputs, box.m_scheme = code_form, {}, scheme
+end
+
+function M.ResetValues (box)
+	local inputs = box.m_inputs
+
+	for k in pairs(box.m_scheme) do
+		inputs[k] = nil
+	end
+end
+
+function M.SetValue (box, name, value)
+	box.m_inputs[name] = value
+end
+
+local HasDeclaration
+
+local BoxType, Inputs, Scheme
+
+local function ReplaceInCode (s)
+	local v = Inputs[k]
+
+	if v ~= nil then
+		return v
+	elseif s ~= [[DECL]] then
+		return Scheme[s](BoxType)
+	else
+		HasDeclaration = true
+
+		return false
+	end
+end
+
+function M.SetVarCounter (n)
+	VarCounter = n
+end
+
+function M.UpdateCode (box)
+	local code_form = box.m_code_form
+
+	if code_form then
+		BoxType, Inputs, Scheme, HasDeclaration = ns.ResolvedTypeOfParent(box), box.m_inputs, box.m_scheme
+
+		local code = code_form:gsub("%$(%w+)", ReplaceInCode)
+
+		if HasDeclaration then
+			VarCounter = VarCounter + 1
+
+			local name = "_var" .. VarCounter
+
+			_SetCodeSegmentName_(box, name)
+
+			code = code:gsub([[DECL]], BoxType .. " _var" .. VarCounter)
+		end
+
+		Inputs, Scheme = nil
+
+		return code
+	end
+end
+--]=]
+
+
 --- DOCME
 function M.MakeClusterFuncs (ops)
 	local resize, decay, resolve = ops.resize, MakeDecay(ops.decay_item), MakeResolve(ops.resolve_item)
 
-	local function DoDecays ()
+	local function DoDecays (how)
 		ApplyChanges(resize, ToDecay, decay)
 
 		ConnectionGen = ConnectionGen + 1
+
+		if how == "rebuild" then
+			Rebuild()
+		end
 	end
 
 	return CanConnect, function(how, a, b)
 		local aparent, bparent = a.parent, b.parent
+
+		if aparent.build_gen == BuildGen or bparent.build_gen == BuildGen then -- potentially affects code?
+			IsBuildDirty = true
+		end
 
 		if how == "connect" then -- n.b. display object does NOT exist yet...
 			IsDeferred = true -- defer any decays introduced by the next two calls
@@ -319,7 +477,8 @@ function M.MakeClusterFuncs (ops)
 			if rtype then
 				ApplyChanges(resize, ToResolve, resolve, rtype)
 			end
-			-- if wasn't reachable from "output", rebuild
+
+			Rebuild()
 --DUMP_INFO("connect")
 			ConnectionGen, IsDeferred = ConnectionGen + 1
 		elseif how == "disconnect" then -- ...but here it usually does, cf. note in FadeAndDie()
@@ -339,8 +498,8 @@ function M.MakeClusterFuncs (ops)
 --DUMP_INFO("disconnect")
 			if ncandidates > 0 and not IsDeferred then -- defer disconnections happening as a side effect of a connection or deletion
 				DoDecays()
+				Rebuild()
 			end
-			-- if was reachable from "output", rebuild
 		end
 	end, DoDecays
 end
@@ -353,6 +512,15 @@ end
 --- DOCME
 function M.ResumeDecays ()
 	IsDeferred = false
+end
+
+--- DOCME
+function M.SetCodeSegmentName (box, name)
+	box.m_code_segment_name = name
+end
+
+function M.SetLastInLine (box)
+	LastInLine = box
 end
 --[=[
 function DUMP_INFO (why)
@@ -392,4 +560,6 @@ end
 	end
 end
 --]=]
+_SetCodeSegmentName_ = M.SetCodeSegmentName
+
 return M

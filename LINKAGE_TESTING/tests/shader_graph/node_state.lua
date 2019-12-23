@@ -32,6 +32,7 @@ local nc = require("corona_ui.patterns.node_cluster")
 
 -- Cached module references --
 local _ResolvedType_
+local _ResolvedTypeOfParent_
 local _WildcardType_
 
 -- Unique keys --
@@ -132,7 +133,12 @@ end
 
 --- DOCME
 function M.ResolvedType (node)
-	return node[_hard_type] or node.parent[_resolved_type]
+	return node[_hard_type] or _ResolvedTypeOfParent_(node.parent)
+end
+
+--- DOCME
+function M.ResolvedTypeOfParent (parent)
+	return parent[_resolved_type]
 end
 
 --- DOCME
@@ -189,6 +195,7 @@ function M.WilcardOrHardType (node)
 end
 
 _ResolvedType_ = M.ResolvedType
+_ResolvedTypeOfParent_ = M.ResolvedTypeOfParent
 _WildcardType_ = M.WildcardType
 
 return M

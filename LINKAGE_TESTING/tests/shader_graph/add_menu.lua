@@ -24,6 +24,8 @@
 --
 
 -- Modules --
+local boxes = require("tests.shader_graph.boxes")
+local interface = require("tests.shader_graph.interface")
 local menu = require("corona_ui.widgets.menu")
 
 -- Corona globals --
@@ -33,32 +35,41 @@ local display = display
 --
 --
 
--- TEMP!
-local Rect = RR
-local NewNode = NN
-local CommitRect = CR
--- /TEMP!
+-- Exports --
+local M = {}
+
+--
+--
+--
+
+local function DefOne (vtype)
+	return vtype ~= "float" and vtype .. "(1.)" or "1."
+end
+
+local function DefZero (vtype)
+	return vtype ~= "float" and vtype .. "(0.)" or "0."
+end
 
 local function OneArg (title, how, wildcard_type)
 	return function()
-		local group = Rect(title, wildcard_type)
+		local group = interface.Rect(title, wildcard_type)
 
-		NewNode(group, "delete")
-		NewNode(group, "lhs", "x", how, "sync")
-		NewNode(group, "rhs", "result", how)
-		CommitRect(group, display.contentCenterX, 75)
+		interface.NewNode(group, "delete")
+		interface.NewNode(group, "lhs", "x", how, "sync")
+		interface.NewNode(group, "rhs", "result", how)
+		interface.CommitRect(group, display.contentCenterX, 75)
 	end
 end
 
 local function TwoArgs (title, how, wildcard_type)
 	return function()
-		local group = Rect(title, wildcard_type)
+		local group = interface.Rect(title, wildcard_type)
 
-		NewNode(group, "delete")
-		NewNode(group, "lhs", "x", how, "sync")
-		NewNode(group, "lhs", "y", how)
-		NewNode(group, "rhs", "result", how)
-		CommitRect(group, display.contentCenterX, 75)
+		interface.NewNode(group, "delete")
+		interface.NewNode(group, "lhs", "x", how, "sync")
+		interface.NewNode(group, "lhs", "y", how)
+		interface.NewNode(group, "rhs", "result", how)
+		interface.CommitRect(group, display.contentCenterX, 75)
 	end
 end
 
@@ -98,18 +109,22 @@ local dd = menu.Menu{
 }
 ]]
 
-do
-	local input = Rect("Input")
+function M.Init ()
 
-	NewNode(input, "rhs", "texCoord", "vec2", "sync")
-	CommitRect(input, 75, 75)
+do
+	local input = interface.Rect("Input")
+
+	interface.NewNode(input, "rhs", "texCoord", "vec2", "sync")
+	interface.CommitRect(input, 75, 75)
+	boxes.SetCodeSegmentName(input, "texCoord")
 end
 
 do
-	local input = Rect("Output")
+	local input = interface.Rect("Output")
 
-	NewNode(input, "lhs", "color", "vec4", "sync")
-	CommitRect(input, display.contentWidth - 75, 75)
+	interface.NewNode(input, "lhs", "color", "vec4", "sync")
+	interface.CommitRect(input, display.contentWidth - 75, 75)
+	boxes.SetLastInLine(input)
 end
 
 --[[
@@ -280,3 +295,7 @@ get_name:addEventListener("menu_item", function(event)
 
 	builder()
 end)
+
+end
+
+return M
