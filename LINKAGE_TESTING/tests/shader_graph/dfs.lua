@@ -125,9 +125,28 @@ local function Root (root_vertex)
 	return AuxRoot, root_vertex, true
 end
 
+local function AuxVisit (algorithm, visit, top_level_vertices, adj_iter, tl_iter, arg)
+    adj_iter = adj_iter or DefAdjacencyIter
+
+    algorithm.Begin()
+
+    for _, graph, index in tl_iter(top_level_vertices) do
+        if not algorithm.HasVisited(index) then
+            algorithm.AddBeforeVisit(index)
+            visit(graph, index, adj_iter, arg)
+			algorithm.DoAfterVisit(index)
+        end
+    end
+end
+
+--- DOCME
+function M.VisitRoot (algorithm, visit, root, opts, arg)
+	AuxVisit(algorithm, visit, root, opts and opts.adjacency_iter, Root, arg)
+end
+
 --- Perform a depth-first search, starting with a set of top-level vertices. Each vertex
 -- must have some user-defined "index" that uniquely identifies it.
--- @param top_level_vertices Vertices to strongly connect.
+-- @param top_level_vertices Vertices to search.
 -- @ptable[opt] opts Computation options, which may include:
 --
 -- * **adjacency\_iter**: If present, called as `for _, neighbor_index in adjacency_iter(graph, vertex_index) do`
@@ -148,21 +167,7 @@ function M.VisitTopLevel (algorithm, visit, top_level_vertices, opts, arg)
         adj_iter, tl_iter = opts.adjacency_iter, opts.top_level_iter
     end
 
-    adj_iter = adj_iter or DefAdjacencyIter
-
-    if tl_iter == "root" then
-        tl_iter = Root
-    end
-
-    algorithm.Begin()
-
-    for _, graph, index in (tl_iter or DefTopLevelIter)(top_level_vertices) do
-        if not algorithm.HasVisited(index) then
-            algorithm.AddBeforeVisit(index)
-            visit(graph, index, adj_iter, arg)
-			algorithm.DoAfterVisit(index)
-        end
-    end
+	AuxVisit(algorithm, visit, top_level_vertices, adj_iter or DefAdjacencyIter, tl_iter or DefTopLevelIter, arg)
 end
 
 return M

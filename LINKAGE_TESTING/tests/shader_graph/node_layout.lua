@@ -25,6 +25,10 @@
 
 -- Standard library imports --
 local max = math.max
+local remove = table.remove
+
+-- Modules --
+local nc = require("corona_ui.patterns.node_cluster")
 
 -- Cached module references --
 local _VisitGroup_
@@ -41,6 +45,31 @@ local M = {}
 --
 --
 --
+
+local ConnectedStack = {}
+
+local function AuxConnectedObjects (connected, n)
+	if n > 0 then
+		local node = connected[n]
+
+		connected[n] = nil
+
+		return n - 1, node
+	else
+		ConnectedStack[#ConnectedStack + 1] = connected
+	end
+end
+
+local function ConnectedObjects (node)
+	return AuxConnectedObjects, nc.GetConnectedObjects(node, remove(ConnectedStack)) -- if stack empty, GetConnectedObjects() makes new table
+end
+
+--- DOCME
+function M.BreakConnections (node)
+	for _, object in ConnectedObjects(node) do
+		nc.DisconnectObjects(node, object)
+	end
+end
 
 local Dimensions = {}
 
@@ -205,6 +234,15 @@ function M.VisitGroup (group, func, arg)
 
 		index = index + 1 + (extra or 0)
 	until index > n
+end
+
+--- DOCME
+function M.VisitNodesConnectedToChildren (parent, func, arg)
+	for i = 1, parent.numChildren do
+		for _, cnode in ConnectedObjects(parent[i]) do
+			func(cnode, arg)
+		end
+	end
 end
 
 _VisitGroup_ = M.VisitGroup

@@ -232,7 +232,7 @@ local function Delete (event)
             local item = group[i]
 
             if item.bound_bit then -- nodes will have this member
-                ns.BreakConnections(item)
+                nl.BreakConnections(item)
             end
         end
 
@@ -279,6 +279,7 @@ function M.NewNode (group, what, name, payload_type, how)
 
 		nl.SetExtraTrailingItemsCount(object, 2)
 		nl.SetSide(object, what)
+		ns.SetValueName(object, name)
 
 		object.bound_bit = group.next_bit
 		group.next_bit = 2 * group.next_bit

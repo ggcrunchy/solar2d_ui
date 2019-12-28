@@ -54,21 +54,21 @@ local Height = 0
 local function Push (node)
 	Height = Height + 1
 
-	local aboxes = AdjacencyStack[Height] or {}
+	local anodes = AdjacencyStack[Height] or {}
 
-	AdjacencyStack[Height], aboxes.node = aboxes, node
+	AdjacencyStack[Height], anodes.parent_node = anodes, node
 
-	return aboxes
+	return anodes
 end
 
-local function AuxAdjacentBoxesIter (aboxes, index)
-	local box = aboxes[index + 1]
+local function AuxAdjacentNodesIter (anodes, index)
+	local node = anodes[index + 1]
 
-	if box then
-		return index + 1, box
+	if node then
+		return index + 1, node
 	else -- clean up when done
-		for i = #aboxes, 1, -1 do
-			aboxes[i] = nil
+		for i = #anodes, 1, -1 do
+			anodes[i] = nil
 		end
 
 		Height = Height - 1
@@ -77,27 +77,30 @@ end
 
 local function MakeAdjacencyIterator(gather)
 	return function(_, node) -- TODO: node works as index EXCEPT with undo / redo
-		local aboxes = Push(node)
+		local anodes = Push(node)
 
-		ns.VisitConnectedNodes(node.parent, gather, aboxes)
+		nl.VisitNodesConnectedToChildren(node.parent, gather, anodes)
 
-		aboxes.node = nil
+		anodes.parent_node = nil
 
-		return AuxAdjacentBoxesIter, aboxes, 0
+		return AuxAdjacentNodesIter, anodes, 0
 	end
 end
 
-local Opts = { top_level_iter = "root" }
+-- TODO: post-gather function: integrate boxes
+-- while gathering, ignore anything from already integrated box...
+
+local Opts = {}
 
 local OnFoundHard
 
-Opts.adjacency_iter = MakeAdjacencyIterator(function(neighbor, aboxes)
-	local what = ns.Classify(neighbor, aboxes.node)
+Opts.adjacency_iter = MakeAdjacencyIterator(function(neighbor, anodes)
+	local what = ns.Classify(neighbor, anodes.parent_node)
 
 	if what == "hard" then
 		OnFoundHard()
 	elseif what == "neither_hard" then
-		aboxes[#aboxes + 1] = neighbor
+		anodes[#anodes + 1] = neighbor
 	end
 end)
 
@@ -156,7 +159,7 @@ local ToDecay = {}
 local function ExploreDisconnectedNode (node)
 	DecayCandidates.n, NoHardNodes = 0, true
 
-	dfs.VisitTopLevel(DisconnectAlg, DoDisconnect, node, Opts)
+	dfs.VisitRoot(DisconnectAlg, DoDisconnect, node, Opts)
 
 	for i = 1, NoHardNodes and DecayCandidates.n or 0 do
 		ToDecay[DecayCandidates[i]] = ConnectionGen
@@ -181,15 +184,15 @@ end
 -- Cycle check
 --
 
-local CycleCheckOpts = { top_level_iter = "root" }
+local CycleCheckOpts = {}
 
 local FromBox, FromSide, CycleFormed
 
-CycleCheckOpts.adjacency_iter = MakeAdjacencyIterator(function(neighbor, aboxes)
+CycleCheckOpts.adjacency_iter = MakeAdjacencyIterator(function(neighbor, anodes)
 	if neighbor.parent == FromBox then
 		CycleFormed = true
 	elseif nl.GetSide(neighbor) == FromSide then
-		aboxes[#aboxes + 1] = neighbor
+		anodes[#anodes + 1] = neighbor
 	end
 end)
 
@@ -204,7 +207,7 @@ end
 local function FormsCycle (from, to)
 	FromBox, FromSide, CycleFormed = from.parent, nl.GetSide(from)
 
-	dfs.VisitTopLevel(CycleCheckAlg, DoCycleCheck, to, CycleCheckOpts)
+	dfs.VisitRoot(CycleCheckAlg, DoCycleCheck, to, CycleCheckOpts)
 
 	FromBox = nil
 
@@ -217,28 +220,28 @@ end
 
 local BuildOpts = {}
 
-local function GatherLHS (neighbor, aboxes)
+local function GatherLHS (neighbor, anodes)
 	if nl.GetSide(neighbor) == "lhs" then
-		aboxes[#aboxes + 1] = neighbor
+		anodes[#anodes + 1] = neighbor
 	end
 end
 
 BuildOpts.adjacency_iter = MakeAdjacencyIterator(GatherLHS)
 
-local function AuxRewrappedAdjBoxesIter (anodes, index) -- ???
+local function AuxRewrappedAdjNodesIter (anodes, index) -- ???
 	local node
 
-	index, node = AuxAdjacentBoxesIter(anodes, index)
+	index, node = AuxAdjacentNodesIter(anodes, index)
 
 	return index, anodes, node
 end
 
 function BuildOpts.top_level_iter (last_box)
-	local aboxes = Push(nil)
+	local anodes = Push(nil)
 
-	ns.VisitConnectedNodes(last_box, GatherLHS, aboxes)
+	nl.VisitNodesConnectedToChildren(last_box, GatherLHS, anodes)
 
-	return AuxRewrappedAdjBoxesIter, aboxes, 0
+	return AuxRewrappedAdjNodesIter, anodes, 0
 end
 
 local SortedBoxes = {}
@@ -255,7 +258,7 @@ local function DoBuild (graph, node, adj_iter)
 --	end
 end
 
-local BuildGen = 0
+local BuildGen
 
 local IsBuildDirty
 
@@ -267,7 +270,9 @@ end
 
 local function Rebuild ()
 	if IsBuildDirty then
-		BuildGen, IsBuildDirty = BuildGen + 1
+		BuildGen, IsBuildDirty = (BuildGen or 0) + 1 -- by default, not even last-in-line has generation;
+													 -- it implicitly has generation "nil", like any other
+													 -- box, thus the first connection will dirty it
 
 		dfs.VisitTopLevel(BuildAlg, DoBuild, LastInLine, BuildOpts)
 		-- traverse from "output" box, follow lhs links
@@ -441,8 +446,8 @@ function M.MakeClusterFuncs (ops)
 		if how == "connect" then -- n.b. display object does NOT exist yet...
 			IsDeferred = true -- defer any decays introduced by the next two calls
 
-			ns.BreakConnections(a)
-			ns.BreakConnections(b)
+			nl.BreakConnections(a)
+			nl.BreakConnections(b)
 
 			aparent.bound, bparent.bound = aparent.bound + a.bound_bit, bparent.bound + b.bound_bit
 
@@ -451,7 +456,7 @@ function M.MakeClusterFuncs (ops)
 			if rnode then
 				OnFoundHard = error -- any hard nodes along the way violate the node's unresolved state
 
-				dfs.VisitTopLevel(ConnectAlg, DoConnect, rnode, Opts)
+				dfs.VisitRoot(ConnectAlg, DoConnect, rnode, Opts)
 			end
 
 			local adgen, bdgen = ToDecay[aparent], ToDecay[bparent]
@@ -505,6 +510,11 @@ function M.MakeClusterFuncs (ops)
 end
 
 --- DOCME
+function M.PutLastInLine (box)
+	LastInLine = box
+end
+
+--- DOCME
 function M.RemoveFromDecayList (box)
 	ToDecay[box] = nil
 end
@@ -517,10 +527,6 @@ end
 --- DOCME
 function M.SetCodeSegmentName (box, name)
 	box.m_code_segment_name = name
-end
-
-function M.SetLastInLine (box)
-	LastInLine = box
 end
 --[=[
 function DUMP_INFO (why)

@@ -124,7 +124,7 @@ do
 
 	interface.NewNode(input, "lhs", "color", "vec4", "sync")
 	interface.CommitRect(input, display.contentWidth - 75, 75)
-	boxes.SetLastInLine(input)
+	boxes.PutLastInLine(input)
 end
 
 --[[

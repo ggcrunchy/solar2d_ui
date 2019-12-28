@@ -27,9 +27,6 @@
 local assert = assert
 local type = type
 
--- Modules --
-local nc = require("corona_ui.patterns.node_cluster")
-
 -- Cached module references --
 local _ResolvedType_
 local _ResolvedTypeOfParent_
@@ -39,6 +36,7 @@ local _WildcardType_
 local _hard_type = {}
 local _nonresolving_hard_type = {}
 local _resolved_type = {}
+local _value_name = {}
 local _wildcard_type = {}
 
 -- Exports --
@@ -65,20 +63,6 @@ function M.AddHardToWildcardEntries (entries)
     end
 end
 
-local Connected = {}
-
---- DOCME
-function M.BreakConnections (node)
-	-- n.b. at moment all nodes are exclusive
-	local _, n = nc.GetConnectedObjects(node, Connected)
-
-	for i = 1, n do -- n = 0 or 1
-		nc.DisconnectObjects(node, Connected[i])
-
-		Connected[i] = false
-	end
-end
-
 --- DOCME
 function M.Classify (x, y)
 	if y[_hard_type] then -- either node (or both) might have hard type; in this case, we can
@@ -95,6 +79,11 @@ function M.Classify (x, y)
 			return "hard", x, y
 		end
 	end
+end
+
+--- DOCME
+function M.GetValueName (node)
+	return node[_value_name]
 end
 
 --- DOCME
@@ -159,23 +148,13 @@ function M.SetResolvedType (parent, rtype)
 end
 
 --- DOCME
-function M.SetWildcardType (parent, wtype)
-    parent[_wildcard_type] = wtype
+function M.SetValueName (node, vname)
+	node[_value_name] = vname
 end
 
 --- DOCME
-function M.VisitConnectedNodes (parent, func, arg)
-	for i = 1, parent.numChildren do
-		local _, n = nc.GetConnectedObjects(parent[i], Connected)
-
-		for j = 1, n do
-			local cnode = Connected[j]
-
-			Connected[j] = false
-
-			func(cnode, arg)
-		end
-	end
+function M.SetWildcardType (parent, wtype)
+    parent[_wildcard_type] = wtype
 end
 
 --- DOCME

@@ -36,7 +36,7 @@ local M = {}
 --
 --
 
-local BackGroup = nil -- display.newGroup()
+local BackGroup = display.newGroup()
 
 local KnotObjects = {}
 
@@ -91,7 +91,7 @@ end
 --- DOCME
 function M.NewCluster (params)
     local connect, get_color = params.connect, params.get_color
-
+local g2 = display.newGroup()
     return nc.New{
         can_connect = params.can_connect,
 
@@ -99,23 +99,26 @@ function M.NewCluster (params)
             if how == "connect" then -- n.b. display object does NOT exist yet...
                 curve:SetKnotFunc(WithKnot)
 
-                local knots = {}
+                local knots, ko = {}, display.newCircle(g2, 0, 0, 7)
 
                 KnotID = KnotID + 1
-                KnotObjects[KnotID] = display.newCircle(0, 0, 10)
+                KnotObjects[KnotID], knots[1] = ko, { id = KnotID, s = .5 }
 
-                knots[1] = { id = KnotID, s = .5 }
-
-                KnotObjects[KnotID]:addEventListener("touch", function(event)
+                ko:addEventListener("touch", function(event)
                     if event.phase == "ended" then
                         nc.DisconnectObjects(a, b)
                     end
 
                     return true
                 end)
+				ko:setFillColor(0, 0, .7)
+				ko:setStrokeColor(0, 0, .5)
+
+				ko.strokeWidth = 1
 
                 curve:SetKnots(knots)
-                curve:SetStrokeWidth(3)
+				curve:SetStrokeColor(1, .75)
+                curve:SetStrokeWidth(2)
 
                 curve.knot_id = KnotID
             elseif how == "disconnect" then -- ...but here it usually does, cf. note in FadeAndDie()
@@ -126,7 +129,7 @@ function M.NewCluster (params)
         end,
 
         emphasize = function(how, item, arg)
-            if how == "began" then -- arg: table, with node, owners_differ, sides_differ, touch_id
+            if how == "began" then -- arg: { node, owners_differ, sides_differ, touch_id }
                 if arg.owners_differ and arg.sides_differ then -- viable candidate?
                     BlendRGB(item.fill, 1, 0, 1)
                 elseif item == arg.node then -- self
