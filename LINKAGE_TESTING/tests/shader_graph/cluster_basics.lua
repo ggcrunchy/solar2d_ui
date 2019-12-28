@@ -27,6 +27,7 @@
 local nc = require("corona_ui.patterns.node_cluster")
 
 -- Corona globals --
+local display = display
 local transition = transition
 
 -- Exports --
@@ -35,8 +36,6 @@ local M = {}
 --
 --
 --
-
-local BackGroup = display.newGroup()
 
 local KnotObjects = {}
 
@@ -90,8 +89,12 @@ end
 
 --- DOCME
 function M.NewCluster (params)
-    local connect, get_color = params.connect, params.get_color
-local g2 = display.newGroup()
+    local bgroup, connect, get_color, kgroup = params.back_group, params.connect, params.get_color, display.newGroup()
+
+	if bgroup and bgroup ~= display.getCurrentStage() then
+		bgroup.parent:insert(kgroup)
+	end
+
     return nc.New{
         can_connect = params.can_connect,
 
@@ -99,7 +102,7 @@ local g2 = display.newGroup()
             if how == "connect" then -- n.b. display object does NOT exist yet...
                 curve:SetKnotFunc(WithKnot)
 
-                local knots, ko = {}, display.newCircle(g2, 0, 0, 7)
+                local knots, ko = {}, display.newCircle(kgroup, 0, 0, 7)
 
                 KnotID = KnotID + 1
                 KnotObjects[KnotID], knots[1] = ko, { id = KnotID, s = .5 }
@@ -160,7 +163,7 @@ local g2 = display.newGroup()
             end
         end,
 
-        line_group = BackGroup
+        line_group = bgroup
     }
 end
 

@@ -42,6 +42,16 @@ local M = {}
 --
 --
 
+local BoxGroup = display.newGroup()
+
+local back_group = interface.GetBackGroup()
+
+if back_group ~= display.getCurrentStage() then
+	back_group.parent:insert(BoxGroup)
+end
+
+BoxGroup:toBack()
+
 local function DefOne (vtype)
 	return vtype ~= "float" and vtype .. "(1.)" or "1."
 end
@@ -58,6 +68,8 @@ local function OneArg (title, how, wildcard_type)
 		interface.NewNode(group, "lhs", "x", how, "sync")
 		interface.NewNode(group, "rhs", "result", how)
 		interface.CommitRect(group, display.contentCenterX, 75)
+
+		BoxGroup:insert(group)
 	end
 end
 
@@ -70,6 +82,8 @@ local function TwoArgs (title, how, wildcard_type)
 		interface.NewNode(group, "lhs", "y", how)
 		interface.NewNode(group, "rhs", "result", how)
 		interface.CommitRect(group, display.contentCenterX, 75)
+
+		BoxGroup:insert(group)
 	end
 end
 
@@ -117,14 +131,18 @@ do
 	interface.NewNode(input, "rhs", "texCoord", "vec2", "sync")
 	interface.CommitRect(input, 75, 75)
 	boxes.SetCodeSegmentName(input, "texCoord")
+
+	BoxGroup:insert(input)
 end
 
 do
-	local input = interface.Rect("Output")
+	local output = interface.Rect("Output")
 
-	interface.NewNode(input, "lhs", "color", "vec4", "sync")
-	interface.CommitRect(input, display.contentWidth - 75, 75)
-	boxes.PutLastInLine(input)
+	interface.NewNode(output, "lhs", "color", "vec4", "sync")
+	interface.CommitRect(output, display.contentWidth - 75, 75)
+	boxes.PutLastInLine(output)
+
+	BoxGroup:insert(output)
 end
 
 --[[

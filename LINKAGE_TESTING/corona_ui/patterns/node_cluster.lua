@@ -163,7 +163,6 @@ local function GetPlotterOpts (curve)
 	end
 end
 
--- Node touch listener
 local NodeTouch = touch.Wrap(function(event, node)
 	local node_info = NodeInfo[node]
 	local id, cluster = event.id, assert(node_info and node_info.cluster, "Object is not a node")

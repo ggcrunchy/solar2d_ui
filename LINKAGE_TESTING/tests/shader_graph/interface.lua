@@ -84,6 +84,7 @@ local Drag = drag.MakeTouch_Parent{
         NC:Update()
     end
 }
+-- ^^ TODO: clip against menu, too (or use a container, probably)
 
 local function Place_Direct (item, what, value) -- place objects exactly where we say
 	item[what] = value
@@ -111,6 +112,13 @@ function M.CommitRect (group, x, y)
 	nl.VisitGroup(group, nl.PlaceItems, back)
 
     OwnerID = OwnerID + 1
+end
+
+local BackGroup = display.newGroup()
+
+--- DOCME
+function M.GetBackGroup ()
+	return BackGroup
 end
 
 local ToUpdate
@@ -210,8 +218,6 @@ local can_connect, connect, do_decays = boxes.MakeClusterFuncs{
 	end
 }
 
-NC = cluster_basics.NewCluster{ can_connect = can_connect, connect = connect, get_color = StandardColor }
-
 local function Circle (group, width, radius, ...)
 	local circle = display.newCircle(group, 0, 0, radius)
 
@@ -246,6 +252,8 @@ local function Delete (event)
 
 	return true
 end
+
+NC = cluster_basics.NewCluster{ back_group = BackGroup, can_connect = can_connect, connect = connect, get_color = StandardColor }
 
 --- DOCME
 function M.NewNode (group, what, name, payload_type, how)
