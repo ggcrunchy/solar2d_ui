@@ -269,7 +269,7 @@ function M.NewNode (group, what, name, payload_type, how)
 		object:setFillColor(1, 0, 0)
 		object:setStrokeColor(.7, 0, 0)
 
-		nl.SetSide(object, "lhs")
+		nl.SetSideExplicitly(object, "lhs")
 	else
 		NC:AddNode(object, OwnerID, what)
 
@@ -286,7 +286,6 @@ function M.NewNode (group, what, name, payload_type, how)
 		end
 
 		nl.SetExtraTrailingItemsCount(object, 2)
-		nl.SetSide(object, what)
 		ns.SetValueName(object, name)
 
 		object.bound_bit = group.next_bit

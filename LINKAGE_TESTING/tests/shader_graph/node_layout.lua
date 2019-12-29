@@ -75,8 +75,12 @@ local Dimensions = {}
 
 local Separation
 
+local function GetSide (node)
+	return node[_side] or nc.GetSide(node)
+end
+
 local function AuxGetDimensions (item, dims, group, index)
-	local extra, side, sync = item[_extra] or 0, item[_side]
+	local extra, side, sync = item[_extra] or 0, GetSide(item)
 
 	if side then
 		local w, h, y = extra * Separation, 0
@@ -142,10 +146,6 @@ function M.GetDimensions (group)
     return w, h + Edge -- height already includes one Edge from starting offsets
 end
 
---- DOCME
-function M.GetSide (item)
-	return item[_side]
-end
 
 --- DOCME
 function M.HideItemDuringVisits (item)
@@ -156,7 +156,7 @@ local Place
 
 --- DOCME
 function M.PlaceItems (item, back, group, index)
-	local side, x, y = item[_side], back.x, back.y - back.height / 2
+	local side, x, y = GetSide(item), back.x, back.y - back.height / 2
 
 	if side then
 		local extra, offset, half = item[_extra], Edge, back.width / 2
@@ -208,8 +208,8 @@ function M.SetSeparation (sep)
 end
 
 --- DOCME
-function M.SetSide (item, side)
-	item[_side] = side
+function M.SetSideExplicitly (node, side)
+	node[_side] = side
 end
 
 --- DOCME
@@ -237,10 +237,12 @@ function M.VisitGroup (group, func, arg)
 end
 
 --- DOCME
-function M.VisitNodesConnectedToChildren (parent, func, arg)
+function M.VisitNodesConnectedToChildren (parent, func)
 	for i = 1, parent.numChildren do
-		for _, cnode in ConnectedObjects(parent[i]) do
-			func(cnode, arg)
+		local parent_node = parent[i]
+
+		for _, cnode in ConnectedObjects(parent_node) do
+			func(cnode, parent_node)
 		end
 	end
 end

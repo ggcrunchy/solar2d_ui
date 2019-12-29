@@ -26,10 +26,12 @@
 -- Standard library imports --
 local error = error
 local pairs = pairs
+local remove = table.remove
 local sort = table.sort
 
 -- Modules --
 local dfs = require("tests.shader_graph.dfs")
+local nc = require("corona_ui.patterns.node_cluster")
 local nl = require("tests.shader_graph.node_layout")
 local ns = require("tests.shader_graph.node_state")
 
@@ -49,60 +51,35 @@ local M = {}
 
 local AdjacencyStack = {}
 
-local Height = 0
-
-local function Push (node)
-	Height = Height + 1
-
-	local anodes = AdjacencyStack[Height] or {}
-
-	AdjacencyStack[Height], anodes.parent_node = anodes, node
-
-	return anodes
-end
-
-local function AuxAdjacentNodesIter (anodes, index)
-	local node = anodes[index + 1]
-
-	if node then
-		return index + 1, node
-	else -- clean up when done
-		for i = #anodes, 1, -1 do
-			anodes[i] = nil
-		end
-
-		Height = Height - 1
+local function AuxAdjacentBoxesIter (_, n)
+	if n > 0 then
+		return n - 1, remove(AdjacencyStack)
 	end
 end
 
-local function MakeAdjacencyIterator(gather)
-	return function(_, node) -- TODO: node works as index EXCEPT with undo / redo
-		local anodes = Push(node)
+local function MakeAdjacencyIterator (gather)
+	return function(_, box) -- TODO: node works as index EXCEPT with undo / redo
+		local n = #AdjacencyStack
 
-		nl.VisitNodesConnectedToChildren(node.parent, gather, anodes)
+		nl.VisitNodesConnectedToChildren(box, gather)
 
-		anodes.parent_node = nil
-
-		return AuxAdjacentNodesIter, anodes, 0
+		return AuxAdjacentBoxesIter, nil, #AdjacencyStack - n
 	end
 end
-
--- TODO: post-gather function: integrate boxes
--- while gathering, ignore anything from already integrated box...
-
-local Opts = {}
 
 local OnFoundHard
 
-Opts.adjacency_iter = MakeAdjacencyIterator(function(neighbor, anodes)
-	local what = ns.Classify(neighbor, anodes.parent_node)
+local function GatherResolvableBoxes (neighbor, parent_node)
+	local what = ns.Classify(neighbor, parent_node)
 
 	if what == "hard" then
 		OnFoundHard()
 	elseif what == "neither_hard" then
-		anodes[#anodes + 1] = neighbor
+		AdjacencyStack[#AdjacencyStack + 1] = neighbor.parent
 	end
-end)
+end
+
+local Opts = { adjacency_iter = MakeAdjacencyIterator(GatherResolvableBoxes) }
 
 --
 -- Connect / Resolve
@@ -114,10 +91,10 @@ local ConnectionGen = 0
 
 local ToResolve = {}
 
-local function DoConnect (graph, node, adj_iter)
-	ToResolve[node.parent] = ConnectionGen
+local function DoConnect (graph, box, adj_iter)
+	ToResolve[box] = ConnectionGen
 
-	dfs.VisitAdjacentVertices_Once(ConnectAlg, DoConnect, graph, node, adj_iter)
+	dfs.VisitAdjacentVertices_Once(ConnectAlg, DoConnect, graph, box, adj_iter)
 end
 
 local function MakeResolve (func)
@@ -140,13 +117,13 @@ local DecayCandidates = { n = 0 }
 
 local NoHardNodes
 
-local function DoDisconnect (graph, node, adj_iter)
+local function DoDisconnect (graph, box, adj_iter)
 	if NoHardNodes then
 		local n = DecayCandidates.n + 1
 
-		DecayCandidates[n], DecayCandidates.n = node.parent, n
+		DecayCandidates[n], DecayCandidates.n = box, n
 
-		dfs.VisitAdjacentVertices_Once(DisconnectAlg, DoDisconnect, graph, node, adj_iter)
+		dfs.VisitAdjacentVertices_Once(DisconnectAlg, DoDisconnect, graph, box, adj_iter)
 	end
 end
 
@@ -159,7 +136,7 @@ local ToDecay = {}
 local function ExploreDisconnectedNode (node)
 	DecayCandidates.n, NoHardNodes = 0, true
 
-	dfs.VisitRoot(DisconnectAlg, DoDisconnect, node, Opts)
+	dfs.VisitRoot(DisconnectAlg, DoDisconnect, node.parent, Opts)
 
 	for i = 1, NoHardNodes and DecayCandidates.n or 0 do
 		ToDecay[DecayCandidates[i]] = ConnectionGen
@@ -188,26 +165,26 @@ local CycleCheckOpts = {}
 
 local FromBox, FromSide, CycleFormed
 
-CycleCheckOpts.adjacency_iter = MakeAdjacencyIterator(function(neighbor, anodes)
+CycleCheckOpts.adjacency_iter = MakeAdjacencyIterator(function(neighbor)
 	if neighbor.parent == FromBox then
 		CycleFormed = true
-	elseif nl.GetSide(neighbor) == FromSide then
-		anodes[#anodes + 1] = neighbor
+	elseif nc.GetSide(neighbor) == FromSide then
+		AdjacencyStack[#AdjacencyStack + 1] = neighbor.parent
 	end
 end)
 
 local CycleCheckAlg = dfs.NewAlgorithm()
 
-local function DoCycleCheck (graph, node, adj_iter)
+local function DoCycleCheck (graph, box, adj_iter)
 	if not CycleFormed then
-		dfs.VisitAdjacentVertices_Once(CycleCheckAlg, DoCycleCheck, graph, node, adj_iter)
+		dfs.VisitAdjacentVertices_Once(CycleCheckAlg, DoCycleCheck, graph, box, adj_iter)
 	end
 end
 
 local function FormsCycle (from, to)
-	FromBox, FromSide, CycleFormed = from.parent, nl.GetSide(from)
+	FromBox, FromSide, CycleFormed = from.parent, nc.GetSide(from)
 
-	dfs.VisitRoot(CycleCheckAlg, DoCycleCheck, to, CycleCheckOpts)
+	dfs.VisitRoot(CycleCheckAlg, DoCycleCheck, to.parent, CycleCheckOpts)
 
 	FromBox = nil
 
@@ -220,28 +197,27 @@ end
 
 local BuildOpts = {}
 
-local function GatherLHS (neighbor, anodes)
-	if nl.GetSide(neighbor) == "lhs" then
-		anodes[#anodes + 1] = neighbor
+local function GatherLHS (neighbor, aboxes)
+	if nc.GetSide(neighbor) == "lhs" then
+		aboxes[#aboxes + 1] = neighbor
 	end
 end
 
 BuildOpts.adjacency_iter = MakeAdjacencyIterator(GatherLHS)
 
-local function AuxRewrappedAdjNodesIter (anodes, index) -- ???
+local function AuxRewrappedAdjBoxesIter (aboxes, index) -- ???
 	local node
 
-	index, node = AuxAdjacentNodesIter(anodes, index)
+	index, node = AuxAdjacentBoxesIter(aboxes, index)
 
-	return index, anodes, node
+	return index, aboxes, node
 end
 
 function BuildOpts.top_level_iter (last_box)
-	local anodes = Push(nil)
+	-- TODO?
+	nl.VisitNodesConnectedToChildren(last_box, GatherLHS)
 
-	nl.VisitNodesConnectedToChildren(last_box, GatherLHS, anodes)
-
-	return AuxRewrappedAdjNodesIter, anodes, 0
+	return AuxRewrappedAdjBoxesIter, nil, 0
 end
 
 local SortedBoxes = {}
@@ -456,7 +432,7 @@ function M.MakeClusterFuncs (ops)
 			if rnode then
 				OnFoundHard = error -- any hard nodes along the way violate the node's unresolved state
 
-				dfs.VisitRoot(ConnectAlg, DoConnect, rnode, Opts)
+				dfs.VisitRoot(ConnectAlg, DoConnect, rnode.parent, Opts)
 			end
 
 			local adgen, bdgen = ToDecay[aparent], ToDecay[bparent]

@@ -77,7 +77,7 @@ end
 
 --- DOCME
 function M.VisitAdjacentVertices (algorithm, visit, revisit, graph, index, adj_iter, arg)
-    for _, t in adj_iter(graph, index) do
+    for _, t in adj_iter(graph, index, arg) do
         local visited, preorder = algorithm.HasVisited(t)
 
         if visited then
@@ -85,18 +85,18 @@ function M.VisitAdjacentVertices (algorithm, visit, revisit, graph, index, adj_i
         else
             algorithm.AddBeforeVisit(t)
             visit(graph, t, adj_iter, arg)
-			algorithm.DoAfterVisit(t)
+			algorithm.DoAfterVisit(t, arg)
         end
     end
 end
 
 --- DOCME
 function M.VisitAdjacentVertices_Once (algorithm, visit, graph, index, adj_iter, arg)
-    for _, t in adj_iter(graph, index) do
+    for _, t in adj_iter(graph, index, arg) do
         if not algorithm.HasVisited(t) then
             algorithm.AddBeforeVisit(t)
             visit(graph, t, adj_iter, arg)
-			algorithm.DoAfterVisit(t)
+			algorithm.DoAfterVisit(t, arg)
         end
     end
 end
@@ -130,7 +130,7 @@ local function AuxVisit (algorithm, visit, top_level_vertices, adj_iter, tl_iter
 
     algorithm.Begin()
 
-    for _, graph, index in tl_iter(top_level_vertices) do
+    for _, graph, index in tl_iter(top_level_vertices, arg) do
         if not algorithm.HasVisited(index) then
             algorithm.AddBeforeVisit(index)
             visit(graph, index, adj_iter, arg)
