@@ -33,9 +33,12 @@ local _ResolvedTypeOfParent_
 local _WildcardType_
 
 -- Unique keys --
+local _code_form = {}
 local _hard_type = {}
+local _inputs = {}
 local _nonresolving_hard_type = {}
 local _resolved_type = {}
+local _scheme = {}
 local _value_name = {}
 local _wildcard_type = {}
 
@@ -66,7 +69,7 @@ end
 --- DOCME
 function M.Classify (x, y)
 	if y[_hard_type] then -- either node (or both) might have hard type; in this case, we can
-						  -- streamline some of the next steps by making sure "x" does
+						-- streamline some of the next steps by making sure "x" does
 		x, y = y, x
 	end
 
@@ -128,6 +131,14 @@ end
 --- DOCME
 function M.ResolvedTypeOfParent (parent)
 	return parent[_resolved_type]
+end
+
+--- DOCME
+function M.SetCodeForm (parent, code_form, scheme)
+	assert(not code_form == not scheme, "Missing code form or scheme")
+
+	parent[_code_form], parent[_scheme] = code_form, scheme
+	parent[_inputs] = code_form and {} or nil
 end
 
 --- DOCME

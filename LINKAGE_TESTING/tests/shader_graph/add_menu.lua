@@ -60,9 +60,9 @@ local function DefZero (vtype)
 	return vtype ~= "float" and vtype .. "(0.)" or "0."
 end
 
-local function OneArg (title, how, wildcard_type)
+local function OneArg (title, how, wildcard_type, code_form, scheme)
 	return function()
-		local group = interface.Rect(title, wildcard_type)
+		local group = interface.Rect(title, wildcard_type, code_form, scheme)
 
 		interface.NewNode(group, "delete")
 		interface.NewNode(group, "lhs", "x", how, "sync")
@@ -73,9 +73,15 @@ local function OneArg (title, how, wildcard_type)
 	end
 end
 
-local function TwoArgs (title, how, wildcard_type)
+local X_Scheme = { x = DefZero }
+
+local function OneArgWV (title, code_form)
+	return OneArg(title, "?", "vector", code_form, X_Scheme)
+end
+
+local function TwoArgs (title, how, wildcard_type, code_form, scheme)
 	return function()
-		local group = interface.Rect(title, wildcard_type)
+		local group = interface.Rect(title, wildcard_type, code_form, scheme)
 
 		interface.NewNode(group, "delete")
 		interface.NewNode(group, "lhs", "x", how, "sync")
@@ -87,12 +93,10 @@ local function TwoArgs (title, how, wildcard_type)
 	end
 end
 
-local function OneArgWV (title, how)
-	return OneArg(title, "?", "vector")
-end
+local XY_Scheme = { x = DefZero, y = DefZero }
 
-local function TwoArgsWV (title, how)
-	return TwoArgs(title, "?", "vector")
+local function TwoArgsWV (title, code_form)
+	return TwoArgs(title, "?", "vector", code_form, XY_Scheme)
 end
 
 --[[
@@ -136,7 +140,7 @@ do
 end
 
 do
-	local output = interface.Rect("Output")
+	local output = interface.Rect("Output", nil, "return $color", { color = DefOne })
 
 	interface.NewNode(output, "lhs", "color", "vec4", "sync")
 	interface.CommitRect(output, display.contentWidth - 75, 75)
@@ -153,24 +157,24 @@ local dd = menu.Menu{
 
 local name_to_builder, builders = {}, {
 	Common = {
-		abs = OneArgWV("abs(x)"),
-		ceil = OneArgWV("ceil(x)"),
-		clamp = function() end,
-		floor = OneArgWV("floor(x)"),
-		fract = OneArgWV("fract(x)"),
-		max = TwoArgsWV("max(x, y)"),
-		min = TwoArgsWV("min(x, y)"),
-		mod = function() end,
-		sign = OneArgWV("sign(x)"),
-		smoothstep = function() end,
-		step = function() end
+		abs = OneArgWV("abs(x)", "$DECL = abs($x)"),
+		ceil = OneArgWV("ceil(x)", "$DECL = ceil($x)"),
+		clamp = function() end, -- TODO: three args, two can be float | wild
+		floor = OneArgWV("floor(x)", "$DECL = floor($x)"),
+		fract = OneArgWV("fract(x)", "$DECL = fract($x)"),
+		max = TwoArgsWV("max(x, y)", "$DECL = max($x, $y)"), -- TODO: y float | wild
+		min = TwoArgsWV("min(x, y)", "$DECL = min($x, $y)"), -- TODO: ditto 
+		mod = TwoArgsWV("mod(x, y)", "$DECL = mod($x, $y)"), -- TODO: ditto
+		sign = OneArgWV("sign(x)", "$DECL = sign($x)"),
+		smoothstep = function() end, -- TODO: three args, two can be float | wild
+		step = TwoArgsWV("step(x, y)", "$DECL = step($x, $y)") -- TODO: x float | wild
 	}, Exponential = {
-		exp = OneArgWV("exp(x)"),
-		exp2 = OneArgWV("exp2(x)"),
-		inversesqrt = OneArgWV("inversesqrt(x)"),
-		log2 = OneArgWV("log2(x)"),
-		pow = TwoArgsWV("pow(x, y)"),
-		sqrt = OneArgWV("sqrt(x)")
+		exp = OneArgWV("exp(x)", "$DECL = exp($x)"),
+		exp2 = OneArgWV("exp2(x)", "$DECL = exp2($x)"),
+		inversesqrt = OneArgWV("inversesqrt(x)", "$DECL = inversesqrt($x)"),
+		log2 = OneArgWV("log2(x)", "$DECL = log2($x)"),
+		pow = TwoArgsWV("pow(x, y)", "$DECL = pow($x, $y)"),
+		sqrt = OneArgWV("sqrt(x)", "$DECL = sqrt($x)")
 	}, Geometric = {
 		cross = function() end,
 		distance = function() end,
@@ -185,10 +189,10 @@ local name_to_builder, builders = {}, {
 		matrixCompMult = function() end,
 		radians = OneArgWV("radians(x)")
 	}, Operators = {
-		["X + Y"] = TwoArgsWV("x + y"),
-		["X - Y"] = TwoArgsWV("x - y"),
-		["X * Y"] = TwoArgsWV("x * y"),
-		["X / Y"] = TwoArgsWV("x / y"),
+		["X + Y"] = TwoArgsWV("x + y", "$DECL = $x + $y"),
+		["X - Y"] = TwoArgsWV("x - y", "$DECL = $x - $y"),
+		["X * Y"] = TwoArgsWV("x * y", "$DECL = $x * $y"),
+		["X / Y"] = TwoArgsWV("x / y", "$DECL = $x / $y"),
 		["X < Y"] = function() end,
 		["X <= Y"] = function() end,
 		["X > Y"] = function() end,
@@ -200,19 +204,18 @@ local name_to_builder, builders = {}, {
 		["X ^^ Y"] = function() end,
 		["B ? X : Y"] = function() end,
 		["!X"] = function() end,
-		["-X"] = OneArgWV("-x"),
-		["++X"] = OneArgWV("++x"),
-		["X++"] = OneArgWV("x++"),
-		["(X)"] = OneArgWV("(x)"),
+		["-X"] = OneArgWV("-x", "$DECL = -$x"),
+		["++X"] = OneArgWV("++x", "$DECL = ++$x"),
+		["X++"] = OneArgWV("x++", "$DECL = $x++"),
 		["X.xyzw"] = function() end
 	}, Trigonometric = {
-		acos = OneArgWV("acos(x)"),
-		asin = OneArgWV("asin(x)"),
-		atan = OneArgWV("atan(x)"), -- TODO: y over x
-		atan2 = TwoArgsWV("atan(y, x)"),
-		cos = OneArgWV("cos(x)"),
-		sin = OneArgWV("sin(x)"),
-		tan = OneArgWV("tan(x)")
+		acos = OneArgWV("acos(x)", "$DECL = acos($x)"),
+		asin = OneArgWV("asin(x)", "$DECL = asin($x)"),
+		atan = OneArgWV("atan(x)", "$DECL = atan($x)"), -- TODO: y over x
+		atan2 = TwoArgsWV("atan(y, x)", "$DECL = atan2($x)"),
+		cos = OneArgWV("cos(x)", "$DECL = cos($x)"),
+		sin = OneArgWV("sin(x)", "$DECL = sin($x)"),
+		tan = OneArgWV("tan(x)", "$DECL = tan($x)")
 	}, ["Vector Relational"] = {
 		all = function() end,
 		any = function() end,

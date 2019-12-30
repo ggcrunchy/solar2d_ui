@@ -178,8 +178,8 @@ local can_connect, connect, do_decays = boxes.MakeClusterFuncs{
 		nl.SetPlaceFunc(Place_MightTransition)
 
 		local bw, bh = back.width, back.height	-- the back object will be used as a guide to launch the others'
-												-- transitions, so temporarily swap out its dimensions with the
-												-- final results and do those calculations, then restore them
+											 -- transitions, so temporarily swap out its dimensions with the
+											 -- final results and do those calculations, then restore them
 
 		back.width, back.height = w, h
 
@@ -314,11 +314,12 @@ end
 ns.AddHardToWildcardEntries{ "float", "vec2", "vec3", "vec4", wildcard_type = "vector" }
 
 --- DOCME
-function M.Rect (title, wildcard_type)
+function M.Rect (title, wildcard_type, code_form, scheme)
     local group = display.newGroup()
 
     group.next_bit = 1
 
+	ns.SetCodeForm(group, code_form, scheme)
 	ns.SetWildcardType(group, wildcard_type)
 
 	display.newText(group, title, 0, 0, native.systemFontBold)

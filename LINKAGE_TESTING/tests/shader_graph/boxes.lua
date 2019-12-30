@@ -27,7 +27,6 @@
 local error = error
 local pairs = pairs
 local remove = table.remove
-local sort = table.sort
 
 -- Modules --
 local dfs = require("tests.shader_graph.dfs")
@@ -195,43 +194,33 @@ end
 -- Program building
 --
 
-local BuildOpts = {}
+local PendingValues = {}
 
-local function GatherLHS (neighbor, aboxes)
-	if nc.GetSide(neighbor) == "lhs" then
-		aboxes[#aboxes + 1] = neighbor
+local function GatherRHS (neighbor, parent_node)
+	if nc.GetSide(neighbor) == "rhs" then -- or equivalently, parent node on lhs
+		local box = neighbor.parent
+
+		PendingValues[#PendingValues + 1] = box
+		PendingValues[#PendingValues + 1] = parent_node
+
+		AdjacencyStack[#AdjacencyStack + 1] = box
 	end
 end
 
-BuildOpts.adjacency_iter = MakeAdjacencyIterator(GatherLHS)
-
-local function AuxRewrappedAdjBoxesIter (aboxes, index) -- ???
-	local node
-
-	index, node = AuxAdjacentBoxesIter(aboxes, index)
-
-	return index, aboxes, node
-end
-
-function BuildOpts.top_level_iter (last_box)
-	-- TODO?
-	nl.VisitNodesConnectedToChildren(last_box, GatherLHS)
-
-	return AuxRewrappedAdjBoxesIter, nil, 0
-end
+local BuildOpts = { adjacency_iter = MakeAdjacencyIterator(GatherRHS) }
 
 local SortedBoxes = {}
 
 local BuildAlg = dfs.NewAlgorithm{
-	after_visit = function()
-		-- increment topo count
+	after_visit = function(box)
+		SortedBoxes[#SortedBoxes + 1] = box
 	end
 }
 
-local function DoBuild (graph, node, adj_iter)
---	if not CycleFormed then
-		dfs.VisitAdjacentVertices_Once(BuildAlg, DoBuild, graph, node, adj_iter)
---	end
+local function DoBuild (graph, box, adj_iter)
+	-- CLEAR_VALUES
+
+	dfs.VisitAdjacentVertices_Once(BuildAlg, DoBuild, graph, box, adj_iter)
 end
 
 local BuildGen
@@ -240,29 +229,43 @@ local IsBuildDirty
 
 local LastInLine
 
-local function BoxLess (a, b)
-	return a.m_tcount < b.m_tcount
-end
-
 local function Rebuild ()
 	if IsBuildDirty then
 		BuildGen, IsBuildDirty = (BuildGen or 0) + 1 -- by default, not even last-in-line has generation;
-													 -- it implicitly has generation "nil", like any other
-													 -- box, thus the first connection will dirty it
+													-- it implicitly has generation "nil", like any other
+													-- box, thus the first connection will dirty it
 
 		dfs.VisitTopLevel(BuildAlg, DoBuild, LastInLine, BuildOpts)
-		-- traverse from "output" box, follow lhs links
-		-- topologically sort
 
-		sort(SortedBoxes, BoxLess)
+		local pi, ni = #PendingValues - 1, 1
 
-		-- walk back in reverse
 		for i = #SortedBoxes, 1, -1 do
 			local box = SortedBoxes[i]
 
-			-- add to code...
+			if PendingValues[pi] == box then
+--				local name = ??? .. ni
+				-- clear values
 
-			box.m_tcount, SortedBoxes[i] = nil
+				repeat
+					local parent_node = PendingValues[pi + 1]
+					-- SET_VALUE(parent_node.parent, GET_VALUE_NAME(parent_node), name)
+
+					pi, PendingValues[pi], PendingValues[pi + 1] = pi - 2
+				until PendingValues[pi] ~= box
+
+				ni = ni + 1
+			end
+
+			-- add box to lookup
+			-- patch any lookups into box code
+			-- append code
+
+			SortedBoxes[i] = nil
+		end
+
+		for i = #SortedBoxes, 1, -1 do
+			-- remove from lookup
+			SortedBoxes[i] = nil
 		end
 
 		-- concat and apply
@@ -334,10 +337,6 @@ function M.DeferDecays ()
 end
 
 --[=[
-function M.AttachCodeForm (box, code_form, scheme)
-	box.m_code_form, box.m_inputs, box.m_scheme = code_form, {}, scheme
-end
-
 function M.ResetValues (box)
 	local inputs = box.m_inputs
 
@@ -378,7 +377,7 @@ function M.UpdateCode (box)
 	if code_form then
 		BoxType, Inputs, Scheme, HasDeclaration = ns.ResolvedTypeOfParent(box), box.m_inputs, box.m_scheme
 
-		local code = code_form:gsub("%$(%w+)", ReplaceInCode)
+		local code = code_form:gsub("%$([_%w]+)", ReplaceInCode)
 
 		if HasDeclaration then
 			VarCounter = VarCounter + 1
