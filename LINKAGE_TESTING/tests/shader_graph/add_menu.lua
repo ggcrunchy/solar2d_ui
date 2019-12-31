@@ -137,7 +137,7 @@ do
 end
 
 do
-	local output = interface.Rect("Output", nil, "return color", { color = "vec4(1.)" })
+	local output = interface.Rect("Output", nil, "return color;", { color = "vec4(1.)" })
 
 	interface.NewNode(output, "lhs", "color", "vec4", "sync")
 	interface.CommitRect(output, display.contentWidth - 75, 75)

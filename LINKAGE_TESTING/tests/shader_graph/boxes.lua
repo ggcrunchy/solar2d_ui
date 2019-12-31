@@ -36,6 +36,9 @@ local nc = require("corona_ui.patterns.node_cluster")
 local nl = require("tests.shader_graph.node_layout")
 local ns = require("tests.shader_graph.node_state")
 
+-- Corona globals --
+local timer = timer
+
 -- Exports --
 local M = {}
 
@@ -229,55 +232,65 @@ local LastInLine
 
 local Code = {}
 
-local function Rebuild ()
+local function AuxRebuild ()
+	BuildGen, IsBuildDirty = (BuildGen or 0) + 1 -- by default, not even last-in-line has generation;
+												-- it implicitly has generation "nil", like any other
+												-- box, thus the first connection will dirty it
+
+	dfs.VisitRoot(BuildAlg, DoBuild, LastInLine, BuildOpts)
+
+	local pi, ni, cn = #PendingValues - 1, 1, 0
+
+	for i = 1, #SortedBoxes do
+		local box, decl = SortedBoxes[i]
+
+		box.build_gen = BuildGen
+
+		if PendingValues[pi] == box then
+			local name = cg.GetExportedName(box)
+
+			if not name then
+				decl = "IntermediateResult_" .. ni
+				name = decl
+			end
+
+			repeat
+				local parent_node = PendingValues[pi + 1]
+
+				cg.SetValue(parent_node.parent, cg.GetValueName(parent_node), name)
+
+				pi, PendingValues[pi], PendingValues[pi + 1] = pi - 2
+			until PendingValues[pi] ~= box
+
+			ni = ni + 1
+		end
+
+		local code = cg.Generate(box, ns.ResolvedTypeOfParent(box), decl)
+
+		if code then
+			Code[cn + 1], cn = code, cn + 1
+		end
+
+		SortedBoxes[i] = nil
+	end
+
+	for i = #Code, cn + 1, -1 do
+		Code[i] = nil
+	end
+
+	local result = concat(Code, ";\n")
+
+	print(result)
+	print("")
+end
+
+local function Rebuild (how)
 	if IsBuildDirty then
-		BuildGen, IsBuildDirty = (BuildGen or 0) + 1 -- by default, not even last-in-line has generation;
-													-- it implicitly has generation "nil", like any other
-													-- box, thus the first connection will dirty it
-
-		dfs.VisitRoot(BuildAlg, DoBuild, LastInLine, BuildOpts)
-
-		local pi, ni, cn = #PendingValues - 1, 1, 0
-
-		for i = 1, #SortedBoxes do
-			local box, decl = SortedBoxes[i]
-
-			if PendingValues[pi] == box then
-				local name = cg.GetExportedName(box)
-
-				if not name then
-					decl = "IntermediateResult_" .. ni
-					name = decl
-				end
-
-				repeat
-					local parent_node = PendingValues[pi + 1]
-
-					cg.SetValue(parent_node.parent, cg.GetValueName(parent_node), name)
-
-					pi, PendingValues[pi], PendingValues[pi + 1] = pi - 2
-				until PendingValues[pi] ~= box
-
-				ni = ni + 1
-			end
-
-			local code = cg.Generate(box, ns.ResolvedTypeOfParent(box), decl)
-
-			if code then
-				Code[cn + 1], cn = code, cn + 1
-			end
-
-			SortedBoxes[i] = nil
+		if how == "no_defer" then
+			AuxRebuild()
+		else
+			timer.performWithDelay(0, AuxRebuild) -- in connect or disconnect, so graph still taking shape
 		end
-
-		for i = #Code, cn + 1, -1 do
-			Code[i] = nil
-		end
-
-		local result = concat(Code, ";\n")
-
-		print(result)
-		print("")
 	end
 end
 
@@ -355,7 +368,7 @@ function M.MakeClusterFuncs (ops)
 		ConnectionGen = ConnectionGen + 1
 
 		if how == "rebuild" then
-			Rebuild()
+			Rebuild("no_defer")
 		end
 	end
 
