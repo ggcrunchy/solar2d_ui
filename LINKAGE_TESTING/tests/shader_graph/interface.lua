@@ -30,6 +30,7 @@ local pairs = pairs
 
 -- Modules --
 local boxes = require("tests.shader_graph.boxes")
+local cg = require("tests.shader_graph.code_gen")
 local cluster_basics = require("tests.shader_graph.cluster_basics")
 local drag = require("corona_ui.utils.drag")
 local nc = require("corona_ui.patterns.node_cluster")
@@ -286,7 +287,7 @@ function M.NewNode (group, what, name, payload_type, how)
 		end
 
 		nl.SetExtraTrailingItemsCount(object, 2)
-		ns.SetValueName(object, name)
+		cg.SetValueName(object, name)
 
 		object.bound_bit = group.next_bit
 		group.next_bit = 2 * group.next_bit
@@ -319,7 +320,7 @@ function M.Rect (title, wildcard_type, code_form, scheme)
 
     group.next_bit = 1
 
-	ns.SetCodeForm(group, code_form, scheme)
+	cg.SetCodeForm(group, code_form, scheme)
 	ns.SetWildcardType(group, wildcard_type)
 
 	display.newText(group, title, 0, 0, native.systemFontBold)

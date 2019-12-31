@@ -25,6 +25,7 @@
 
 -- Modules --
 local boxes = require("tests.shader_graph.boxes")
+local code_gen = require("tests.shader_graph.code_gen")
 local interface = require("tests.shader_graph.interface")
 local menu = require("corona_ui.widgets.menu")
 
@@ -52,17 +53,13 @@ end
 
 BoxGroup:toBack()
 
-local function DefOne (vtype)
-	return vtype ~= "float" and vtype .. "(1.)" or "1."
-end
-
 local function DefZero (vtype)
 	return vtype ~= "float" and vtype .. "(0.)" or "0."
 end
 
-local function OneArg (title, how, wildcard_type, code_form, scheme)
+local function OneArg (title, how, wildcard_type, scheme)
 	return function()
-		local group = interface.Rect(title, wildcard_type, code_form, scheme)
+		local group = interface.Rect(title, wildcard_type, title, scheme)
 
 		interface.NewNode(group, "delete")
 		interface.NewNode(group, "lhs", "x", how, "sync")
@@ -75,13 +72,13 @@ end
 
 local X_Scheme = { x = DefZero }
 
-local function OneArgWV (title, code_form)
-	return OneArg(title, "?", "vector", code_form, X_Scheme)
+local function OneArgWV (title)
+	return OneArg(title, "?", "vector", X_Scheme)
 end
 
-local function TwoArgs (title, how, wildcard_type, code_form, scheme)
+local function TwoArgs (title, how, wildcard_type, scheme)
 	return function()
-		local group = interface.Rect(title, wildcard_type, code_form, scheme)
+		local group = interface.Rect(title, wildcard_type, title, scheme)
 
 		interface.NewNode(group, "delete")
 		interface.NewNode(group, "lhs", "x", how, "sync")
@@ -95,8 +92,8 @@ end
 
 local XY_Scheme = { x = DefZero, y = DefZero }
 
-local function TwoArgsWV (title, code_form)
-	return TwoArgs(title, "?", "vector", code_form, XY_Scheme)
+local function TwoArgsWV (title)
+	return TwoArgs(title, "?", "vector", XY_Scheme)
 end
 
 --[[
@@ -134,13 +131,13 @@ do
 
 	interface.NewNode(input, "rhs", "texCoord", "vec2", "sync")
 	interface.CommitRect(input, 75, 75)
-	boxes.SetCodeSegmentName(input, "texCoord")
+	code_gen.SetExportedName(input, "texCoord")
 
 	BoxGroup:insert(input)
 end
 
 do
-	local output = interface.Rect("Output", nil, "return $color", { color = DefOne })
+	local output = interface.Rect("Output", nil, "return color", { color = "vec4(1.)" })
 
 	interface.NewNode(output, "lhs", "color", "vec4", "sync")
 	interface.CommitRect(output, display.contentWidth - 75, 75)
@@ -157,24 +154,24 @@ local dd = menu.Menu{
 
 local name_to_builder, builders = {}, {
 	Common = {
-		abs = OneArgWV("abs(x)", "$DECL = abs($x)"),
-		ceil = OneArgWV("ceil(x)", "$DECL = ceil($x)"),
+		abs = OneArgWV("abs(x)"),
+		ceil = OneArgWV("ceil(x)"),
 		clamp = function() end, -- TODO: three args, two can be float | wild
-		floor = OneArgWV("floor(x)", "$DECL = floor($x)"),
-		fract = OneArgWV("fract(x)", "$DECL = fract($x)"),
-		max = TwoArgsWV("max(x, y)", "$DECL = max($x, $y)"), -- TODO: y float | wild
-		min = TwoArgsWV("min(x, y)", "$DECL = min($x, $y)"), -- TODO: ditto 
-		mod = TwoArgsWV("mod(x, y)", "$DECL = mod($x, $y)"), -- TODO: ditto
-		sign = OneArgWV("sign(x)", "$DECL = sign($x)"),
+		floor = OneArgWV("floor(x)"),
+		fract = OneArgWV("fract(x)"),
+		max = TwoArgsWV("max(x, y)"), -- TODO: y float | wild
+		min = TwoArgsWV("min(x, y)"), -- TODO: ditto 
+		mod = TwoArgsWV("mod(x, y)"), -- TODO: ditto
+		sign = OneArgWV("sign(x)"),
 		smoothstep = function() end, -- TODO: three args, two can be float | wild
-		step = TwoArgsWV("step(x, y)", "$DECL = step($x, $y)") -- TODO: x float | wild
+		step = TwoArgsWV("step(x, y)") -- TODO: x float | wild
 	}, Exponential = {
-		exp = OneArgWV("exp(x)", "$DECL = exp($x)"),
-		exp2 = OneArgWV("exp2(x)", "$DECL = exp2($x)"),
-		inversesqrt = OneArgWV("inversesqrt(x)", "$DECL = inversesqrt($x)"),
-		log2 = OneArgWV("log2(x)", "$DECL = log2($x)"),
-		pow = TwoArgsWV("pow(x, y)", "$DECL = pow($x, $y)"),
-		sqrt = OneArgWV("sqrt(x)", "$DECL = sqrt($x)")
+		exp = OneArgWV("exp(x)"),
+		exp2 = OneArgWV("exp2(x)"),
+		inversesqrt = OneArgWV("inversesqrt(x)"),
+		log2 = OneArgWV("log2(x)"),
+		pow = TwoArgsWV("pow(x, y)"),
+		sqrt = OneArgWV("sqrt(x)")
 	}, Geometric = {
 		cross = function() end,
 		distance = function() end,
@@ -189,10 +186,10 @@ local name_to_builder, builders = {}, {
 		matrixCompMult = function() end,
 		radians = OneArgWV("radians(x)")
 	}, Operators = {
-		["X + Y"] = TwoArgsWV("x + y", "$DECL = $x + $y"),
-		["X - Y"] = TwoArgsWV("x - y", "$DECL = $x - $y"),
-		["X * Y"] = TwoArgsWV("x * y", "$DECL = $x * $y"),
-		["X / Y"] = TwoArgsWV("x / y", "$DECL = $x / $y"),
+		["X + Y"] = TwoArgsWV("x + y"),
+		["X - Y"] = TwoArgsWV("x - y"),
+		["X * Y"] = TwoArgsWV("x * y"),
+		["X / Y"] = TwoArgsWV("x / y"),
 		["X < Y"] = function() end,
 		["X <= Y"] = function() end,
 		["X > Y"] = function() end,
@@ -204,18 +201,18 @@ local name_to_builder, builders = {}, {
 		["X ^^ Y"] = function() end,
 		["B ? X : Y"] = function() end,
 		["!X"] = function() end,
-		["-X"] = OneArgWV("-x", "$DECL = -$x"),
-		["++X"] = OneArgWV("++x", "$DECL = ++$x"),
-		["X++"] = OneArgWV("x++", "$DECL = $x++"),
+		["-X"] = OneArgWV("-x"),
+		["++X"] = OneArgWV("++x"),
+		["X++"] = OneArgWV("x++"),
 		["X.xyzw"] = function() end
 	}, Trigonometric = {
-		acos = OneArgWV("acos(x)", "$DECL = acos($x)"),
-		asin = OneArgWV("asin(x)", "$DECL = asin($x)"),
-		atan = OneArgWV("atan(x)", "$DECL = atan($x)"), -- TODO: y over x
-		atan2 = TwoArgsWV("atan(y, x)", "$DECL = atan2($x)"),
-		cos = OneArgWV("cos(x)", "$DECL = cos($x)"),
-		sin = OneArgWV("sin(x)", "$DECL = sin($x)"),
-		tan = OneArgWV("tan(x)", "$DECL = tan($x)")
+		acos = OneArgWV("acos(x)"),
+		asin = OneArgWV("asin(x)"),
+		atan = OneArgWV("atan(x)"), -- TODO: y over x
+		atan2 = TwoArgsWV("atan(y, x)"),
+		cos = OneArgWV("cos(x)"),
+		sin = OneArgWV("sin(x)"),
+		tan = OneArgWV("tan(x)")
 	}, ["Vector Relational"] = {
 		all = function() end,
 		any = function() end,

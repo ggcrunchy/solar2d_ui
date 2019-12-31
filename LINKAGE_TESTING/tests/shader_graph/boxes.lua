@@ -24,18 +24,17 @@
 --
 
 -- Standard library imports --
+local concat = table.concat
 local error = error
 local pairs = pairs
 local remove = table.remove
 
 -- Modules --
+local cg = require("tests.shader_graph.code_gen")
 local dfs = require("tests.shader_graph.dfs")
 local nc = require("corona_ui.patterns.node_cluster")
 local nl = require("tests.shader_graph.node_layout")
 local ns = require("tests.shader_graph.node_state")
-
--- Cached module references --
-local _SetCodeSegmentName_
 
 -- Exports --
 local M = {}
@@ -218,8 +217,7 @@ local BuildAlg = dfs.NewAlgorithm{
 }
 
 local function DoBuild (graph, box, adj_iter)
-	-- CLEAR_VALUES
-
+	cg.ResetValues(box)
 	dfs.VisitAdjacentVertices_Once(BuildAlg, DoBuild, graph, box, adj_iter)
 end
 
@@ -229,26 +227,33 @@ local IsBuildDirty
 
 local LastInLine
 
+local Code = {}
+
 local function Rebuild ()
 	if IsBuildDirty then
 		BuildGen, IsBuildDirty = (BuildGen or 0) + 1 -- by default, not even last-in-line has generation;
 													-- it implicitly has generation "nil", like any other
 													-- box, thus the first connection will dirty it
 
-		dfs.VisitTopLevel(BuildAlg, DoBuild, LastInLine, BuildOpts)
+		dfs.VisitRoot(BuildAlg, DoBuild, LastInLine, BuildOpts)
 
-		local pi, ni = #PendingValues - 1, 1
+		local pi, ni, cn = #PendingValues - 1, 1, 0
 
-		for i = #SortedBoxes, 1, -1 do
-			local box = SortedBoxes[i]
+		for i = 1, #SortedBoxes do
+			local box, decl = SortedBoxes[i]
 
 			if PendingValues[pi] == box then
---				local name = ??? .. ni
-				-- clear values
+				local name = cg.GetExportedName(box)
+
+				if not name then
+					decl = "IntermediateResult_" .. ni
+					name = decl
+				end
 
 				repeat
 					local parent_node = PendingValues[pi + 1]
-					-- SET_VALUE(parent_node.parent, GET_VALUE_NAME(parent_node), name)
+
+					cg.SetValue(parent_node.parent, cg.GetValueName(parent_node), name)
 
 					pi, PendingValues[pi], PendingValues[pi + 1] = pi - 2
 				until PendingValues[pi] ~= box
@@ -256,19 +261,23 @@ local function Rebuild ()
 				ni = ni + 1
 			end
 
-			-- add box to lookup
-			-- patch any lookups into box code
-			-- append code
+			local code = cg.Generate(box, ns.ResolvedTypeOfParent(box), decl)
+
+			if code then
+				Code[cn + 1], cn = code, cn + 1
+			end
 
 			SortedBoxes[i] = nil
 		end
 
-		for i = #SortedBoxes, 1, -1 do
-			-- remove from lookup
-			SortedBoxes[i] = nil
+		for i = #Code, cn + 1, -1 do
+			Code[i] = nil
 		end
 
-		-- concat and apply
+		local result = concat(Code, ";\n")
+
+		print(result)
+		print("")
 	end
 end
 
@@ -335,67 +344,6 @@ local IsDeferred
 function M.DeferDecays ()
 	IsDeferred = true
 end
-
---[=[
-function M.ResetValues (box)
-	local inputs = box.m_inputs
-
-	for k in pairs(box.m_scheme) do
-		inputs[k] = nil
-	end
-end
-
-function M.SetValue (box, name, value)
-	box.m_inputs[name] = value
-end
-
-local HasDeclaration
-
-local BoxType, Inputs, Scheme
-
-local function ReplaceInCode (s)
-	local v = Inputs[k]
-
-	if v ~= nil then
-		return v
-	elseif s ~= [[DECL]] then
-		return Scheme[s](BoxType)
-	else
-		HasDeclaration = true
-
-		return false
-	end
-end
-
-function M.SetVarCounter (n)
-	VarCounter = n
-end
-
-function M.UpdateCode (box)
-	local code_form = box.m_code_form
-
-	if code_form then
-		BoxType, Inputs, Scheme, HasDeclaration = ns.ResolvedTypeOfParent(box), box.m_inputs, box.m_scheme
-
-		local code = code_form:gsub("%$([_%w]+)", ReplaceInCode)
-
-		if HasDeclaration then
-			VarCounter = VarCounter + 1
-
-			local name = "_var" .. VarCounter
-
-			_SetCodeSegmentName_(box, name)
-
-			code = code:gsub([[DECL]], BoxType .. " _var" .. VarCounter)
-		end
-
-		Inputs, Scheme = nil
-
-		return code
-	end
-end
---]=]
-
 
 --- DOCME
 function M.MakeClusterFuncs (ops)
@@ -498,11 +446,6 @@ end
 function M.ResumeDecays ()
 	IsDeferred = false
 end
-
---- DOCME
-function M.SetCodeSegmentName (box, name)
-	box.m_code_segment_name = name
-end
 --[=[
 function DUMP_INFO (why)
 	local stage = display.getCurrentStage()
@@ -541,6 +484,5 @@ end
 	end
 end
 --]=]
-_SetCodeSegmentName_ = M.SetCodeSegmentName
 
 return M
