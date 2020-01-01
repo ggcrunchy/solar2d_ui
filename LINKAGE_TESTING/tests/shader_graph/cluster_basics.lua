@@ -89,11 +89,12 @@ end
 
 --- DOCME
 function M.NewCluster (params)
-    local bgroup, connect, get_color, kgroup = params.back_group, params.connect, params.get_color, display.newGroup()
+    local kgroup, lgroup = display.newGroup(), display.newGroup()
 
-	if bgroup and bgroup ~= display.getCurrentStage() then
-		bgroup.parent:insert(kgroup)
-	end
+	params.back_group:insert(lgroup)
+	params.back_group:insert(kgroup)
+
+	local connect, get_color = params.connect, params.get_color
 
     return nc.New{
         can_connect = params.can_connect,
@@ -163,7 +164,7 @@ function M.NewCluster (params)
             end
         end,
 
-        line_group = bgroup
+        line_group = lgroup--bgroup
     }
 end
 

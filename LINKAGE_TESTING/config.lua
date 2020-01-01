@@ -27,8 +27,8 @@ application =
 {
 	content =
 	{
-		width = 480,
-		height = 800,
+		width = 720,
+		height = 1280,
 		scale = "letterbox", -- zoom to fill screen, possibly cropping edges
 	},
 }

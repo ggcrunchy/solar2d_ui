@@ -206,6 +206,9 @@ local function Plot (plotter, x1, y1, x2, y2, opts)
         local method = plotter.m_curve_method
 
 		group = group or plotter.m_group or display.getCurrentStage()
+
+		x1, y1 = group:contentToLocal(x1, y1) -- TODO: probably need to adjust dx, dy too
+
         curve = display.newLine(group, x1, y1, call(method, x1, y1, dx, dy, second / nsegments))
 
         for i = second + 1, nsegments do

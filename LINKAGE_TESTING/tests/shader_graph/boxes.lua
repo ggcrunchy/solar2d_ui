@@ -39,6 +39,9 @@ local ns = require("tests.shader_graph.node_state")
 -- Corona globals --
 local timer = timer
 
+-- Corona modules --
+local widget = require("widget")
+
 -- Exports --
 local M = {}
 
@@ -232,6 +235,8 @@ local LastInLine
 
 local Code = {}
 
+local AddCode
+
 local function AuxRebuild ()
 	BuildGen, IsBuildDirty = (BuildGen or 0) + 1 -- by default, not even last-in-line has generation;
 												-- it implicitly has generation "nil", like any other
@@ -280,8 +285,7 @@ local function AuxRebuild ()
 
 	local result = concat(Code, ";\n")
 
-	print(result)
-	print("")
+	AddCode(result)
 end
 
 local function Rebuild (how)
@@ -497,5 +501,32 @@ end
 	end
 end
 --]=]
+
+local SVH = 200
+
+local scroll_view = widget.newScrollView{
+	top = display.contentHeight - (SVH + 10), left = 10,
+	width = 500, height = 200
+}
+
+local svb = scroll_view.contentBounds
+local svr = display.newRect((svb.xMin + svb.xMax) / 2, (svb.yMin + svb.yMax) / 2, svb.xMax - svb.xMin, svb.yMax - svb.yMin)
+
+svr:setFillColor(0, 0)
+svr:setStrokeColor(1, 0, 0)
+
+svr.strokeWidth = 3
+
+local Text
+
+function AddCode (code)
+	display.remove(Text)
+
+	Text = display.newText(code, 0, 0, svr.width - 10, svr.height - 10, native.systemFontBold, 16)
+
+	Text:setFillColor(0, 0.5, 1)
+	scroll_view:insert(Text)
+	Text:translate(Text.width / 2 + 5, Text.height / 2 + 5)
+end
 
 return M

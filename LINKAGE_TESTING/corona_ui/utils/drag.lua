@@ -98,9 +98,9 @@ local ClampMethods = {
 	end
 }
 
-local function RefObject (object, ref_key)
-	if ref_key then
-		return object[ref_key]
+local function RefObject (object, find)
+	if find then
+		return find(object)
 	else
 		return object
 	end
@@ -119,13 +119,13 @@ end
 -- @todo May start in "broken" state, i.e. in violation of the clamping
 -- DOCMEMORE!
 function M.MakeTouch_Parent (opts)
-	local clamp, find, hoist, ref_key, offset_by_object, to_front, xoff, yoff 
+	local clamp, find, find_ref, get_dims, hoist, offset_by_object, to_front, xoff, yoff 
 	local on_began, on_ended, on_init, on_post_move, on_pre_move
 
 	if opts then
 		clamp, to_front = opts.no_clamp and ClampMethods.id or ClampMethods[opts.clamp], not not opts.to_front
-		find, offset_by_object, hoist, ref_key = opts.find, not not opts.offset_by_object, not not opts.hoist, opts.ref_key
-		xoff, yoff = opts.x_offset, opts.y_offset
+		find, find_ref, offset_by_object, hoist = opts.find, opts.find_ref, not not opts.offset_by_object, not not opts.hoist
+		get_dims, xoff, yoff = opts.get_dims, opts.x_offset, opts.y_offset
 		on_began, on_ended, on_init = opts.on_began, opts.on_ended, opts.on_init
 		on_post_move, on_pre_move = opts.on_post_move, opts.on_pre_move
 	end
@@ -139,7 +139,7 @@ function M.MakeTouch_Parent (opts)
 			on_init(object)
 		end
 
-		local parent, ref_object = GetParent(object, find), RefObject(object, ref_key)
+		local parent, ref_object = GetParent(object, find), RefObject(object, find_ref)
 
 		if hoist then
 			local into, x, y = GetParent(object, find, "into"), parent:localToContent(0, 0)
@@ -169,15 +169,21 @@ function M.MakeTouch_Parent (opts)
 			parent:toFront()
 		end
 	end, function(event, object)
-		local parent, ref_object = GetParent(object, find), RefObject(object, ref_key)
+		local parent, ref_object = GetParent(object, find), RefObject(object, find_ref)
 		local newx, newy, x0, y0 = object.m_dragx + event.x, object.m_dragy + event.y, object.m_x0, object.m_y0
 
 		if on_pre_move then
 			on_pre_move(parent, ref_object)
 		end
 
-		parent.x = clamp(newx, x0, x0 + display.contentWidth - ref_object.contentWidth)
-		parent.y = clamp(newy, y0, y0 + display.contentHeight - ref_object.contentHeight)
+		local w, h
+
+		if get_dims then
+			w, h = get_dims()
+		end
+
+		parent.x = clamp(newx, x0, x0 + (w or display.contentWidth) - ref_object.contentWidth)
+		parent.y = clamp(newy, y0, y0 + (h or display.contentHeight) - ref_object.contentHeight)
 
 		if on_post_move then
 			on_post_move(parent, ref_object)
@@ -185,7 +191,7 @@ function M.MakeTouch_Parent (opts)
 	end, on_ended and function(_, object)
 		local parent = GetParent(object, find)
 
-		on_ended(parent, RefObject(object, ref_key))
+		on_ended(parent, RefObject(object, find_ref))
 
 		if hoist then
 			parent.m_parent:insert(parent)

@@ -98,10 +98,10 @@ function M.Wrap (began, moved, ended)
 	end
 
 	return function(event)
-		local result, target = true, event.target
+		local result, id, target = true, event.id, event.target
 
 		if event.phase == "began" then
-			local began_result, id = began(event, target), event.id
+			local began_result = began(event, target)
 
 			if began_result == "ignore_touch" then
 				id = nil
@@ -113,12 +113,12 @@ function M.Wrap (began, moved, ended)
 				SetFocus(target, id)
 			end
 
-		elseif HasFocus[target] == event.id then
+		elseif HasFocus[target] == id or id == "ignore_me" then
 			if event.phase == "moved" and moved then
 				moved(event, target)
 
 			elseif event.phase == "ended" or event.phase == "cancelled" then
-				if event.id ~= "ignore_me" then
+				if id ~= "ignore_me" then
 					SetFocus(target, nil)
 				end
 

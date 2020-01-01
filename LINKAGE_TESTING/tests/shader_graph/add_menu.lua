@@ -45,14 +45,6 @@ local M = {}
 
 local BoxGroup = display.newGroup()
 
-local back_group = interface.GetBackGroup()
-
-if back_group ~= display.getCurrentStage() then
-	back_group.parent:insert(BoxGroup)
-end
-
-BoxGroup:toBack()
-
 local function DefZero (vtype)
 	return vtype ~= "float" and vtype .. "(0.)" or "0."
 end
@@ -125,26 +117,6 @@ local dd = menu.Menu{
 ]]
 
 function M.Init ()
-
-do
-	local input = interface.Rect("Input")
-
-	interface.NewNode(input, "rhs", "texCoord", "vec2", "sync")
-	interface.CommitRect(input, 75, 75)
-	code_gen.SetExportedName(input, "texCoord")
-
-	BoxGroup:insert(input)
-end
-
-do
-	local output = interface.Rect("Output", nil, "return color;", { color = "vec4(1.)" })
-
-	interface.NewNode(output, "lhs", "color", "vec4", "sync")
-	interface.CommitRect(output, display.contentWidth - 75, 75)
-	boxes.PutLastInLine(output)
-
-	BoxGroup:insert(output)
-end
 
 --[[
 local dd = menu.Menu{
@@ -305,7 +277,7 @@ for _, column in ipairs(pre_columns) do
 	column.name = nil
 end
 
-local get_name = menu.Menu{ columns = columns }
+local get_name = menu.Menu{ columns = columns, column_width = 135 }
 
 get_name:addEventListener("menu_item", function(event)
 	local name = columns[event.column * 2][event.index]
@@ -313,6 +285,39 @@ get_name:addEventListener("menu_item", function(event)
 
 	builder()
 end)
+
+local h = get_name:GetHeadingHeight()
+local cont = display.newContainer(display.contentWidth, display.contentHeight - h)
+
+cont.anchorChildren = false
+cont.anchorX, cont.anchorY = 0, 0
+
+cont:insert(BoxGroup)
+cont:insert(interface.GetBackGroup())
+cont:translate(0, h)
+cont:toBack()
+
+interface.SetDragDimensions(nil, cont.height)
+
+do
+	local input = interface.Rect("Input")
+
+	interface.NewNode(input, "rhs", "texCoord", "vec2", "sync")
+	interface.CommitRect(input, 75, 75)
+	code_gen.SetExportedName(input, "texCoord")
+
+	BoxGroup:insert(input)
+end
+
+do
+	local output = interface.Rect("Output", nil, "return color;", { color = "vec4(1.)" })
+
+	interface.NewNode(output, "lhs", "color", "vec4", "sync")
+	interface.CommitRect(output, display.contentWidth - 75, 75)
+	boxes.PutLastInLine(output)
+
+	BoxGroup:insert(output)
+end
 
 end
 

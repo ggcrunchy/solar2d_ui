@@ -36,6 +36,7 @@ local drag = require("corona_ui.utils.drag")
 local nc = require("corona_ui.patterns.node_cluster")
 local nl = require("tests.shader_graph.node_layout")
 local ns = require("tests.shader_graph.node_state")
+local touch = require("corona_ui.utils.touch")
 
 -- Corona globals --
 local display = display
@@ -70,7 +71,13 @@ end
 
 local NC
 
+local DragW, DragH
+
 local Drag = drag.MakeTouch_Parent{
+	get_dims = function()
+		return DragW, DragH
+	end,
+
     offset_by_object = true,
 
     on_post_move = function(group, _)
@@ -85,7 +92,6 @@ local Drag = drag.MakeTouch_Parent{
         NC:Update()
     end
 }
--- ^^ TODO: clip against menu, too (or use a container, probably)
 
 local function Place_Direct (item, what, value) -- place objects exactly where we say
 	item[what] = value
@@ -111,6 +117,7 @@ function M.CommitRect (group, x, y)
 	group.back = back -- back should be in element 1, but keep a ref just in case
 
 	nl.VisitGroup(group, nl.PlaceItems, back)
+	touch.Spoof(back)
 
     OwnerID = OwnerID + 1
 end
@@ -326,6 +333,11 @@ function M.Rect (title, wildcard_type, code_form, scheme)
 	display.newText(group, title, 0, 0, native.systemFontBold)
 
     return group
+end
+
+--- DOCME
+function M.SetDragDimensions (w, h)
+	DragW, DragH = w, h
 end
 
 return M
