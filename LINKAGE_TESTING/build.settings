@@ -7,7 +7,13 @@ settings =
 
 	orientation =
 	{
-			default = "landscape"
+			default = "landscapeRight"
+	},
+
+	window =
+	{
+		  defaultViewWidth = 1280,
+		  defaultViewHeight = 720,
 	},
 
 	plugins = {
