@@ -26,7 +26,7 @@
 -- Modules --
 local nc = require("solar2d_ui.patterns.node_cluster")
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 local transition = transition
 

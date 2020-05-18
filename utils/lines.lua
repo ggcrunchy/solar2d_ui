@@ -33,7 +33,7 @@ local curves = require("tektite_core.number.curves")
 local color = require("solar2d_ui.utils.color")
 local line_ex = require("solar2d_ui.utils.line_ex")
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 local timer = timer
 

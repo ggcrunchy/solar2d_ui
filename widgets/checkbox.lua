@@ -33,7 +33,7 @@ local meta = require("tektite_core.table.meta")
 local skins = require("solar2d_ui.utils.skin")
 local var_preds = require("tektite_core.var.predicates")
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 
 -- Cached module references --

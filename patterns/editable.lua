@@ -43,7 +43,7 @@ local layout_dsl = require("solar2d_ui.utils.layout_dsl")
 local layout_strategies = require("solar2d_ui.utils.layout_strategies")
 local meta = require("tektite_core.table.meta")
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 local easing = easing
 local native = native

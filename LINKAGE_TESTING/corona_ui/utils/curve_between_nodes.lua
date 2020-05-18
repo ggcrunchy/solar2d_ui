@@ -34,7 +34,7 @@ local unpack = unpack
 -- Modules --
 local position = require("solar2d_ui.utils.position")
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 
 --

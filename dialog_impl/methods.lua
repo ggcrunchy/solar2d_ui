@@ -28,7 +28,7 @@ local editable_patterns = require("solar2d_ui.patterns.editable")
 local layout = require("solar2d_ui.utils.layout")
 local utils = require("solar2d_ui.dialog_impl.utils")
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 local native = native
 

@@ -30,7 +30,7 @@ local abs = math.abs
 local assert = assert
 local pairs = pairs
 
--- Corona globals --
+-- Solar2D globals --
 local transition = transition
 local timer = timer
 

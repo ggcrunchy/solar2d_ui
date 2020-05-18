@@ -36,7 +36,7 @@ local meta = require("tektite_core.table.meta")
 local range = require("tektite_core.number.range")
 local touch = require("solar2d_ui.utils.touch")
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 
 -- Cached module references --

@@ -36,7 +36,7 @@ local touch = require("solar2d_ui.utils.touch")
 -- Imports --
 local ClampIn = range.ClampIn
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 
 -- Exports --

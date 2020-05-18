@@ -34,7 +34,7 @@ local type = type
 local frames = require("solar2d_utils.frames")
 local meta = require("tektite_core.table.meta")
 
--- Corona globals --
+-- Solar2D globals --
 local Runtime = Runtime
 local system = system
 

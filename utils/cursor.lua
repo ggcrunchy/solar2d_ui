@@ -31,7 +31,7 @@ local sub = string.sub
 -- Modules --
 local layout = require("solar2d_ui.utils.layout")
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 
 -- Cached module references --

@@ -38,7 +38,7 @@ local nl = require("tests.shader_graph.node_layout")
 local ns = require("tests.shader_graph.node_state")
 local touch = require("solar2d_ui.utils.touch")
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 local native = native
 local timer = timer

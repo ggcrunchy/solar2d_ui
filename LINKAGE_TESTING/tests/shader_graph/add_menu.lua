@@ -29,7 +29,7 @@ local code_gen = require("tests.shader_graph.code_gen")
 local interface = require("tests.shader_graph.interface")
 local menu = require("solar2d_ui.widgets.menu")
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 
 --

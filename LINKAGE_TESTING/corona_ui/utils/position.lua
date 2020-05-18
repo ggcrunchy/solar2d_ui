@@ -26,7 +26,7 @@
 -- Standard library imports --
 local assert = assert
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 
 -- Cached module references --

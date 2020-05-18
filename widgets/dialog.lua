@@ -35,7 +35,7 @@ local net = require("solar2d_ui.patterns.net")
 local sections = require("solar2d_ui.dialog_impl.sections")
 local utils = require("solar2d_ui.dialog_impl.utils")
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 
 -- Exports --

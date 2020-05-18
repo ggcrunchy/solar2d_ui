@@ -36,7 +36,7 @@ local lines = require("solar2d_ui.utils.lines")
 local meta = require("tektite_core.table.meta")
 local touch = require("solar2d_ui.utils.touch")
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 
 -- Cached module references --

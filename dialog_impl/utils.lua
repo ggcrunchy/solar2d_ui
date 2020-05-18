@@ -33,7 +33,7 @@ local type = type
 local layout = require("solar2d_ui.utils.layout")
 local table_funcs = require("tektite_core.table.funcs")
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 
 -- Cached module references --

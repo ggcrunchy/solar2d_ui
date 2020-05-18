@@ -29,7 +29,7 @@ local pairs = pairs
 local setmetatable = setmetatable
 local type = type
 
--- Corona globals --
+-- Solar2D globals --
 local native = native
 
 -- Exports --

@@ -34,12 +34,12 @@ local layout = require("solar2d_ui.utils.layout")
 local layout_dsl = require("solar2d_ui.utils.layout_dsl")
 local meta = require("tektite_core.table.meta")
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 local native = native
 local timer = timer
 
--- Corona modules --
+-- Solar2D modules --
 local widget = require("widget")
 
 -- Cached module references --

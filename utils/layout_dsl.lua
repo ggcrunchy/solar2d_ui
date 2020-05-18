@@ -43,7 +43,7 @@ local type = type
 -- Modules --
 local layout = require("solar2d_ui.utils.layout")
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 
 -- Cached module references --
@@ -265,7 +265,7 @@ local function AuxProcessWidgetParams (params, t)
 end
 
 --- Convenience utility for doing DSL evaluation of position- or dimension-type fields in
--- Corona-style widget constructors.
+-- Solar2D-style widget constructors.
 -- @ptable[opt] params If absent, this is a no-op. Otherwise, its **left**, **top**, **x**,
 -- **y**, **width**, and **height** fields will be processed.
 -- @ptable[opt] t Receives the evaluated params. If absent, a table is supplied (if _params_

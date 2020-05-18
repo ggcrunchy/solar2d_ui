@@ -36,7 +36,7 @@ local range = require("tektite_core.number.range")
 -- Imports --
 local ClampIn = range.ClampIn
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 
 -- Cached module references --

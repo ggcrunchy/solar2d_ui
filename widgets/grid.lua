@@ -41,7 +41,7 @@ local skins = require("solar2d_ui.utils.skin")
 local stencil = require("iterator_ops.grid.stencil")
 local touch = require("solar2d_ui.utils.touch")
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 
 -- Cached module references --
@@ -203,7 +203,7 @@ function Grid:GetRowOffset ()
 end
 
 --- Assigns cell-relative centering, which determine how **x** and **y** are calculated in a
--- **"cell"** listener (analagous to Corona's anchor points).
+-- **"cell"** listener (analogous to Solar2D's anchor points).
 --
 -- Values are clamped to [0, 1].
 -- @number x Horizontal centering: 0 = left side of cell, 1 = right side...

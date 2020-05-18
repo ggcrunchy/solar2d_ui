@@ -1,4 +1,4 @@
---- Augmented version of Corona's line object.
+--- Augmented version of Solar2D's line object.
 
 --
 -- Permission is hereby granted, free of charge, to any person obtaining
@@ -33,7 +33,7 @@ local type = type
 -- Modules --
 local color = require("solar2d_ui.utils.color")
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 
 -- Exports --

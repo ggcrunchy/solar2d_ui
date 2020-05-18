@@ -23,7 +23,7 @@
 -- [ MIT license: http://www.opensource.org/licenses/mit-license.php ]
 --
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 
 -- Exports --

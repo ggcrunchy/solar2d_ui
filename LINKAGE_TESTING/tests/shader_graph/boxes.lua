@@ -36,10 +36,10 @@ local nc = require("solar2d_ui.patterns.node_cluster")
 local nl = require("tests.shader_graph.node_layout")
 local ns = require("tests.shader_graph.node_state")
 
--- Corona globals --
+-- Solar2D globals --
 local timer = timer
 
--- Corona modules --
+-- Solar2D modules --
 local widget = require("widget")
 
 -- Exports --

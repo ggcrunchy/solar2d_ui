@@ -32,7 +32,7 @@ local sort = table.sort
 local sqrt = math.sqrt
 local type = type
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 
 -- Exports --

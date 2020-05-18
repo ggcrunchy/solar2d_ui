@@ -36,7 +36,7 @@ local meta = require("tektite_core.table.meta")
 local skins = require("solar2d_ui.utils.skin")
 local touch = require("solar2d_ui.utils.touch")
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 local timer = timer
 

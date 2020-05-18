@@ -36,10 +36,10 @@ local layout = require("solar2d_ui.utils.layout")
 local layout_dsl = require("solar2d_ui.utils.layout_dsl")
 local utils = require("solar2d_ui.dialog_impl.utils")
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 
--- Corona modules --
+-- Solar2D modules --
 local widget = require("widget")
 
 -- Exports --

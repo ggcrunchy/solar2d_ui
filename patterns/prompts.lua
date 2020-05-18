@@ -30,7 +30,7 @@ local assert = assert
 local editable_patterns = require("solar2d_ui.patterns.editable")
 local timers = require("solar2d_utils.timers")
 
--- Corona globals --
+-- Solar2D globals --
 local display = display
 local native = native
 local timer = timer
