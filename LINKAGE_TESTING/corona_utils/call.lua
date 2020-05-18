@@ -31,7 +31,7 @@ local setmetatable = setmetatable
 local type = type
 
 -- Modules --
-local frames = require("corona_utils.frames")
+local frames = require("solar2d_utils.frames")
 local meta = require("tektite_core.table.meta")
 
 -- Corona globals --

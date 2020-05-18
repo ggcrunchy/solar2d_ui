@@ -31,7 +31,7 @@ local setmetatable = setmetatable
 -- Modules --
 local common = require("s3_editor.Common") -- urgh...
 local strings = require("tektite_core.var.strings")
-local utils = require("corona_utils.linkage.utils")
+local utils = require("solar2d_utils.linkage.utils")
 
 -- Cached module references --
 local _SaveValuesIntoEntry_

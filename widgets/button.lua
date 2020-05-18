@@ -29,12 +29,12 @@
 local type = type
 
 -- Modules --
-local colors = require("corona_ui.utils.color")
-local layout = require("corona_ui.utils.layout")
-local layout_dsl = require("corona_ui.utils.layout_dsl")
+local colors = require("solar2d_ui.utils.color")
+local layout = require("solar2d_ui.utils.layout")
+local layout_dsl = require("solar2d_ui.utils.layout_dsl")
 local meta = require("tektite_core.table.meta")
-local skins = require("corona_ui.utils.skin")
-local touch = require("corona_ui.utils.touch")
+local skins = require("solar2d_ui.utils.skin")
+local touch = require("solar2d_ui.utils.touch")
 
 -- Corona globals --
 local display = display
@@ -156,7 +156,7 @@ end
 -- REINTEGRATE:
 -- @param[opt] skin Name of button's skin.
 -- @string[opt=""] text Button text.
--- @see corona_ui.utils.skin.GetSkin
+-- @see solar2d_ui.utils.skin.GetSkin
 
 --- DOCME
 -- @pgroup group Group to which button will be inserted.

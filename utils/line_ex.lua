@@ -31,7 +31,7 @@ local setmetatable = setmetatable
 local type = type
 
 -- Modules --
-local color = require("corona_ui.utils.color")
+local color = require("solar2d_ui.utils.color")
 
 -- Corona globals --
 local display = display

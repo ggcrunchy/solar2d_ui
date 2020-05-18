@@ -41,7 +41,7 @@ local tonumber = tonumber
 local type = type
 
 -- Modules --
-local layout = require("corona_ui.utils.layout")
+local layout = require("solar2d_ui.utils.layout")
 
 -- Corona globals --
 local display = display
@@ -60,7 +60,7 @@ local M = {}
 
 --- Augments a display object's metatable, so that its objects can also query **left**,
 -- **center_x**, **right**, **bottom**, **center_y**, and **top** properties, with semantics
--- as in @{corona_ui.utils.layout}. Additionally, any of these (and also **x** and **y**)
+-- as in @{solar2d_ui.utils.layout}. Additionally, any of these (and also **x** and **y**)
 -- may be assigned, accepting the same inputs as @{PutObjectAt}.
 -- @pobject object Object which will have its metatable modified.
 function M.AddProperties (object)

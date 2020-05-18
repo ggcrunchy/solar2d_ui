@@ -27,13 +27,13 @@
 local pairs = pairs
 
 -- Method modules --
-local data = require("corona_ui.dialog_impl.data")
-local layout = require("corona_ui.dialog_impl.layout")
+local data = require("solar2d_ui.dialog_impl.data")
+local layout = require("solar2d_ui.dialog_impl.layout")
 local meta = require("tektite_core.table.meta")
-local methods = require("corona_ui.dialog_impl.methods")
-local net = require("corona_ui.patterns.net")
-local sections = require("corona_ui.dialog_impl.sections")
-local utils = require("corona_ui.dialog_impl.utils")
+local methods = require("solar2d_ui.dialog_impl.methods")
+local net = require("solar2d_ui.patterns.net")
+local sections = require("solar2d_ui.dialog_impl.sections")
+local utils = require("solar2d_ui.dialog_impl.utils")
 
 -- Corona globals --
 local display = display

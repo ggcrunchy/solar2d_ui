@@ -27,7 +27,7 @@
 local pairs = pairs
 
 -- Modules --
-local layout = require("corona_ui.utils.layout")
+local layout = require("solar2d_ui.utils.layout")
 
 -- Corona globals --
 local display = display

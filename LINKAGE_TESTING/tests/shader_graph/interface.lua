@@ -32,11 +32,11 @@ local pairs = pairs
 local boxes = require("tests.shader_graph.boxes")
 local cg = require("tests.shader_graph.code_gen")
 local cluster_basics = require("tests.shader_graph.cluster_basics")
-local drag = require("corona_ui.utils.drag")
-local nc = require("corona_ui.patterns.node_cluster")
+local drag = require("solar2d_ui.utils.drag")
+local nc = require("solar2d_ui.patterns.node_cluster")
 local nl = require("tests.shader_graph.node_layout")
 local ns = require("tests.shader_graph.node_state")
-local touch = require("corona_ui.utils.touch")
+local touch = require("solar2d_ui.utils.touch")
 
 -- Corona globals --
 local display = display

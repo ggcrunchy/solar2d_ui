@@ -24,9 +24,9 @@
 --
 
 -- Modules --
-local editable_patterns = require("corona_ui.patterns.editable")
-local layout = require("corona_ui.utils.layout")
-local utils = require("corona_ui.dialog_impl.utils")
+local editable_patterns = require("solar2d_ui.patterns.editable")
+local layout = require("solar2d_ui.utils.layout")
+local utils = require("solar2d_ui.dialog_impl.utils")
 
 -- Corona globals --
 local display = display

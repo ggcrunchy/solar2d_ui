@@ -31,7 +31,7 @@ local min = math.min
 
 -- Modules --
 local range = require("tektite_core.number.range")
-local touch = require("corona_ui.utils.touch")
+local touch = require("solar2d_ui.utils.touch")
 
 -- Imports --
 local ClampIn = range.ClampIn

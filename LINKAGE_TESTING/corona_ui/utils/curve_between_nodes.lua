@@ -32,7 +32,7 @@ local setmetatable = setmetatable
 local unpack = unpack
 
 -- Modules --
-local position = require("corona_ui.utils.position")
+local position = require("solar2d_ui.utils.position")
 
 -- Corona globals --
 local display = display

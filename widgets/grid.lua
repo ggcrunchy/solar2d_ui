@@ -33,13 +33,13 @@ local remove = table.remove
 -- Modules --
 local array_index = require("tektite_core.array.index")
 local bresenham = require("iterator_ops.grid.bresenham")
-local colors = require("corona_ui.utils.color")
-local layout_dsl = require("corona_ui.utils.layout_dsl")
+local colors = require("solar2d_ui.utils.color")
+local layout_dsl = require("solar2d_ui.utils.layout_dsl")
 local meta = require("tektite_core.table.meta")
 local range = require("tektite_core.number.range")
-local skins = require("corona_ui.utils.skin")
+local skins = require("solar2d_ui.utils.skin")
 local stencil = require("iterator_ops.grid.stencil")
-local touch = require("corona_ui.utils.touch")
+local touch = require("solar2d_ui.utils.touch")
 
 -- Corona globals --
 local display = display
@@ -333,7 +333,7 @@ end
 -- @uint rows ...and rows.
 -- @ptable opts[opt] TODO: Skin, etc.
 -- @treturn DisplayObject Grid widget. 
--- @see corona_ui.utils.skin.GetSkin
+-- @see solar2d_ui.utils.skin.GetSkin
 function M.Grid_XY (group, x, y, w, h, cols, rows, opts)
 	local skin = skins.GetSkin(opts and opts.skin)
 

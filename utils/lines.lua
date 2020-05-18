@@ -30,8 +30,8 @@ local sqrt = math.sqrt
 -- Modules --
 local array_funcs = require("tektite_core.array.funcs")
 local curves = require("tektite_core.number.curves")
-local color = require("corona_ui.utils.color")
-local line_ex = require("corona_ui.utils.line_ex")
+local color = require("solar2d_ui.utils.color")
+local line_ex = require("solar2d_ui.utils.line_ex")
 
 -- Corona globals --
 local display = display

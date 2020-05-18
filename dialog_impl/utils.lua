@@ -30,7 +30,7 @@ local setmetatable = setmetatable
 local type = type
 
 -- Modules --
-local layout = require("corona_ui.utils.layout")
+local layout = require("solar2d_ui.utils.layout")
 local table_funcs = require("tektite_core.table.funcs")
 
 -- Corona globals --

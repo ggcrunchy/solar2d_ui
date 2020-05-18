@@ -30,11 +30,11 @@ local min = math.min
 local unpack = unpack
 
 -- Modules --
-local hsv = require("corona_ui.utils.hsv")
-local layout_dsl = require("corona_ui.utils.layout_dsl")
+local hsv = require("solar2d_ui.utils.hsv")
+local layout_dsl = require("solar2d_ui.utils.layout_dsl")
 local meta = require("tektite_core.table.meta")
 local range = require("tektite_core.number.range")
-local touch = require("corona_ui.utils.touch")
+local touch = require("solar2d_ui.utils.touch")
 
 -- Corona globals --
 local display = display

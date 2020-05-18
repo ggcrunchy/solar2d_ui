@@ -36,11 +36,11 @@ local tostring = tostring
 local upper = string.upper
 
 -- Modules --
-local cursor = require("corona_ui.utils.cursor")
-local layout = require("corona_ui.utils.layout")
-local net = require("corona_ui.patterns.net")
-local layout_dsl = require("corona_ui.utils.layout_dsl")
-local layout_strategies = require("corona_ui.utils.layout_strategies")
+local cursor = require("solar2d_ui.utils.cursor")
+local layout = require("solar2d_ui.utils.layout")
+local net = require("solar2d_ui.patterns.net")
+local layout_dsl = require("solar2d_ui.utils.layout_dsl")
+local layout_strategies = require("solar2d_ui.utils.layout_strategies")
 local meta = require("tektite_core.table.meta")
 
 -- Corona globals --

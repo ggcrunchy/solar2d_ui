@@ -26,11 +26,11 @@
 --
 
 -- Modules --
-local colors = require("corona_ui.utils.color")
-local layout = require("corona_ui.utils.layout")
-local layout_dsl = require("corona_ui.utils.layout_dsl")
+local colors = require("solar2d_ui.utils.color")
+local layout = require("solar2d_ui.utils.layout")
+local layout_dsl = require("solar2d_ui.utils.layout_dsl")
 local meta = require("tektite_core.table.meta")
-local skins = require("corona_ui.utils.skin")
+local skins = require("solar2d_ui.utils.skin")
 local var_preds = require("tektite_core.var.predicates")
 
 -- Corona globals --
@@ -107,7 +107,7 @@ end
 -- @number h Height.
 -- @callable[opt] func If present, called as `func(is_checked)`, after a check or uncheck.
 -- @treturn DisplayGroup Child #1: the box; Child #2: the check mark.
--- @see corona_ui.utils.skin.GetSkin
+-- @see solar2d_ui.utils.skin.GetSkin
 function M.Checkbox_XY (group, x, y, w, h, opts)
 	--
 	local skin, func
@@ -160,7 +160,7 @@ skins.AddToDefaultSkin("checkbox", {
 	backcolor = "white",
 	bordercolor = { .5, 0, .5 },
 	borderwidth = 4,
-	image = "corona_ui/assets/Check.png",
+	image = "solar2d_ui/assets/Check.png",
 	radius = "1.5%"
 })
 

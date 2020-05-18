@@ -38,10 +38,10 @@ local setmetatable = setmetatable
 local type = type
 
 -- Modules --
-local curve_between_nodes = require("corona_ui.utils.curve_between_nodes")
-local curve_plotter = require("corona_ui.utils.curve_plotter")
-local position = require("corona_ui.utils.position")
-local touch = require("corona_ui.utils.touch")
+local curve_between_nodes = require("solar2d_ui.utils.curve_between_nodes")
+local curve_plotter = require("solar2d_ui.utils.curve_plotter")
+local position = require("solar2d_ui.utils.position")
+local touch = require("solar2d_ui.utils.touch")
 
 -- Cached module members --
 local _ConnectObjects_

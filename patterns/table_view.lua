@@ -29,9 +29,9 @@ local ipairs = ipairs
 local rawequal = rawequal
 
 -- Modules --
-local file_utils = require("corona_utils.file")
-local layout = require("corona_ui.utils.layout")
-local layout_dsl = require("corona_ui.utils.layout_dsl")
+local file_utils = require("solar2d_utils.file")
+local layout = require("solar2d_ui.utils.layout")
+local layout_dsl = require("solar2d_ui.utils.layout_dsl")
 local meta = require("tektite_core.table.meta")
 
 -- Corona globals --

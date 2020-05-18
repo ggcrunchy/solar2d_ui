@@ -32,9 +32,9 @@ local min = math.min
 local type = type
 
 -- Modules --
-local layout = require("corona_ui.utils.layout")
-local layout_dsl = require("corona_ui.utils.layout_dsl")
-local utils = require("corona_ui.dialog_impl.utils")
+local layout = require("solar2d_ui.utils.layout")
+local layout_dsl = require("solar2d_ui.utils.layout_dsl")
+local utils = require("solar2d_ui.dialog_impl.utils")
 
 -- Corona globals --
 local display = display

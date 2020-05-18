@@ -28,7 +28,7 @@ local pairs = pairs
 
 -- Modules --
 local require_ex = require("tektite_core.require_ex")
-local table_view_patterns = require_ex.Lazy("corona_ui.patterns.table_view")
+local table_view_patterns = require_ex.Lazy("solar2d_ui.patterns.table_view")
 
 -- Exports --
 local M = {}

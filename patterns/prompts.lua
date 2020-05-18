@@ -27,8 +27,8 @@
 local assert = assert
 
 -- Modules --
-local editable_patterns = require("corona_ui.patterns.editable")
-local timers = require("corona_utils.timers")
+local editable_patterns = require("solar2d_ui.patterns.editable")
+local timers = require("solar2d_utils.timers")
 
 -- Corona globals --
 local display = display

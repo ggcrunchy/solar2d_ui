@@ -28,7 +28,7 @@ local pairs = pairs
 
 -- Modules --
 local table_funcs = require("tektite_core.table.funcs")
-local utils = require("corona_utils.linkage.utils")
+local utils = require("solar2d_utils.linkage.utils")
 
 -- Exports --
 local M = {}

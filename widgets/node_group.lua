@@ -32,9 +32,9 @@ local pairs = pairs
 local sort = table.sort
 
 -- Modules --
-local lines = require("corona_ui.utils.lines")
+local lines = require("solar2d_ui.utils.lines")
 local meta = require("tektite_core.table.meta")
-local touch = require("corona_ui.utils.touch")
+local touch = require("solar2d_ui.utils.touch")
 
 -- Corona globals --
 local display = display

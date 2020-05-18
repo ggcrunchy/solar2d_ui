@@ -24,7 +24,7 @@
 --
 
 -- Modules --
-local nc = require("corona_ui.patterns.node_cluster")
+local nc = require("solar2d_ui.patterns.node_cluster")
 
 -- Corona globals --
 local display = display

@@ -32,7 +32,7 @@ local remove = table.remove
 -- Modules --
 local cg = require("tests.shader_graph.code_gen")
 local dfs = require("tests.shader_graph.dfs")
-local nc = require("corona_ui.patterns.node_cluster")
+local nc = require("solar2d_ui.patterns.node_cluster")
 local nl = require("tests.shader_graph.node_layout")
 local ns = require("tests.shader_graph.node_state")
 
@@ -467,7 +467,7 @@ end
 function DUMP_INFO (why)
 	local stage = display.getCurrentStage()
 	local Connected={}
-	local nc = require("corona_ui.patterns.node_cluster")
+	local nc = require("solar2d_ui.patterns.node_cluster")
 	print("DUMP", why)
 	for i = 1, stage.numChildren do
 		local p = stage[i]

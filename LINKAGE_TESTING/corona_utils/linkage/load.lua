@@ -29,7 +29,7 @@ local pairs = pairs
 
 -- Modules --
 local common = require("s3_editor.Common") -- urgh...
-local utils = require("corona_utils.linkage.utils")
+local utils = require("solar2d_utils.linkage.utils")
 
 -- Cached module references --
 local _LoadValuesFromEntry_

@@ -35,8 +35,8 @@ local type = type
 
 -- Modules --
 local array_index = require("tektite_core.array.index")
-local layout = require("corona_ui.utils.layout")
-local layout_dsl = require("corona_ui.utils.layout_dsl")
+local layout = require("solar2d_ui.utils.layout")
+local layout_dsl = require("solar2d_ui.utils.layout_dsl")
 local meta = require("tektite_core.table.meta")
 local table_funcs = require("tektite_core.table.funcs")
 

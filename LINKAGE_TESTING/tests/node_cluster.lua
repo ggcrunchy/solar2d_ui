@@ -23,8 +23,8 @@
 -- [ MIT license: http://www.opensource.org/licenses/mit-license.php ]
 --
 
-local drag = require("corona_ui.utils.drag")
-local nc = require("corona_ui.patterns.node_cluster")
+local drag = require("solar2d_ui.utils.drag")
+local nc = require("solar2d_ui.patterns.node_cluster")
 
 local BackGroup = nil -- display.newGroup()
 

@@ -27,7 +27,7 @@
 local boxes = require("tests.shader_graph.boxes")
 local code_gen = require("tests.shader_graph.code_gen")
 local interface = require("tests.shader_graph.interface")
-local menu = require("corona_ui.widgets.menu")
+local menu = require("solar2d_ui.widgets.menu")
 
 -- Corona globals --
 local display = display
