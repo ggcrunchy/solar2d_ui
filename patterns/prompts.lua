@@ -28,7 +28,6 @@ local assert = assert
 
 -- Modules --
 local editable_patterns = require("solar2d_ui.patterns.editable")
-local timers = require("solar2d_utils.timers")
 
 -- Solar2D globals --
 local display = display
@@ -161,17 +160,20 @@ function M.WriteEntry_MightExist (name, opts, arg)
 							else
 								defer_cleanup = true
 
-								timers.WithObjectDefer(editable, function()
-									-- If the user-provided name already exists, request permission before overwriting.
-									alert = native.showAlert(Message("The %s is already in use!", what), "Overwrite?", { "OK", "Cancel" }, function(event)
-										alert = nil
+								timer.performWithDelay(0, function()
+									if display.isValid(editable) then
+										local message = Message("The %s is already in use!", what)
 
-										if event.action == "clicked" and event.index == 1 then
-											writer(name, arg)
-										end
-									end)
+										alert = native.showAlert(message, "Overwrite?", { "OK", "Cancel" }, function(event)
+											alert = nil
 
-									editable:removeSelf()
+											if event.action == "clicked" and event.index == 1 then
+												writer(name, arg)
+											end
+										end)
+
+										editable:removeSelf()
+									end
 								end)
 							end
 						end
