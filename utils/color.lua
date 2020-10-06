@@ -30,8 +30,8 @@ local select = select
 local type = type
 local unpack = unpack
 
--- Modules --
-local operators = require("bitwise_ops.operators")
+-- Plugins --
+local bit = require("plugin.bit")
 
 -- Exports --
 local M = {}
@@ -40,7 +40,6 @@ local M = {}
 --
 --
 
--- Registered colors --
 local Colors = {
 	black = { 0, 0, 0, 1 },
 	clear = { 0, 0, 0, 0 },
@@ -190,57 +189,31 @@ local UnpackNumberMethods, UnpackNumber = {
 		return r * (1.0 / 0xFF)
 	end
 }
- 
-if operators.HasBitLib() then
-	local band = operators.band
 
-	UnpackNumberMethods[2] = function(rg)
-		local g = band(rg, 0xFF * 2^8) -- Mask shifted left (and constant-folded)
+local band = bit.band
 
-		return (rg - g) * (1.0 / 0xFF), g * (2^-8 / 0xFF) -- Divide by 255 (right shifts also constant-folded)
-	end
+UnpackNumberMethods[2] = function(rg)
+	local g = band(rg, 0xFF * 2^8) -- Mask shifted left (and constant-folded)
 
-	UnpackNumberMethods[3] = function(rgb)
-		local g, b = band(rgb, 0xFF * 2^8), band(rgb, 0xFF * 2^16)
+	return (rg - g) * (1.0 / 0xFF), g * (2^-8 / 0xFF) -- Divide by 255 (right shifts also constant-folded)
+end
 
-		return (rgb - g - b) * (1.0 / 0xFF), g * (2^-8 / 0xFF), b * (2^-16 / 0xFF)
-	end
+UnpackNumberMethods[3] = function(rgb)
+	local g, b = band(rgb, 0xFF * 2^8), band(rgb, 0xFF * 2^16)
 
-	UnpackNumberMethods[4] = function(rgba)
-		local g, b, a = band(rgba, 0xFF * 2^8), band(rgba, 0xFF * 2^16), band(rgba, 0xFF * 2^24)
+	return (rgb - g - b) * (1.0 / 0xFF), g * (2^-8 / 0xFF), b * (2^-16 / 0xFF)
+end
 
-		return (rgba - g - b - a) * (1.0 / 0xFF), g * (2^-8 / 0xFF), b * (2^-16 / 0xFF), a * (2^-24 / 0xFF)
-	end
+UnpackNumberMethods[4] = function(rgba)
+	local g, b, a = band(rgba, 0xFF * 2^8), band(rgba, 0xFF * 2^16), band(rgba, 0xFF * 2^24)
 
-	function UnpackNumber (rgba)
-		local index = band(rgba, 0x3)
+	return (rgba - g - b - a) * (1.0 / 0xFF), g * (2^-8 / 0xFF), b * (2^-16 / 0xFF), a * (2^-24 / 0xFF)
+end
 
-		return UnpackNumberMethods[index + 1](.25 * (rgba - index)) -- n.b. 34-bit number; 32-bit rshift() assumed, thus use .25 * x
-	end
-else
-	UnpackNumberMethods[2] = function(rg)
-		local r = rg % 2^8
+function UnpackNumber (rgba)
+	local index = band(rgba, 0x3)
 
-		return r * (1.0 / 0xFF), (rg - r) * (2^-8 / 0xFF) -- Different numerator strategy than bitwise version, given what mod can mask
-	end
-
-	UnpackNumberMethods[3] = function(rgb)
-		local r, rg = rgb % 2^8, rgb % 2^16
-
-		return r * (1.0 / 0xFF), (rg - r) * (2^-8 / 0xFF), (rgb - rg) * (2^-16 / 0xFF)
-	end
-
-	UnpackNumberMethods[4] = function(rgba)
-		local r, rg, rgb = rgba % 2^8, rgba % 2^16, rgba % 2^24
-
-		return r * (1.0 / 0xFF), (rg - r) * (2^-8 / 0xFF), (rgb - rg) * (2^-16 / 0xFF), (rgba - rgb) * (2^-24 / 0xFF)
-	end
-
-	function UnpackNumber (rgba)
-		local index = rgba % 4
-
-		return UnpackNumberMethods[index + 1](.25 * (rgba - index))
-	end
+	return UnpackNumberMethods[index + 1](.25 * (rgba - index)) -- n.b. 34-bit number; 32-bit rshift() assumed, thus use .25 * x
 end
 
 --- DOCME
