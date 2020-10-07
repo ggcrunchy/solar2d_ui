@@ -31,7 +31,6 @@ local layout = require("solar2d_ui.utils.layout")
 local layout_dsl = require("solar2d_ui.utils.layout_dsl")
 local meta = require("tektite_core.table.meta")
 local skins = require("solar2d_ui.utils.skin")
-local var_preds = require("tektite_core.var.predicates")
 
 -- Solar2D globals --
 local display = display
@@ -112,7 +111,7 @@ function M.Checkbox_XY (group, x, y, w, h, opts)
 	--
 	local skin, func
 
-	if var_preds.IsCallable(opts) then
+	if meta.CanCall(opts) then
 		func = opts
 	elseif opts then
 		func = opts.func
