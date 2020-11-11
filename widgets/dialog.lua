@@ -45,7 +45,6 @@ local M = {}
 --
 --
 
--- Import dialog methods.
 local Methods = {} 
 
 for _, mod in ipairs{ data, layout, methods, sections } do
@@ -54,7 +53,6 @@ for _, mod in ipairs{ data, layout, methods, sections } do
 	end
 end
 
--- --
 local AugmentedMethods = meta.WeakKeyed()
 
 --- DOCME
@@ -115,5 +113,9 @@ function M.Dialog (group, options)
 
 	return Dialog
 end
+
+--
+--
+--
 
 return M

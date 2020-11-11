@@ -77,7 +77,6 @@ local function DoTimeouts (button)
 	end, 0)
 end
 
---
 local function Draw (button, mode)
 	local skin = button.m_skin
 	local choice = skin[mode]
@@ -89,7 +88,6 @@ local function Draw (button, mode)
 	end
 end
 
--- Touch listener
 local OnTouch = touch.TouchHelperFunc(function(_, button)
 	button.m_doing_timeouts, button.m_inside = false, true
 
@@ -169,22 +167,37 @@ function M.Button (group, w, h, func, opts)
 	return _Button_XY_(group, 0, 0, w, h, func, opts)
 end
 
--- --
+--
+--
+--
+
 local Button = {}
 
---- Getter.
+--
+--
+--
+
+---
 -- @treturn string Button text.
 function Button:GetText ()
 	return self.m_string.text
 end
 
---- Setter.
+--
+--
+--
+
+---
 -- @string text
 function Button:SetText (text)
 	self.m_string.text = text
 end
 
---- Setter.
+--
+--
+--
+
+---
 -- @function Button:SetTimeout
 -- @tparam ?|number|nil timeout A value &gt; 0. When the button is held, its function is
 -- called each time an auxiliary timer fires. If absent, any such timeout is removed.
@@ -197,6 +210,10 @@ function Button:SetTimeout (timeout)
 
 	button.m_timeout = timeout or nil
 end
+
+--
+--
+--
 
 --- Creates a new button.
 -- @pgroup group Group to which button will be inserted.
@@ -267,6 +284,10 @@ function M.Button_XY (group, x, y, w, h, func, opts)
 	return bgroup
 end
 
+--
+--
+--
+
 -- Main button skin --
 skins.AddToDefaultSkin("button", {
 	borderwidth = 2,
@@ -286,6 +307,10 @@ skins.RegisterSkin("small_text_button", {
 	textsize = "3%",
 	_prefix_ = "button"
 })
+
+--
+--
+--
 
 _Button_XY_ = M.Button_XY
 

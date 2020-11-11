@@ -54,12 +54,21 @@ local M = {}
 --
 --
 
+local Grid = {}
+
+--
+--
+--
+
 --- DOCME
 function M.Grid (group, w, h, cols, rows, opts)
 	return _Grid_XY_(group, 0, 0, w, h, cols, rows, opts)
 end
 
--- Helper to get the per-cell dimensions
+--
+--
+--
+
 local function GetCellDims (back)
 	return back.width / back.m_ncols, back.height / back.m_nrows
 end
@@ -74,10 +83,8 @@ local function Cell (back, x, y)
 	return col, row
 end
 
--- Event to dispatch --
 local Event = {}
 
--- Dispatch events to grid
 local function Dispatch (back, col, row, x, y, context, is_first)
 	local grid = back.parent.parent
 
@@ -136,7 +143,6 @@ local function AddGridLine (group, skin, x1, y1, x2, y2)
 	line:setStrokeColor(colors.GetColor(skin.grid_linecolor))
 end
 
--- Cache of simulated touch events --
 local Events = {}
 
 -- Common logic for beginning a simulated touch...
@@ -169,40 +175,52 @@ local function MoveTouch (event, x, y)
 	Touch(event)
 end
 
--- --
 local DefStencil = stencil.NewStencil{ 0, 0 }
 
--- --
-local Grid = {}
-
---- Getter.
+---
 -- @treturn DisplayGroup Canvas group, to be populated and translated by the user.
 function Grid:GetCanvas ()
 	return self.m_canvas
 end
 
---- Getter.
+--
+--
+--
+
+---
 -- @treturn uint Number of columns...
 -- @treturn uint ...and rows.
 function Grid:GetCellDims ()
 	return GetCellDims(self.m_back)
 end
 
---- Getter.
+--
+--
+--
+
+---
 -- @treturn uint Column offset.
 -- @see SetColOffset
 function Grid:GetColOffset ()
 	return self.m_back.m_coffset
 end
 
---- Getter.
+--
+--
+--
+
+---
 -- @treturn uint Row offset.
 -- @see SetRowOffset
 function Grid:GetRowOffset ()
 	return self.m_back.m_roffset
 end
 
---- Assigns cell-relative centering, which determine how **x** and **y** are calculated in a
+--
+--
+--
+
+--- Assign cell-relative centering, which determine how **x** and **y** are calculated in a
 -- **"cell"** listener (analogous to Solar2D's anchor points).
 --
 -- Values are clamped to [0, 1].
@@ -215,9 +233,11 @@ function Grid:SetCentering (x, y)
 	back.m_cy = 1 - range.ClampIn(y, 0, 1)
 end
 
---- Setter.
 --
--- **N.B.** The offset only affects the grid for touch purposes. The user is responsible
+--
+--
+
+--- **N.B.** The offset only affects the grid for touch purposes. The user is responsible
 -- for translating the canvas.
 -- TODO: Add some support for this?
 -- @uint[opt=0] coffset Column offset.
@@ -226,16 +246,22 @@ function Grid:SetColOffset (coffset)
 	self.m_back.m_coffset = coffset or 0
 end
 
---- Setter.
+--
+--
+--
+
+---
 -- @param context Context to assign to grid, or **nil** to clear it.
 -- @see Grid:TouchCell, Grid:TouchXY
 function Grid:SetContext (context)
 	self.m_context = context
 end
 
---- Setter.
 --
--- **N.B.** The offset only affects the grid for touch purposes. The user is responsible
+--
+--
+
+--- **N.B.** The offset only affects the grid for touch purposes. The user is responsible
 -- for translating the canvas.
 -- @uint[opt=0] roffset Row offset.
 -- @see GetRowOffset
@@ -243,25 +269,41 @@ function Grid:SetRowOffset (roffset)
 	self.m_back.m_roffset = roffset or 0
 end
 
+--
+--
+--
+
 --- DOCME
 -- @tparam ?|array|Stencil|nil arr X
 function Grid:SetStencil (arr)
 	self.m_back.m_stencil = arr and stencil.NewStencil(arr) or DefStencil
 end
 
---- Setter.
+--
+--
+--
+
+---
 -- @bool show Show a background behind the cells?
 function Grid:ShowBack (show)
 	self.m_back.isVisible = show
 end
 
---- Setter.
+--
+--
+--
+
+---
 -- @bool show Show lines between the cells?
 function Grid:ShowLines (show)
 	self.m_lines.isVisible = show
 end
 
---- Manually performs a touch (or drag) on the grid.
+--
+--
+--
+
+--- Manually perform a touch (or drag) on the grid.
 --
 -- This will trigger the grid's current touch behavior. Any in-progress touch state is
 -- preserved during this call, e.g. it may be called from a **"cell"** listener.
@@ -292,6 +334,10 @@ function Grid:TouchCell (col, row, cto, rto)
 	self.m_col, self.m_row = scol, srow
 end
 
+--
+--
+--
+
 --- Variant of @{Grid:TouchCell} that uses content x- and y-coordinates.
 --
 -- Since this is meant to simulate a touch, the offsets assigned by @{Grid:SetColOffset} and
@@ -315,7 +361,11 @@ function Grid:TouchXY (x, y, xto, yto)
 	self.m_col, self.m_row = scol, srow
 end
 
---- Creates a new two-dimensional grid, with background and lines enabled.
+--
+--
+--
+
+--- Create a new two-dimensional grid, with background and lines enabled.
 --
 -- A **"cell"** event is exposed via the **addEventListener** and **removeEventListener**
 -- methods, with reference to the grid itself under the **target** key. This event is
@@ -421,6 +471,10 @@ function M.Grid_XY (group, x, y, w, h, cols, rows, opts)
 	return grid
 end
 
+--
+--
+--
+
 -- Main grid skin --
 skins.AddToDefaultSkin("grid", {
 	backcolor = { .375, .75 },
@@ -428,6 +482,10 @@ skins.AddToDefaultSkin("grid", {
 	linewidth = 2,
 	trapinput = true
 })
+
+--
+--
+--
 
 _Grid_XY_ = M.Grid_XY
 

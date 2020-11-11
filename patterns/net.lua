@@ -96,13 +96,11 @@ local function WatchNets (event)
 	end
 end
 
---
 local function SetLayers (net, object)
 	net:toFront()
 	object:toFront()
 end
 
---
 local function SetColor (net, gray, opts)
 	net:setFillColor(opts and opts.gray or gray, opts and opts.alpha or .125)
 end
@@ -131,6 +129,10 @@ function M.AddNet (group, object, opts)
 	return net
 end
 
+--
+--
+--
+
 --- DOCME
 -- @pgroup group
 -- @pobject object
@@ -145,6 +147,9 @@ function M.AddNet_Hide (group, object, opts)
 end
 
 --
+--
+--
+
 local function DefTouch () return true end
 
 --- DOCME
@@ -160,6 +165,9 @@ function M.Blocker (group, opts)
 end
 
 --
+--
+--
+
 local function FindInGroup (group, item)
 	for i = 1, group.numChildren do
 		if group[i] == item then
@@ -168,7 +176,6 @@ local function FindInGroup (group, item)
 	end
 end
 
---
 local function TouchNet (event)
 	local net = event.target
 
@@ -224,6 +231,10 @@ function M.HoistOntoStage (object, on_close, blocking)
 	return stub, net
 end
 
+--
+--
+--
+
 --- DOCME
 -- @pobject object
 -- @pobject stub
@@ -243,6 +254,10 @@ function M.RestoreAfterHoist (object, stub, net)
 	--
 	display.remove(net)
 end
+
+--
+--
+--
 
 _AddNet_ = M.AddNet
 

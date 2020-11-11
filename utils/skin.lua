@@ -103,10 +103,14 @@ function M.AddToDefaultSkin (name, data)
 	Categories[name] = true
 end
 
+--
+--
+--
+
 -- Current fallback skin --
 local CurSkin = "default"
 
---- Getter.
+---
 -- @param[opt] name Skin name, or **nil** for current skin.
 -- @return (Read-only) Skin.
 function M.GetSkin (name)
@@ -117,6 +121,10 @@ function M.GetSkin (name)
 	return assert(Skins[name], "Invalid skin")
 end
 
+--
+--
+--
+
 -- Inheritance metatable --
 local SkinsMeta = {
 	__index = function(t, k)
@@ -124,7 +132,11 @@ local SkinsMeta = {
 	end
 }
 
---- Registers a skin.
+--
+--
+--
+
+--- Register a skin.
 -- @param name Skin name.
 -- @ptable data Values this skin defines. Unknown values are looked up through the chain
 -- of parent skins.
@@ -153,12 +165,20 @@ function M.RegisterSkin (name, data, parent)
 	Skins[name] = skin
 end
 
---- Setter.
+--
+--
+--
+
+---
 -- @param name Name of a registered skin.
 function M.SetCurrentSkin (name)
 	assert(Skins[name], "Invalid skin")
 
 	CurSkin = name
 end
+
+--
+--
+--
 
 return M

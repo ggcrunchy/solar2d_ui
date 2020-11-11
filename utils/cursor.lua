@@ -44,19 +44,16 @@ local M = {}
 --
 --
 
---
 local function GetChar (text, pos)
 	return sub(text, pos, pos)
 end
 
---
 local function GetWidth (proxy, text)
 	proxy.text = text
 
 	return proxy.width
 end
 
---
 local function ComputeOffset (proxy, penult, last)
 	local pw = GetWidth(proxy, penult)
 	local both_w = pw + GetWidth(proxy, last)
@@ -65,7 +62,6 @@ local function ComputeOffset (proxy, penult, last)
 	return last2_w - both_w, pw
 end
 
---
 local function GetOffset (offsets, proxy, text, pos, size, sep)
 	sep = sep or ";"
 
@@ -80,10 +76,8 @@ local function GetOffset (offsets, proxy, text, pos, size, sep)
 	end
 end
 
--- --
 local Offsets = {}
 
--- --
 local Proxies = {}
 
 --- DOCME
@@ -115,6 +109,10 @@ function M.GetOffset (str, pos, sep)
 		end
 	end
 end
+
+--
+--
+--
 
 --- DOCME
 -- @tparam TextObject str
@@ -160,6 +158,10 @@ function M.GetPosition_XY (str, x, y, sep)
 	end
 end
 
+--
+--
+--
+
 --- DOCME
 -- @tparam TextObject str
 -- @number x
@@ -172,6 +174,10 @@ function M.GetPosition_GlobalXY (str, x, y, sep)
 	return _GetPosition_XY_(str, x, y, sep)
 end
 
+--
+--
+--
+
 --- DOCME
 -- @tparam TextObject str
 -- @treturn ?|TextObject|nil X
@@ -180,11 +186,13 @@ function M.GetProxy (str)
 end
 
 --
+--
+--
+
 local function Cleanup (event)
 	Offsets[event.target], Proxies[event.target] = nil
 end
 
---
 local function AuxNewText (func, ...)
 	local str, proxy = func(...), func(...)
 
@@ -203,6 +211,10 @@ function M.NewEmbossedText (...)
 	return AuxNewText(display.newEmbossedText, ...)
 end
 
+--
+--
+--
+
 --- DOCME
 -- @param ...
 -- @treturn TextObject str
@@ -210,6 +222,10 @@ end
 function M.NewText (...)
 	return AuxNewText(display.newText, ...)
 end
+
+--
+--
+--
 
 _GetPosition_XY_ = M.GetPosition_XY
 

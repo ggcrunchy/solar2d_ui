@@ -39,7 +39,6 @@ local M = {}
 --
 --
 
--- --
 local Actions = {}
 
 function Actions.above (object, ref, _, dy)
@@ -119,5 +118,9 @@ function M.PutAtFirstHit (object, ref_object, choices, center_on_fail)
 		object.x, object.y = x, y
 	end
 end
+
+--
+--
+--
 
 return M

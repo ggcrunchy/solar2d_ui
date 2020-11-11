@@ -41,7 +41,6 @@ local M = {}
 --
 --
 
--- --
 local RGB = {}
 
 --- Finds the positions of the bar and color nodes for a given color; for non-gray colors, loads RGB as a consequence
@@ -103,6 +102,10 @@ function M.ConvertRGB (r, g, b, out)
 	return hue or 0, sat or 0, r
 end
 
+--
+--
+--
+
 -- Are components close enough to consider equal?
 local function IsEqual (x, y)
 	return abs(x - y) < 1e-3
@@ -148,6 +151,10 @@ function M.FindHue (r, g, b)
 	end
 end
 
+--
+--
+--
+
 -- Additive primary and secondary colors: red -> magenta -> blue -> cyan -> green -> yellow -> red --
 local HueColors = {
 	{ 1, 0, 0 }, { 1, 0, 1 }, { 0, 0, 1 }, { 0, 1, 1 }, { 0, 1, 0 }, { 1, 1, 0 }
@@ -161,6 +168,10 @@ function M.HueGradient (index, dir)
 	return { type = "gradient", color1 = HueColors[index], color2 = HueColors[index + 1], direction = dir or "down" }
 end
 
+--
+--
+--
+
 --- DOCME
 function M.RGB_ColorSV (hue_r, hue_g, hue_b, sat, value)
 	local gray, t = (1 - sat) * value, sat * value
@@ -171,6 +182,10 @@ function M.RGB_ColorSV (hue_r, hue_g, hue_b, sat, value)
 	return r, g, b
 end
 
+--
+--
+--
+
 --- DOCME
 function M.RGB_FromHSV (hue, sat, value)
 	local hr, hg, hb = _RGB_Hue_(hue)
@@ -178,10 +193,18 @@ function M.RGB_FromHSV (hue, sat, value)
 	return _RGB_ColorSV_(hr, hg, hb, sat, value)
 end
 
+--
+--
+--
+
 --- DOCME
 function M.RGB_Hue (hue)
 	return _RGB_HueInterval_(modf(6 * (hue % 1) + 1))
 end
+
+--
+--
+--
 
 --- DOCME
 function M.RGB_HueInterval (index, t)
@@ -191,6 +214,10 @@ function M.RGB_HueInterval (index, t)
 
 	return s * r1 + t * r2, s * g1 + t * g2, s * b1 + t * b2
 end
+
+--
+--
+--
 
 _FindHue_ = M.FindHue
 _RGB_ColorSV_ = M.RGB_ColorSV

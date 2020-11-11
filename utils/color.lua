@@ -68,10 +68,13 @@ function M.GetColor (color)
 	end
 end
 
+--
+--
+--
+
 -- Intermediate storage, used to pass varargs to object:set*Color() via unpack() --
 local Color = {}
 
---
 local DefPacker
 
 --- DOCME
@@ -117,6 +120,9 @@ function M.MakePacker (opts)
 end
 
 --
+--
+--
+
 DefPacker = M.MakePacker{}
 
 --- DOCME
@@ -126,6 +132,10 @@ function M.PackColor (object, ...)
 	DefPacker(object, "pack", ...)
 end
 
+--
+--
+--
+
 --- DOCME
 -- @param object
 -- @callable packer
@@ -133,6 +143,10 @@ end
 function M.PackColor_Custom (object, packer, ...)
 	(packer or DefPacker)(object, "pack", ...)
 end
+
+--
+--
+--
 
 -- Packs one to four quantized (i.e. 0-255) color components into a number --
 -- Bits 0-1: Number of color components - 1
@@ -167,6 +181,10 @@ function M.PackColor_Number (...)
 	return 2^2 * PackNumberMethods[n](...) + n - 1
 end
 
+--
+--
+--
+
 --- WIP
 -- @param name
 -- @tparam table|userdata|Name color
@@ -182,6 +200,10 @@ function M.RegisterColor (name, color)
 		Colors[name] = color
 	end
 end
+
+--
+--
+--
 
 -- Methods to unpack a number into one to four components; complements PackNumberMethods --
 local UnpackNumberMethods, UnpackNumber = {
@@ -223,6 +245,10 @@ function M.SetFillColor (object, from)
 	DefPacker(object, "fill", from)
 end
 
+--
+--
+--
+
 --- DOCME
 -- @param object
 -- @callable packer
@@ -231,6 +257,10 @@ function M.SetFillColor_Custom (object, packer, from)
 	(packer or DefPacker)(object, "fill", from)
 end
 
+--
+--
+--
+
 --- DOCME
 -- @param object
 -- @uint n
@@ -238,12 +268,20 @@ function M.SetFillColor_Number (object, n)
 	object:setFillColor(UnpackNumber(n))
 end
 
+--
+--
+--
+
 --- DOCME
 -- @param object
 -- @param from
 function M.SetStrokeColor (object, from)
 	DefPacker(object, "stroke", from)
 end
+
+--
+--
+--
 
 --- DOCME
 -- @param object
@@ -253,12 +291,20 @@ function M.SetStrokeColor_Custom (object, packer, from)
 	(packer or DefPacker)(object, "stroke", from)
 end
 
+--
+--
+--
+
 --- DOCME
 -- @param object
 -- @uint n
 function M.SetStrokeColor_Number (object, n)
 	object:setStrokeColor(UnpackNumber(n))
 end
+
+--
+--
+--
 
 --- DOCME
 -- @function UnpackNumber
@@ -268,5 +314,9 @@ end
 -- @treturn number B
 -- @treturn number A
 M.UnpackNumber = UnpackNumber
+
+--
+--
+--
 
 return M

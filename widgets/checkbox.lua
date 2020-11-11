@@ -45,6 +45,12 @@ local M = {}
 --
 --
 
+local Checkbox = {}
+
+--
+--
+--
+
 -- Sets the check state and performs any follow-up action
 local function Check (box, mark, check)
 	mark.isVisible = check
@@ -70,10 +76,11 @@ local function CheckTouch (event)
 	return true
 end
 
--- --
-local Checkbox = {}
+--
+--
+--
 
---- Sets the checkbox state to checked or unchecked.
+--- Set the checkbox state to checked or unchecked.
 --
 -- The follow-up logic is performed even if the check state does not change.
 -- @bool check If true, check; otherwise, uncheck.
@@ -81,21 +88,37 @@ function Checkbox:Check (check)
 	Check(self, self.m_image, not not check)
 end
 
---- Predicate.
+--
+--
+--
+
+---
 -- @treturn boolean The checkbox is checked?
 function Checkbox:IsChecked ()
 	return self.m_image.isVisible
 end
 
---- Toggles the checkbox state, checked &rarr; unchecked (or vice versa).
+--
+--
+--
+
+--- Toggle the checkbox state, checked &rarr; unchecked (or vice versa).
 function Checkbox:ToggleCheck ()
 	Toggle(self)
 end
+
+--
+--
+--
 
 --- DOCME
 function M.Checkbox (group, w, h, opts)
 	return _Checkbox_XY_(group, 0, 0, w, h, opts)
 end
+
+--
+--
+--
 
 -- Creates a new checkbox.
 -- @pgroup group Group to which the checkbox will be inserted.
@@ -154,6 +177,10 @@ function M.Checkbox_XY (group, x, y, w, h, opts)
 	return checkbox
 end
 
+--
+--
+--
+
 -- Main checkbox skin --
 skins.AddToDefaultSkin("checkbox", {
 	backcolor = "white",
@@ -162,6 +189,10 @@ skins.AddToDefaultSkin("checkbox", {
 	image = "solar2d_ui/assets/Check.png",
 	radius = "1.5%"
 })
+
+--
+--
+--
 
 _Checkbox_XY_ = M.Checkbox_XY
 

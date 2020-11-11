@@ -157,6 +157,9 @@ function M.FileList (group, options)
 end
 
 --
+--
+--
+
 local function GetIndex (index, add_group)
 	if index and add_group then
 		index = index * 2 - 1
@@ -165,15 +168,12 @@ local function GetIndex (index, add_group)
 	end
 end
 
---
 local function Identity (str)
 	return str
 end
 
--- --
 local Event = {}
 
----
 local function TouchEvent (func, rect, listbox)
 	Event.listbox = listbox
 
@@ -247,13 +247,24 @@ local function Append (listbox, str)
 	return count
 end
 
--- --
+--
+--
+--
+
 local Listbox = {}
+
+--
+--
+--
 
 --- DOCME
 function Listbox:Append (str)
 	return Append(self, str)
 end
+
+--
+--
+--
 
 --- DOCME
 function Listbox:AppendList (list)
@@ -262,11 +273,19 @@ function Listbox:AppendList (list)
 	end
 end
 
+--
+--
+--
+
 --- DOCME
 function Listbox:AssignList (list)
 	self:Clear()
 	self:AppendList(list)
 end
+
+--
+--
+--
 
 --- DOCME
 function Listbox:Clear ()
@@ -284,12 +303,20 @@ function Listbox:Clear ()
 	end
 end
 
+--
+--
+--
+
 --- DOCME
 function Listbox:Count ()
 	local add_group = self.m_add_group
 
 	return .5 * (add_group and add_group.numChildren or 0)
 end
+
+--
+--
+--
 
 --- DOCME
 function Listbox:ClearSelection ()
@@ -301,6 +328,10 @@ function Listbox:ClearSelection ()
 
 	self.m_selection = nil
 end
+
+--
+--
+--
 
 --- DOCME
 function Listbox:Delete (index)
@@ -329,6 +360,10 @@ function Listbox:Delete (index)
 	end
 end
 
+--
+--
+--
+
 --- DOCME
 function Listbox:Find (str)
 	local add_group, get_text = self.m_add_group, self.m_get_text
@@ -341,6 +376,10 @@ function Listbox:Find (str)
 
 	return nil
 end
+
+--
+--
+--
 
 --- DOCME
 function Listbox:FindData (data)
@@ -355,10 +394,18 @@ function Listbox:FindData (data)
 	return nil
 end
 
+--
+--
+--
+
 --- DOCME
 function Listbox:FindSelection ()
 	return self:Find(self:GetSelection())
 end
+
+--
+--
+--
 
 --- DOCME
 function Listbox:ForEach (func, ...)
@@ -370,6 +417,10 @@ function Listbox:ForEach (func, ...)
 		func(get_text(data), data, ...)
 	end
 end
+
+--
+--
+--
 
 --- DOCME
 function Listbox:Frame (r, g, b)
@@ -388,12 +439,20 @@ function Listbox:Frame (r, g, b)
 	self.m_frame = frame
 end
 
+--
+--
+--
+
 --- DOCME
 function Listbox:GetCount ()
 	local add_group = self.m_add_group
 
 	return (add_group and add_group.numChildren or 0) / 2
 end
+
+--
+--
+--
 
 --- DOCME
 function Listbox:GetData (index)
@@ -404,6 +463,10 @@ function Listbox:GetData (index)
 	return index and add_group[index].m_data
 end
 
+--
+--
+--
+
 --- DOCME
 function Listbox:GetRect (index)
 	local add_group = self.m_add_group
@@ -413,6 +476,10 @@ function Listbox:GetRect (index)
 	return index and add_group[index]
 end
 
+--
+--
+--
+
 --- DOCME
 function Listbox:GetSelection ()
 	local selection = self.m_selection
@@ -420,12 +487,20 @@ function Listbox:GetSelection ()
 	return selection and self.m_get_text(selection.m_data)
 end
 
+--
+--
+--
+
 --- DOCME
 function Listbox:GetSelectionData ()
 	local selection = self.m_selection
 
 	return selection and selection.m_data
 end
+
+--
+--
+--
 
 --- DOCME
 function Listbox:GetString (index)
@@ -436,6 +511,10 @@ function Listbox:GetString (index)
 	return index and add_group[index + 1]
 end
 
+--
+--
+--
+
 --- DOCME
 function Listbox:GetText (index)
 	local add_group = self.m_add_group
@@ -444,6 +523,10 @@ function Listbox:GetText (index)
 
 	return index and self.m_get_text(add_group[index].m_data)
 end
+
+--
+--
+--
 
 --- DOCME
 function Listbox:Select (index)
@@ -462,6 +545,10 @@ function Listbox:Select (index)
 	end
 end
 
+--
+--
+--
+
 --- DOCME
 function Listbox:Update (index, data)
 	local add_group = self.m_add_group
@@ -478,6 +565,9 @@ function Listbox:Update (index, data)
 end
 
 --
+--
+--
+
 local function RemoveFrame (event)
 	display.remove(event.target.m_frame)
 end
@@ -525,6 +615,10 @@ function M.Listbox (group, options)
 
 	return listbox
 end
+
+--
+--
+--
 
 _Listbox_ = M.Listbox
 

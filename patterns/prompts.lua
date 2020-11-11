@@ -83,6 +83,10 @@ function M.DoActionThenProceed (opts)
 	return alert
 end
 
+--
+--
+--
+
 --- DOCME
 -- @ptable opts
 -- @param arg
@@ -108,8 +112,10 @@ function M.ProceedAnyway (opts, arg)
 	return alert
 end
 
-
 --
+--
+--
+
 local function Message (message, what)
 	return message:format(what)
 end
@@ -195,5 +201,9 @@ function M.WriteEntry_MightExist (name, opts, arg)
 end
 
 -- Special case for files...
+
+--
+--
+--
 
 return M

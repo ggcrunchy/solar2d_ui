@@ -48,7 +48,6 @@ local M = {}
 --
 --
 
---
 local function NoTouch () return true end
 
 --- DOCME
@@ -75,6 +74,10 @@ function M.AddBack (dialog, w, h)
 	end
 end
 
+--
+--
+--
+
 --- DOCMEMORE
 -- Helper to access dialog via object
 function M.GetDialog (object)
@@ -85,12 +88,19 @@ function M.GetDialog (object)
 	return object
 end
 
+--
+--
+--
+
 --- DOCME
 function M.GetNamespace (dialog)
 	return dialog and dialog.m_namespace
 end
 
--- --
+--
+--
+--
+
 local SubPropsMT = {
 	__index = function(t, k)
 		local new = {}
@@ -102,7 +112,6 @@ local SubPropsMT = {
 	__mode = "k"
 }
 
--- --
 local Props = setmetatable({}, {
 	default = {},
 
@@ -116,7 +125,6 @@ local Props = setmetatable({}, {
 	__mode = "k"
 })
 
---
 local function GetProps (item, namespace)
 	if namespace == nil then
 		namespace = _GetNamespace_(_GetDialog_(item))
@@ -132,10 +140,18 @@ function M.GetProperty (item, what, namespace)
 	return iprops and iprops[what]
 end
 
+--
+--
+--
+
 --- DOCME
 function M.GetProperty_Table (item, namespace)
 	return GetProps(item, namespace)[item]
 end
+
+--
+--
+--
 
 --- DOCME
 function M.GetValue (object, alt)
@@ -156,20 +172,31 @@ function M.GetValue (object, alt)
 	return value
 end
 
+--
+--
+--
+
 --- DOCME
 function M.SetProperty (item, name, value, namespace)
 	GetProps(item, namespace)[item][name] = value
 end
 
+--
+--
+--
+
 function M.SetProperty_Table (item, props, namespace)
 	GetProps(item, namespace)[item] = props
 end
 
--- --
+--
+--
+--
+
 local Event = { name = "update_object" }
 
 --- DOCMEMORE
--- Updates the value bound to an object (dirties the editor state)
+-- Update the value bound to an object (dirties the editor state)
 function M.UpdateObject (object, value, alt)
 	local dialog = _GetDialog_(alt or object)
 	local values = dialog.m_values
@@ -206,6 +233,10 @@ end
 
 -- TODO: Make this instantiable:
 -- Make weak-keyed master table, start with "default" key
+
+--
+--
+--
 
 _GetDialog_ = M.GetDialog
 _GetNamespace_ = M.GetNamespace

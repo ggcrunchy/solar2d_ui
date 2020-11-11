@@ -26,7 +26,7 @@
 --
 
 -- Standard library imports --
-local abs = math.abs
+--local abs = math.abs
 local assert = assert
 local pairs = pairs
 
@@ -71,6 +71,10 @@ function M:BeginSection ()
 	return section
 end
 
+--
+--
+--
+
 -- Helper to apply an operation (recursively) to a dialog section
 local function Apply (handle, op, igroup)
 	if handle.m_is_open then
@@ -107,7 +111,6 @@ local function AreParentsOpen (handle, list)
 	return not handle
 end
 
--- --
 local FadeOutParams = {
 	alpha = .3, time = 150,
 
@@ -116,10 +119,8 @@ local FadeOutParams = {
 	end
 }
 
--- --
 local DoImmediately
 
---
 local function To (object, params)
 	if DoImmediately then
 		local delta = params.delta
@@ -154,12 +155,10 @@ local function IsVisible (item)
 	return item.isVisible or item.m_collapsed == false
 end
 
--- --
 local MoveParams = { delta = true }
 
---
 local function Move (item, field, delta)
-	local time = abs(delta) -- adjust time...
+--	local time = abs(delta) -- adjust time...
 
 	MoveParams.time, MoveParams[field] = 120, delta
 
@@ -171,7 +170,6 @@ end
 -- Separation distances between objects and dialog edges --
 local XSep = 5 -- TODO: Skin this
 
---
 local function Reflow (line, igroup)
 	local x, is_open = XSep
 
@@ -295,6 +293,10 @@ function M:Collapse (handle)
 	end
 end
 
+--
+--
+--
+
 --- DOCME
 function M:EndSection ()
 	-- Pull the section off the stack.
@@ -314,7 +316,6 @@ function M:EndSection ()
 	end
 end
 
--- --
 local FadeInParams = { alpha = 1, time = 150 }
 
 -- Shows an element, which may be a spacer
@@ -327,6 +328,10 @@ local function Show (item)
 		To(item, FadeInParams)
 	end
 end
+
+--
+--
+--
 
 --- DOCME
 -- @tparam SectionHandle handle
@@ -360,6 +365,10 @@ function M:Expand (handle)
 	end
 end
 
+--
+--
+--
+
 --- DOCME
 -- @tparam SectionHandle to_expand
 -- @tparam SectionHandle to_collapse
@@ -385,6 +394,10 @@ function M:FlipTwoStates (to_expand, to_collapse)
 	end
 end
 
+--
+--
+--
+
 --- DOCME
 -- @tparam SectionHandle handle
 -- @param name
@@ -404,6 +417,10 @@ function M:SetStateFromValue (handle, name, predicate)
 		self:Collapse(handle)
 	end
 end
+
+--
+--
+--
 
 --- DOCME
 -- @tparam SectionHandle handle
@@ -440,5 +457,9 @@ function M:SetStateFromValue_Watch (handle, name, predicate)
 	list[#list + 1] = name
 	list[#list + 1] = predicate or false
 end
+
+--
+--
+--
 
 return M

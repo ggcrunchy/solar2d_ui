@@ -45,13 +45,15 @@ function M:Back ()
 end
 
 --
+--
+--
+
 local function OnTextChange (event)
 	local str = event.target
 
 	utils.UpdateObject(str, event.new_text, str:GetChildOfParent())
 end
 
---
 local function AddStaticText (dialog, text)
 	local str = display.newText(dialog:ItemGroup(), text, 0, 0, native.systemFontBold, layout.ResolveY("4.6%"))
 
@@ -108,6 +110,9 @@ function M:CommonAdd (object, options, static_text)
 end
 
 --
+--
+--
+
 local function AuxFind (group, namespace, name)
 	for i = 1, group.numChildren do
 		if utils.GetProperty(group[i], "name", namespace) == name then
@@ -116,7 +121,7 @@ local function AuxFind (group, namespace, name)
 	end
 end
 
---- Searches by name for an object in the dialog.
+--- Search by name for an object in the dialog.
 -- @param name Object name, as passed through **name** in the object's _options_. If
 -- the name was **true**, the final name will be the value of **value\_name**.
 -- @treturn DisplayObject Object, or **nil** if not found.
@@ -131,15 +136,21 @@ function M:Find (name)
 	return item
 end
 
+--
+--
+--
+
 --- DOCME
 function M:ItemGroup ()
 	return self.m_items
 end
 
--- --
+--
+--
+--
+
 local BeforeRemoveEvent = { name = "before_remove" }
 
---
 local function RemoveWidgets (group, namespace)
 	for i = group.numChildren, 1, -1 do
 		if utils.GetProperty(group[i], "type", namespace) == "widget" then
@@ -148,7 +159,7 @@ local function RemoveWidgets (group, namespace)
 	end
 end
 
---- Removes the dialog. This does some additional cleanup beyond what is done by
+--- Remove the dialog. This does some additional cleanup beyond what is done by
 -- `display.remove` and `object:removeSelf`.
 function M:RemoveSelf ()
 	self.m_defs = nil
@@ -175,6 +186,10 @@ function M:RemoveSelf ()
 	self:removeSelf()
 end
 
+--
+--
+--
+
 --- DOCME
 function M:UpperGroup (how)
 	local upper, items = self.m_upper
@@ -188,5 +203,9 @@ function M:UpperGroup (how)
 
 	return upper
 end
+
+--
+--
+--
 
 return M

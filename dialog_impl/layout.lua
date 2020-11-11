@@ -82,12 +82,10 @@ local function CR (dialog, not_empty)
 	end
 end
 
--- Current width of a separator
 local function SepWidth (dialog)
 	return dialog.m_xmax - XSep * 2
 end
 
--- Separator properties --
 local SepProps = { type = "separator" }
 
 --- DOCME
@@ -107,6 +105,10 @@ function M:AddSeparator ()
 	CR(self)
 end
 
+--
+--
+--
+
 --- End a line of items
 function M:EndLine ()
 	if self.m_num_on_line > 0 then
@@ -119,6 +121,10 @@ function M:EndLine ()
 	end
 end
 
+--
+--
+--
+
 --- DOCME
 function M:InitProperties ()
 	if not self.m_num_on_line then
@@ -129,7 +135,11 @@ function M:InitProperties ()
 	end
 end
 
---- Moves the pen down one row, at the left side.
+--
+--
+--
+
+--- Move the pen down one row, at the left side.
 --
 -- This is a no-op if the current line is empty.
 function M:NewLine ()
@@ -138,7 +148,10 @@ function M:NewLine ()
 	CR(self, true)
 end
 
--- Spacer properties --
+--
+--
+--
+
 local SpacerProps = { type = "spacer" }
 
 --- Adds some vertical space to the dialog.
@@ -159,6 +172,10 @@ function M:Spacer ()
 
 	CR(self)
 end
+
+--
+--
+--
 
 -- Helper to center one or more text items on a line
 local function CenterText (dialog, y, count)
@@ -244,7 +261,7 @@ local function ResizeSeparators (dialog)
 	end
 end
 
---- Updates the dialog's state (e.g. various dimensions and alignments) to take account
+--- Update the dialog's state (e.g. various dimensions and alignments) to take account
 -- of a new object. The object is put into its expected position via the pen.
 -- @pobject object Object that was added.
 -- @number? addx If present, extra amount to advance the pen after placement.
@@ -293,5 +310,9 @@ function M:Update (object, addx)
 		ResizeBack(self)
 	end
 end
+
+--
+--
+--
 
 return M

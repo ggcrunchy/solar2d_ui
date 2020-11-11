@@ -49,7 +49,6 @@ local M = {}
 --
 --
 
---
 local function GetParent (object, find, how)
 	if find then
 		return find(object, how)
@@ -177,6 +176,10 @@ function M.DragParentTouch (opts)
 	end)
 end
 
+--
+--
+--
+
 --- Builds a function (on top of @{TouchHelperFunc}) to be assigned as a **"touch"**
 -- listener, which will drag the target around when moved, subject to clamping at the screen
 -- edges.
@@ -201,6 +204,9 @@ function M.DragTouch ()
 end
 
 --
+--
+--
+
 local function ResolveCoordinate (v, cur)
 	return v == "cur" and cur
 end
@@ -217,7 +223,7 @@ function M.DragViewTouch (view, opts)
 		on_post_move, on_pre_move = opts.on_post_move, opts.on_pre_move
 	end
 
-	x0, y0, x1, x2 = x0 or 0, y0 or 0
+	x0, y0, x1, y1 = x0 or 0, y0 or 0
 	x1 = dx and (x0 - dx) or -huge
 	y1 = dy and (y0 - dy) or -huge
 	xclamp = xclamp or ClampMethods.id
@@ -242,6 +248,10 @@ function M.DragViewTouch (view, opts)
 	end)
 end
 
+--
+--
+--
+
 --- DOCME
 function M.Inside (event, object)
 	object = object or event.target
@@ -251,12 +261,19 @@ function M.Inside (event, object)
 	return x >= bounds.xMin and x <= bounds.xMax and y >= bounds.yMin and y <= bounds.yMax
 end
 
+--
+--
+--
+
 --- Is the target touched, or at least considered so?
 function M.IsTouched (target, event)
 	return target.m_is_touched or (event and event.id) == "ignore_me"
 end
 
--- --
+--
+--
+--
+
 local FakeTouch
 
 local function AuxSpoof (target, phase)
@@ -280,6 +297,10 @@ function M.Spoof (target)
 	AuxSpoof(target, "ended")
 end
 
+--
+--
+--
+
 -- Helper to set (multitouch) stage focus
 local function SetFocusForTouch (target, touch)
 	display.getCurrentStage():setFocus(target, touch)
@@ -287,7 +308,7 @@ local function SetFocusForTouch (target, touch)
 	target.m_is_touched = not not touch
 end
 
---- Builds a function to be assigned as a **"touch"** listener, which handles various common
+--- Build a function to be assigned as a **"touch"** listener, which handles various common
 -- details of touch management.
 --
 -- Each of the arguments are assumed to be functions called as `func(event, target)`, where
@@ -340,6 +361,10 @@ function M.TouchHelperFunc (began, moved, ended)
 		return true
 	end
 end
+
+--
+--
+--
 
 _IsTouched_ = M.IsTouched
 _TouchHelperFunc_ = M.TouchHelperFunc

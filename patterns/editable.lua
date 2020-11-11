@@ -57,6 +57,12 @@ local M = {}
 --
 --
 
+local Editable = {}
+
+--
+--
+--
+
 local WidthTest, ScaleToAverageWidth, Widest, WidestChar = display.newText("", 0, 0, native.systemFontBold, 20), 0, 0, ""
 
 WidthTest.isVisible = false
@@ -85,7 +91,6 @@ timer.performWithDelay(50, function(event)
 	end
 end, 8)
 
---
 local function Char (name, is_shift_down)
 	--
 	if name == "space" then
@@ -105,7 +110,6 @@ local function Char (name, is_shift_down)
 	end
 end
 
---
 local function Num (name)
 	if name == "." or tonumber(name) then
 		return name
@@ -114,12 +118,10 @@ end
 
 -- ^^^ Allows multiple decimal points in string (also issue with keyboard, not sure about native)
 
---
 local function Any (name, is_shift_down)
 	return Char(name, is_shift_down) or Num(name)
 end
 
---
 local function AdjustAndClamp (info, n, how)
 	local remove_at, new_pos = info.m_pos
 
@@ -138,7 +140,6 @@ local function AdjustAndClamp (info, n, how)
 	end
 end
 
--- Event packet --
 local Event = {}
 
 local function ChangeText (old, new, str)
@@ -165,7 +166,6 @@ local function AuxGetText (editable, str)
 	return editable.m_text or str.text
 end
 
---
 local function SetText (str, text, align, w)
 	local editable = str.parent
 	local old, set_text = AuxGetText(editable, str), str.m_set_text
@@ -187,7 +187,6 @@ local function SetText (str, text, align, w)
 	ChangeText(old, AuxGetText(editable, str), str)
 end
 
---
 local function UpdateCaret (info, str, pos)
 	if pos then
 		info.m_pos = pos
@@ -212,7 +211,6 @@ for gname, group in pairs{
 	end
 end
 
---
 local function DoKey (info, name, is_shift_down)
 	local str = info.parent:GetString()
 	local text, gname = str.text, KeyType[name]
@@ -262,16 +260,12 @@ local function DoKey (info, name, is_shift_down)
 	return true
 end
 
--- --
 local OldListenFunc
 
--- --
 local Current
 
--- --
 local FadeAwayParams = { alpha = 0, onComplete = display.remove }
 
--- --
 local KeyFadeOutParams = {
 	alpha = .2,
 
@@ -284,7 +278,6 @@ local EnterKeys, LeaveKeys
 
 local HandleKey
 
---
 local function CloseKeysAndText (by_key)
 	--
 	Event.name, Event.target, Event.closed_by_key = "closing", Current, not not by_key
@@ -322,7 +315,6 @@ local function CloseKeysAndText (by_key)
 	end
 end
 
---
 function HandleKey (event)
 	local name = event.keyName
 
@@ -365,25 +357,18 @@ function HandleKey (event)
 	return true
 end
 
--- --
 local Filter = { chars = Char, nums = Num }
 
--- --
 local CaretParams = { time = 650, iterations = -1, alpha = .125, transition = easing.continuousLoop }
 
--- --
 local FadeInParams = { alpha = .4 }
 
--- --
 local KeyFadeInParams = { alpha = 1 }
 
--- --
 local XSep, YSep = layout_dsl.EvalDims(".625%", "1.04%")
 
--- --
 local PlaceKeys = { "below", "above", "bottom_center", "top_center", dx = XSep, dy = YSep }
 
--- --
 local BlockerOpts = {
 	gray = .4, alpha = .3,
 
@@ -422,7 +407,6 @@ local function UserInput (event)
 	end
 end
 
---
 local function EnterInputMode (editable)
 	Current, OldListenFunc = editable
 
@@ -480,7 +464,6 @@ local function EnterInputMode (editable)
 	end
 end
 
---
 local function Touch (event)
 	local phase, editable = event.phase, event.target.parent
 	local using_textfield = editable:GetCaret() == nil
@@ -506,7 +489,6 @@ end
 -- TODO: Handle taps in text case? (then need to pinpoint position...)
 -- Needs to handle all three alignments, too
 
--- --
 local CharWidthForFont = meta.WeakKeyed()
 
 local function Finalize (event)
@@ -523,8 +505,9 @@ local function Finalize (event)
 	end
 end
 
--- --
-local Editable = {}
+--
+--
+--
 
 --- DOCME
 function Editable:EnterInputMode ()
@@ -533,30 +516,54 @@ function Editable:EnterInputMode ()
 	end
 end
 
+--
+--
+--
+
 --- DOCME
 function Editable:GetCaret ()
 	return self.m_caret
 end
+
+--
+--
+--
 
 --- DOCME
 function Editable:GetChildOfParent ()
 	return self.m_stub or self
 end
 
+--
+--
+--
+
 --- DOCME
 function Editable:GetString ()
 	return self.m_str
 end
+
+--
+--
+--
 
 --- DOCME
 function Editable:GetText ()
 	return AuxGetText(self, self.m_str)
 end
 
+--
+--
+--
+
 --- DOCME
 function Editable:SetStringText (text)
 	SetStringText(self, self.m_str, tostring(text))
 end
+
+--
+--
+--
 
 --- DOCME
 function Editable:SetText (text)
@@ -579,6 +586,10 @@ function Editable:SetText (text)
 	SetText(self.m_str, text, self.m_align, self.m_w)
 end
 
+--
+--
+--
+
 --- DOCME
 function Editable:UseRawText (use_raw)
 	local info, str = self.m_info, self.m_str
@@ -592,6 +603,9 @@ function Editable:UseRawText (use_raw)
 end
 
 --
+--
+--
+
 local function AuxEditable (group, x, y, opts)
 	local editable = display.newGroup()
 
@@ -692,14 +706,26 @@ function M.Editable (group, opts)
 	return AuxEditable(group, 0, 0, opts)
 end
 
+--
+--
+--
+
 --- DOCME
 function M.Editable_XY (group, x, y, opts)
 	return AuxEditable(group, x, y, opts)
 end
 
+--
+--
+--
+
 --- DOCME
 function M.SetKeyLogic (enter, leave)
 	EnterKeys, LeaveKeys = enter, leave
 end
+
+--
+--
+--
 
 return M

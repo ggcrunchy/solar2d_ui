@@ -30,7 +30,7 @@ local M = {}
 --
 --
 
---- Associates a set of default values to the dialog.
+--- Associate a set of default values to the dialog.
 -- @ptable defs A list of default values, or **nil** to unbind defaults.
 --
 -- The dialog retains this reference, and thus is aware of any external changes.
@@ -38,7 +38,11 @@ function M:BindDefaults (defs)
 	self.m_defs = defs
 end
 
---- Associates a set of values with the dialog.
+--
+--
+--
+
+--- Associate a set of values with the dialog.
 -- @ptable values A list of values, or **nil** to unbind values.
 --
 -- The dialog retains this reference, and thus is aware of any external changes. More
@@ -47,7 +51,11 @@ function M:BindValues (values)
 	self.m_values = values
 end
 
---- Getter.
+--
+--
+--
+
+---
 -- @param name Value name, as passed through **value\_name** in an object's _options_.
 -- @return Value (found either in the values or defaults), or **nil** if absent.
 -- @see BindDefaults, BindValues
@@ -63,11 +71,19 @@ function M:GetValue (name)
 	end
 end
 
---- Predicate.
+--
+--
+--
+
+---
 -- @ptable values Reference to a list of values.
 -- @treturn boolean Was _values_ the last binding via @{BindValues}?
 function M:IsBoundToValues (values)
 	return values and self.m_values == values
 end
+
+--
+--
+--
 
 return M
